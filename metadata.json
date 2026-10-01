@@ -1,0 +1,6 @@
+{
+  "name": "Pigeon SK8",
+  "description": "Voxel hyper-casual skateboarding runner with pigeon tricks, realistic carving, ragdoll physics, and city obstacles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
