@@ -6,7 +6,6 @@ import { engine, track } from "./engine";
 import { useUI } from "./store";
 import { World } from "./World";
 import { Player } from "./Player";
-import { Podium } from "./Podium";
 import { Backdrop } from "./Backdrop";
 import { applyCurveToScene, curveUniforms, disableCurve, curveDisabled } from "./curve";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -191,13 +190,13 @@ function CameraRig() {
       curveUniforms.uCurveSide.value = isSubway ? c.curveSide : 0;
       curveUniforms.uCurveStart.value = 8.0; // keeps the first 8m ahead completely flat and clear
       curveUniforms.uHazeRange.value.set(c.hazeNear, c.hazeFar);
-      // distance haze matches the world: pale daylight mist vs deep indigo Shibuya night
+      // distance haze matches the world: pale daylight mist vs deep midnight Tokyo night
       {
         const st = useUI.getState();
         const isNightNow = trackModeNow === "shibuya" && st.shibuyaTime === "malam";
         curveUniforms.uHazeColor.value.set(
           isNightNow
-            ? "#1b1838"
+            ? "#162032"
             : st.weather === "cloudy"
               ? "#dfe7ee"
               : trackModeNow === "shibuya" && st.shibuyaTime === "sore"
@@ -233,9 +232,9 @@ function Lights() {
   const night = mode === "shibuya" && tod === "malam";
   const cloudy = cloudyWeather && !night;
   const nightMul = [0.82, 1, 1.18][nightBright];
-  // Preset cahaya: malam / berawan / Shibuya pagi (emas lembut) / Shibuya sore (senja oranye) / siang cerah
+  // Preset cahaya: malam (terang, hangat, bersih) / berawan / Shibuya pagi (emas lembut) / Shibuya sore (senja oranye) / siang cerah
   const preset = night
-    ? { hemi: ["#c3caff", "#454a70", 1.5 * nightMul] as const, amb: [0.82 * nightMul, "#aeb5ff"] as const, dir: [1.5 * nightMul, "#d7ddff"] as const }
+    ? { hemi: ["#e4ecf8", "#242e40", 1.65 * nightMul] as const, amb: [0.95 * nightMul, "#f0f4fc"] as const, dir: [1.65 * nightMul, "#fff6e8"] as const }
     : cloudy
       ? { hemi: ["#e8edf4", "#93a0ad", 1.4] as const, amb: [0.5, "#eef2f7"] as const, dir: [1.15, "#eef2f6"] as const }
       : mode === "shibuya" && tod === "pagi"
@@ -312,11 +311,11 @@ function NightBloom() {
     built.composer.setSize(size.width, size.height);
   }, [built, gl, size]);
   useEffect(() => {
-    // REDUP / PAS / TERANG — semua tetap smooth, hanya intens halonya yang berubah
-    built.bloom.strength = [0.3, 0.42, 0.55][nightBright];
-    built.bloom.radius = 0.7;
+    // REDUP / PAS / TERANG — semua tetap smooth, hangat dan elegan (bukan neon tajam)
+    built.bloom.strength = [0.15, 0.22, 0.32][nightBright];
+    built.bloom.radius = 0.55;
     built.bloom.threshold = 1.0;
-    setGlowBoost([1.28, 1.42, 1.58][nightBright]);
+    setGlowBoost([1.10, 1.18, 1.28][nightBright]);
   }, [built, nightBright]);
   useEffect(() => () => built.composer.dispose(), [built]);
   useFrame(() => built.composer.render(), 1);
@@ -334,8 +333,8 @@ function NightBloomGate() {
 
 /** Sky dome + distant haze so the curved horizon fades nicely. */
 const SKY_DAY = { top: "#249bed", mid: "#55b8f5", bot: "#ccecff" };
-// Shibuya Night: deep indigo zenith melting into a violet-magenta city glow at the horizon
-const SKY_NIGHT = { top: "#0a0e2c", mid: "#5b3a92", bot: "#2c2456" };
+// Shibuya Night: deep midnight blue zenith melting into a clean, calm city ambient glow (NO purple/magenta cyberpunk!)
+const SKY_NIGHT = { top: "#0b1220", mid: "#18243b", bot: "#24324d" };
 // Siang berawan yang lembut: zenith abu kebiruan turun ke horizon putih keperakan
 const SKY_CLOUDY = { top: "#7d93ab", mid: "#c9d6e0", bot: "#eaf0f5" };
 // Shibuya pagi: biru muda dengan horizon emas lembut
@@ -426,7 +425,6 @@ export function Scene({ onContextLost }: { onContextLost?: () => void }) {
       <Sky />
       <Backdrop />
       <World />
-      <Podium />
       <Player />
     </Canvas>
   );

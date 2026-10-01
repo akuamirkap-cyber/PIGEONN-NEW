@@ -104,10 +104,10 @@ export function setGlowBoost(v: number) {
   (glowMaterial as THREE.MeshBasicMaterial).color.setScalar(v);
 }
 
-/** Aspal malam Shibuya yang HALUS: Phong dengan specular biru-keunguan supaya jalan
- *  memantulkan kilau lampu kota (kesan wet-look tanpa biaya reflection map). */
+/** Aspal malam Shibuya yang bersih & elegan: Phong dengan specular neutral slate supaya jalan
+ *  memantulkan kilau cahaya jalan kota tanpa warna ungu cyberpunk. */
 export const glossyGroundMaterial = applyCurve(
-  new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: new THREE.Color("#6a70a0") }),
+  new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: new THREE.Color("#444d5c") }),
 );
 
 export function rand(min: number, max: number) {

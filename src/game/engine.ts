@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ARM_LEN, CHUNK_LEN, GATE_LAT, TRAIN_CAR_LEN, TRAIN_GAP, TRAIN_W, HOOD_JUMP_CLEAR_H, PED_VARIANTS, makeBuildingSpec, makeShibuyaTowerSpec, type BuildingSpec } from "./models";
+import { ARM_LEN, CHUNK_LEN, GATE_LAT, TRAIN_CAR_LEN, TRAIN_GAP, TRAIN_W, HOOD_JUMP_CLEAR_H, makeBuildingSpec, makeShibuyaTowerSpec, type BuildingSpec } from "./models";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
 import { sfx } from "./audio";
@@ -19,8 +19,8 @@ export const START_SPEED = 7;
 export const MAX_SPEED = 12.5;
 export const ACCEL = 0.08;
 export const MENU_SPEED = 0;
-export const PODIUM_H = 0.28;
-export const PODIUM_R = 0.78;
+export const PODIUM_H = 0;
+export const PODIUM_R = 0;
 /** Turntable angle that shows the pigeon's face in a 3/4 view for the fixed camera. */
 export const FRONT_YAW = 3.75;
 export const RAIL_H = 0.6;
@@ -3088,31 +3088,32 @@ class Engine {
     }
 
     if (isShibuya) {
-      // ---- SHIBUYA NIGHT: a grand 6-lane avenue. Gameplay & camera stay on the near 3 lanes;
-      // ---- past the tree-lined median runs the opposite carriageway packed with slow traffic,
-      // ---- and both frontages are walls of sign-stacked zakkyo towers. ----
-      const towerLot = (lx: number, lat: number, dy: number) => {
+      // ---- SHIBUYA: grand open avenue with spacious, towering Japanese architecture ----
+      // Spacing: ONE substantial lot per 12m chunk (centered at lx = 6) with clean alleyway gaps.
+      // 1. Near frontage:
+      if (id % 21 === 7) {
+        add("tower109", 6, -10.8, -0.12);
+      } else {
         const r = Math.random();
-        if (r < 0.72) add("building", lx, lat, dy, 0, makeShibuyaTowerSpec(rand(5.2, 6.8)));
-        else if (r < 0.86) add("konbini", lx, lat, dy, 0); // glowing 24h konbini between towers
-        else add("ramen", lx, lat, dy, 0); // late-night ramen bar
-      };
-      // 1. Near frontage: dense tower wall right on the playable sidewalk
-      towerLot(3, -8.05, 0.1);
-      towerLot(9, -8.05, 0.1);
-      // far frontage across all 6 lanes (bigger footprint reads well from a distance)
-      if (Math.random() < 0.85) towerLot(rand(2.5, 9.5), 18.6, -0.14);
+        if (r < 0.70) add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(rand(9.8, 12.8)));
+        else if (r < 0.86) add("konbini", 6, -10.2, 0.1, 0); // large 10.4m wide 24h konbini
+        else add("ramen", 6, -10.2, 0.1, 0); // large 8.6m wide 2-storey ramen house
+      }
 
-      // 2. Landmark: the silver 109-style cylinder tower rises above the near skyline
-      if (id % 21 === 7) add("tower109", 6, -12.6, -0.12);
+      // 2. Far frontage across all 6 lanes:
+      if (Math.random() < 0.88) {
+        const rFar = Math.random();
+        if (rFar < 0.78) add("building", 6, 23.8, -0.14, 0, makeShibuyaTowerSpec(rand(12.5, 16.5), 8 + Math.floor(Math.random() * 6)));
+        else if (rFar < 0.90) add("konbini", 6, 23.8, -0.14, 0);
+        else add("ramen", 6, 23.8, -0.14, 0);
+      }
 
-      // 3. Second skyline row: taller towers looming behind the first
-      if (id % 21 !== 7) add("building", rand(2, 6), -13.5, -0.15, 0, makeShibuyaTowerSpec(rand(6.5, 8.5)));
-      if (Math.random() < 0.7) add("building", rand(6, 10), 24.5, -0.28, 0, makeShibuyaTowerSpec(rand(6.5, 8.5)));
+      // 3. Second skyline row: towering background skyscrapers (placed every 2 chunks so no clutter)
+      if (id % 2 === 0) add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
+      if (id % 2 === 1) add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
 
-      // 4. Giant glowing video billboards on scaffolds (the Shibuya trademark)
-      if (id % 3 === 0) add("billboard", rand(3, 9), -7.6, 0.05, randInt(0, 2));
-      if (id % 4 === 2) add("billboard", rand(3, 9), 16.4, -0.06, randInt(0, 2));
+      // 4. Department store display billboards across the wide boulevard (far background only)
+      if (id % 6 === 3) add("billboard", 6, 27.5, -0.16, randInt(0, 2));
 
       // railway crossings span the whole avenue — keep the median & opposite lanes clear there
       const nearCrossing = (lx: number) => {
@@ -3121,39 +3122,32 @@ class Engine {
       };
 
       // 5. Tree-lined centre median: zelkova street trees + lamps down the avenue
-      for (const lx of [2.5 + rand(-0.6, 0.6), 8.5 + rand(-0.6, 0.6)]) {
+      for (const lx of [3, 9]) {
         if (!nearCrossing(lx)) add("tree", lx, 4.35, 0.16, randInt(0, 2));
       }
       if (id % 2 === 1 && !nearCrossing(6)) add("lamp", 6, 4.35, 0.16);
 
-      // 6. Opposite carriageway traffic is animated in World.tsx (not parked car decorations).
+      // 6. Sidewalk atmosphere: pleasantly spaced out (not packed edge-to-edge)
+      if (Math.random() < 0.45) add("vending", rand(2.5, 9.5), -5.2, 0.12, randInt(0, 3));
+      if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.8, 0.12, randInt(0, 2));
+      if (Math.random() < 0.3) add("mamachari", rand(2.5, 9.5), -4.9, 0.12, randInt(0, 3));
+      if (Math.random() < 0.4) add("tree", rand(2.5, 9.5), -6.6, 0.12, randInt(0, 2));
+      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), 16.2, 0.12, randInt(0, 2));
 
-      // 7. Buzzing sidewalks BOTH sides: neon signboards, vending machines, mamachari, trees
-      if (Math.random() < 0.75) add("neon_sign", rand(1.5, 10.5), -4.4, 0.12, randInt(0, 2));
-      if (Math.random() < 0.55) add("neon_sign", rand(1.5, 10.5), 13.0, 0.12, randInt(0, 2));
-      if (Math.random() < 0.7) add("vending", rand(2, 10), -4.8, 0.12, randInt(0, 3));
-      if (Math.random() < 0.45) add("vending", rand(2, 10), 13.4, 0.12, randInt(0, 3));
-      if (Math.random() < 0.45) add("mamachari", rand(2, 10), -4.55, 0.12, randInt(0, 3));
-      if (Math.random() < 0.35) add("mamachari", rand(2, 10), 12.85, 0.12, randInt(0, 3));
-      // sidewalk street trees (Japanese avenues are green even under the neon)
-      if (Math.random() < 0.55) add("tree", rand(1.5, 10.5), rand(-7.45, -7.75), 0.12, randInt(0, 2));
-      if (Math.random() < 0.5) add("tree", rand(1.5, 10.5), rand(15.75, 15.9), 0.12, randInt(0, 2));
-
-      // 8. Lampu jalan rapat: tiap chunk di KEDUA trotoar + lampu avenue dua kepala di median
+      // 7. Lampu jalan: di kedua trotoar + median
       add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.06);
       add("lamp", id % 2 === 0 ? 9 : 3, 12.55, 0.14);
       if (id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
 
-      // 9. Pagar pembatas trotoar pipa putih khas Jepang di bibir curb — KEDUA sisi jalan
-      for (const flx of [1.8, 5.2, 8.6]) {
+      // 8. Pagar pembatas trotoar pipa putih khas Jepang
+      for (const flx of [2.0, 6.0, 10.0]) {
         if (!nearCrossing(flx)) {
           add("guard_fence", flx, -4.14, 0.12);
           add("guard_fence", flx, 12.78, 0.12);
         }
       }
-      // 10. Hiasan hijau trotoar: planter bata/beton berisi bunga & rumput + pagar tanaman
-      if (Math.random() < 0.8) add("sidewalk_planter", rand(1.5, 10.5), -4.85, 0.12, randInt(0, 2));
-      if (Math.random() < 0.55) add("sidewalk_planter", rand(1.5, 10.5), 13.3, 0.12, randInt(0, 2));
+      // 9. Planter trotoar
+      if (Math.random() < 0.5) add("sidewalk_planter", rand(2.5, 9.5), -4.85, 0.12, randInt(0, 2));
 
       this.chunks.push({ id, s0, kind: "shibuya", decor });
       this.listVersion++;
@@ -3182,47 +3176,39 @@ class Engine {
       return;
     }
     if (kind === "street") {
-      // Balanced streetscape: previous city buildings, ramen shops, machiya merchant shops, 1-story houses, and multi-story village houses
+      // Balanced streetscape: grand city buildings, ramen shops, machiya merchant shops, houses
       const lot = (lx: number) => {
         const r = Math.random();
-        if (r < 0.28) add("building", lx, -6.75, 0.1, 0, makeBuildingSpec(rand(5, 6.2)));
-        else if (r < 0.50) add("house", lx, -6.75, 0.1, randInt(0, 1)); // 1-story traditional house
-        else if (r < 0.68) add("machiya", lx, -6.75, 0.1, randInt(0, 1)); // machiya shop
-        else if (r < 0.84) add("ramen", lx, -6.75, 0.1, 0); // ramen shop
-        else add("village_house", lx, -6.75, 0.1, randInt(0, 3)); // 2-3 story village house
+        if (r < 0.32) add("building", lx, -7.5, 0.1, 0, makeBuildingSpec(rand(8.2, 11.2)));
+        else if (r < 0.50) add("house", lx, -7.5, 0.1, randInt(0, 1)); // traditional house
+        else if (r < 0.68) add("machiya", lx, -7.5, 0.1, randInt(0, 1)); // machiya shop
+        else if (r < 0.84) add("ramen", lx, -7.5, 0.1, 0); // 8.6m grand ramen shop
+        else add("village_house", lx, -7.5, 0.1, randInt(0, 3)); // 2-3 story village house
       };
       if (straight && id % 6 === 2) {
-        add("konbini", 6, -6.75, 0.1, 0);
-      } else if (straight && Math.random() < 0.35) {
-        const r = Math.random();
-        if (r < 0.32) add("building", 6, -6.75, 0.1, 0, makeBuildingSpec(rand(5.5, 7)));
-        else if (r < 0.56) add("house", 6, -6.75, 0.1, randInt(0, 1));
-        else if (r < 0.74) add("village_house", 6, -6.75, 0.1, randInt(0, 3));
-        else if (r < 0.88) add("machiya", 6, -6.75, 0.1, randInt(0, 1));
-        else add("ramen", 6, -6.75, 0.1, 0);
+        add("konbini", 6, -7.5, 0.1, 0);
       } else {
-        lot(3);
-        lot(9);
+        lot(6); // One grand, spacious lot per 12m chunk
       }
 
       // Vending machines (Jihanki) on sidewalk
-      if (Math.random() < 0.6) add("vending", rand(2, 10), -4.8, 0.12, randInt(0, 3));
-      if (Math.random() < 0.35) add("vending", rand(2, 10), 4.8, 0.12, randInt(0, 3));
+      if (Math.random() < 0.45) add("vending", rand(2.5, 9.5), -4.8, 0.12, randInt(0, 3));
+      if (Math.random() < 0.3) add("vending", rand(2.5, 9.5), 4.8, 0.12, randInt(0, 3));
 
       // Mamachari commuter bicycles parked along sidewalks
-      if (Math.random() < 0.5) add("mamachari", rand(2, 10), -4.55, 0.12, randInt(0, 3));
-      if (Math.random() < 0.3) add("mamachari", rand(2, 10), 4.55, 0.12, randInt(0, 3));
+      if (Math.random() < 0.4) add("mamachari", rand(2.5, 9.5), -4.55, 0.12, randInt(0, 3));
+      if (Math.random() < 0.25) add("mamachari", rand(2.5, 9.5), 4.55, 0.12, randInt(0, 3));
 
       // Illuminated sidewalk neon / ramen lantern signboards
-      if (Math.random() < 0.45) add("neon_sign", rand(2, 10), -4.4, 0.12, randInt(0, 2));
+      if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.4, 0.12, randInt(0, 2));
       // a sakura in front of the shops now and then
-      if (Math.random() < 0.5) add("sakura", rand(1.5, 10.5), -5.2, 0.12, randInt(0, 3));
+      if (Math.random() < 0.4) add("sakura", rand(2.5, 9.5), -5.2, 0.12, randInt(0, 3));
       // Front sidewalk buildings & houses (facing the street)
       const rFront = Math.random();
-      if (rFront < 0.18) add("house", rand(2.5, 9.5), 9.4, -0.1, randInt(0, 1));
-      else if (rFront < 0.34) add("building", rand(2.5, 9.5), 9.4, -0.1, 0, makeBuildingSpec(rand(4.8, 5.8)));
-      else if (rFront < 0.46) add("machiya", rand(2.5, 9.5), 9.4, -0.1, randInt(0, 1));
-      else if (rFront < 0.58) add("village_house", rand(2.5, 9.5), 9.4, -0.1, randInt(0, 3));
+      if (rFront < 0.22) add("house", 6, 11.2, -0.1, randInt(0, 1));
+      else if (rFront < 0.45) add("building", 6, 11.2, -0.1, 0, makeBuildingSpec(rand(8.0, 10.5)));
+      else if (rFront < 0.60) add("machiya", 6, 11.2, -0.1, randInt(0, 1));
+      else if (rFront < 0.75) add("village_house", 6, 11.2, -0.1, randInt(0, 3));
     } else {
       // Scenic park / countryside: greenery with occasional 1-story house, ramen shop, or village house
       const rBack = Math.random();
