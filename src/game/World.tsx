@@ -61,6 +61,7 @@ import {
   rocketParts,
   diamondParts,
   crownParts,
+  letterBadgeParts,
   sakuraParts,
   stoneLanternParts,
   petalParts,
@@ -1495,6 +1496,99 @@ function Rockets() {
   );
 }
 
+/** Daily Word Hunt letters floating along the track with golden shine. */
+function TrackLetters() {
+  const { camera } = useThree();
+  const refs = useRef<Map<number, THREE.Group>>(new Map());
+  const rays = useRef<Map<number, THREE.Mesh>>(new Map());
+  const rayTex = useMemo(() => getRayTexture(), []);
+  const rayMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        map: rayTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        color: "#ffd21f",
+        opacity: 0.82,
+        toneMapped: false,
+      }),
+    [rayTex],
+  );
+  const ringMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: "#ffd21f",
+        transparent: true,
+        opacity: 0.65,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      rayMat.dispose();
+      ringMat.dispose();
+    },
+    [rayMat, ringMat],
+  );
+
+  useFrame(() => {
+    const t = engine.time;
+    for (const l of engine.letters) {
+      const g = refs.current.get(l.id);
+      if (!g) continue;
+      g.visible = !l.taken;
+      g.position.set(l.wx, l.wy + 0.45 + Math.sin(t * 2.8 + l.phase) * 0.12, l.wz);
+      g.rotation.y = t * 1.8 + l.phase;
+      const ray = rays.current.get(l.id);
+      if (ray) {
+        ray.quaternion.copy(camera.quaternion);
+        ray.rotateZ(t * 0.4 + l.phase);
+        const pulse = 1 + 0.14 * Math.sin(t * 5.8 + l.phase);
+        ray.scale.setScalar(pulse);
+        (ray.material as THREE.MeshBasicMaterial).opacity = 0.7 + 0.25 * Math.sin(t * 6.5 + l.phase);
+      }
+    }
+  });
+
+  return (
+    <>
+      {engine.letters.map((l) => {
+        const geo = getGeometry(`letter_${l.char}`, () => letterBadgeParts(l.char));
+        return (
+          <group
+            key={l.id}
+            ref={(g) => {
+              if (g) refs.current.set(l.id, g);
+              else refs.current.delete(l.id);
+            }}
+          >
+            <mesh
+              ref={(m) => {
+                if (m) rays.current.set(l.id, m);
+                else rays.current.delete(l.id);
+              }}
+              material={rayMat}
+              renderOrder={-1}
+            >
+              <planeGeometry args={[2.9, 2.9]} />
+            </mesh>
+            <mesh material={ringMat} rotation-x={-Math.PI / 2} position={[0, -0.4, 0]}>
+              <ringGeometry args={[0.4, 0.62, 24]} />
+            </mesh>
+            <mesh geometry={geo} material={voxelMaterial} castShadow />
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 /** Kilatan sinar besar tepat saat roket diambil (mengembang lalu memudar). */
 function RareFlash() {
   const { camera } = useThree();
@@ -1920,6 +2014,7 @@ export function World() {
       <Petals />
       <NosCans />
       <Rockets />
+      <TrackLetters />
       <RareFlash />
       <RoadSigns />
       <OverpassCars />

@@ -267,6 +267,8 @@ function MainMenu() {
 
   const setPreview = useUI((s) => s.setPreview);
   const equippedId = useUI((s) => s.skin);
+  const wordHunt = useUI((s) => s.wordHunt);
+  const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
 
   const start = () => {
     unlockAudio();
@@ -335,6 +337,39 @@ function MainMenu() {
         <div className="font-display txt-outline text-[20cqw] leading-[0.88] text-[#ffd23f]">
           SK8
         </div>
+      </div>
+
+      {/* ── Daily Word Hunt Pill on Main Menu ── */}
+      <div className="absolute left-0 right-0 top-[28.5%] flex justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            unlockAudio();
+            sfx.click();
+            setShowMysteryBox(true);
+          }}
+          className="pointer-events-auto flex items-center gap-2 rounded-2xl border-2 border-[#ffd21f]/50 bg-[#1c2230]/90 px-3.5 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
+        >
+          <span className="text-xl">🎁</span>
+          <div className="flex flex-col items-start leading-none">
+            <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#ffd21f]">
+              DAILY WORD HUNT
+            </span>
+            <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-white">
+              {wordHunt.word.split("").map((ch, idx) => (
+                <span
+                  key={idx}
+                  className={wordHunt.collected[idx] ? "text-[#ffd21f] font-bold" : "text-white/30"}
+                >
+                  {ch}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 font-display text-[2.4cqw] text-white/80">
+            {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}
+          </span>
+        </button>
       </div>
 
       {/* ── Invisible swipe zone over the pigeon turntable ── */}

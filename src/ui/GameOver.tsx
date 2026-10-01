@@ -39,6 +39,8 @@ export function GameOver() {
   const isNewBest = useUI((s) => s.isNewBest);
   const runs = useUI((s) => s.runs);
   const cause = useUI((s) => s.crashCause);
+  const wordHunt = useUI((s) => s.wordHunt);
+  const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
   if (phase !== "gameover") return null;
   const list = QUIPS[cause] ?? QUIPS.obstacle;
   const quip = list[runs % list.length];
@@ -77,6 +79,40 @@ export function GameOver() {
               <BreadIcon size={18} />+{bread}
               <span className="font-body text-[2.5cqw] font-extrabold text-[#b08340]">· wallet {wallet}</span>
             </span>
+          </div>
+
+          {/* Daily Word Hunt progress banner */}
+          <div
+            onClick={() => {
+              sfx.click();
+              setShowMysteryBox(true);
+            }}
+            className="pointer-events-auto mt-3 flex cursor-pointer items-center justify-between rounded-2xl border-2 border-[#ffd21f]/40 bg-[#1c2230] px-3.5 py-2 shadow-sm transition-transform active:scale-95"
+          >
+            <div className="flex flex-col items-start leading-none">
+              <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#ffd21f]">
+                DAILY WORD HUNT
+              </span>
+              <div className="mt-1 flex items-center gap-1 font-display text-[3.6cqw] text-white">
+                {wordHunt.word.split("").map((ch, idx) => (
+                  <span
+                    key={idx}
+                    className={wordHunt.collected[idx] ? "text-[#ffd21f] font-bold" : "text-white/25"}
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {wordHunt.pendingBox || (wordHunt.collected.every(Boolean) && !wordHunt.claimed) ? (
+              <span className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-[#ffd60a] to-[#ff9f1c] px-2.5 py-1.5 font-display text-[2.8cqw] text-[#1c1400] shadow animate-bounce">
+                BUKA 🎁
+              </span>
+            ) : (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 font-display text-[2.4cqw] text-white/70">
+                {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length} 🎁
+              </span>
+            )}
           </div>
 
           {/* aksi */}

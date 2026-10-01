@@ -34,6 +34,8 @@ export function HUD() {
   const speedMode = useUI((s) => s.speedMode);
   const trackMode = useUI((s) => s.trackMode);
   const shibuyaTime = useUI((s) => s.shibuyaTime);
+  const wordHunt = useUI((s) => s.wordHunt);
+  const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
   const inRun = phase === "playing" || phase === "crashed";
   const enabled = TRICKS.filter((t) => tricksOn[t.kind]);
   const nextTrick = enabled.length ? enabled[cycleIndex % enabled.length] : null;
@@ -68,6 +70,42 @@ export function HUD() {
             </svg>
             <span className="font-display text-[2.8cqw] tracking-wider text-white">{locationLabel}</span>
           </div>
+
+          {/* Daily Word Hunt letter bar (Subway Surfers-style) */}
+          <button
+            type="button"
+            onClick={() => {
+              unlockAudio();
+              setShowMysteryBox(true);
+            }}
+            className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 backdrop-blur-[3px] shadow-sm transition-transform active:scale-95"
+            aria-label="Daily Word Hunt progress"
+          >
+            {wordHunt.word.split("").map((ch, idx) => {
+              const isDone = wordHunt.collected[idx];
+              return (
+                <div
+                  key={idx}
+                  className={`flex h-[5.2cqw] w-[5.2cqw] min-h-[20px] min-w-[20px] items-center justify-center rounded-lg border text-[2.7cqw] font-display leading-none transition-all ${
+                    isDone
+                      ? "border-[#ffd21f] bg-gradient-to-b from-[#ffd60a] to-[#ff9f1c] text-[#1c1400] shadow-[0_0_8px_rgba(255,214,10,0.8)] scale-105 font-bold"
+                      : "border-white/20 bg-white/10 text-white/40"
+                  }`}
+                >
+                  {ch}
+                </div>
+              );
+            })}
+            <span
+              className={`ml-1 flex items-center text-[3.8cqw] leading-none ${
+                wordHunt.pendingBox || (wordHunt.collected.every(Boolean) && !wordHunt.claimed)
+                  ? "animate-bounce filter drop-shadow-[0_0_6px_#ffd21f]"
+                  : "opacity-60"
+              }`}
+            >
+              🎁
+            </span>
+          </button>
         </div>
       )}
 
@@ -86,7 +124,7 @@ export function HUD() {
       )}
 
       {/* trick / info popups (NEVER cropped or truncated, scaled smoothly) + centered 2x SKATE badge */}
-      <div className="pointer-events-none absolute left-0 right-0 top-[13.5%] flex flex-col items-center gap-1">
+      <div className="pointer-events-none absolute left-0 right-0 top-[16%] flex flex-col items-center gap-1">
         {popups.slice(-1).map((p) => {
           const len = p.text.length;
           const fontClass = len > 20 ? "text-[3.3cqw]" : len > 15 ? "text-[3.8cqw]" : len > 11 ? "text-[4.3cqw]" : "text-[4.8cqw]";

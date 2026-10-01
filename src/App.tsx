@@ -4,6 +4,7 @@ import { useInput } from "./game/useInput";
 import { HUD } from "./ui/HUD";
 import { Menu } from "./ui/Menu";
 import { GameOver } from "./ui/GameOver";
+import { MysteryBoxModal } from "./ui/MysteryBoxModal";
 import { engine, track } from "./game/engine";
 import { useUI } from "./game/store";
 import { ensureThumbs } from "./game/thumbs";
@@ -106,6 +107,7 @@ export default function App() {
         <HUD />
         <Menu />
         <GameOver />
+        <MysteryBoxModal />
       </div>
       {!stage.fullscreen && (
         <div className="mt-5 font-body text-sm font-bold tracking-wide text-white/50">

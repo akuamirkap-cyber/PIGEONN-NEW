@@ -195,5 +195,16 @@ export const sfx = {
       tone(680, 0.11, "triangle", { to: 380, vol: 0.26, delay: 0.08, attack: 0.01 });
     }
   },
+  letterPickup: () => {
+    tone(784, 0.07, "triangle", { vol: 0.35 });
+    tone(988, 0.08, "triangle", { vol: 0.35, delay: 0.06 });
+    tone(1318, 0.16, "triangle", { vol: 0.4, delay: 0.12 });
+  },
+  mysteryBox: () => {
+    tone(523, 0.1, "triangle", { vol: 0.4 });
+    tone(659, 0.1, "triangle", { vol: 0.4, delay: 0.08 });
+    tone(784, 0.1, "triangle", { vol: 0.4, delay: 0.16 });
+    tone(1046, 0.28, "triangle", { vol: 0.45, delay: 0.24 });
+  },
 };
 

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { SKINS, getSkin } from "./skins";
 import { TRICKS, type TrickKind } from "./tricks";
+import { loadWordHunt, saveWordHunt, type WordHuntData } from "./wordHunt";
 
 export type Phase = "menu" | "playing" | "crashed" | "gameover";
 export type TurnMode = "old" | "new";
@@ -90,6 +91,11 @@ interface UIState {
   setPreview: (id: string) => void;
   cycleSkin: (dir: 1 | -1) => void;
   unlockSkin: (id: string) => boolean;
+  wordHunt: WordHuntData;
+  showMysteryBox: boolean;
+  setShowMysteryBox: (show: boolean) => void;
+  collectWordLetter: (index: number) => { completed: boolean; char: string; remaining: number };
+  claimMysteryBox: () => { bread: number; score: number; title: string };
 }
 
 let popupId = 0;
@@ -306,5 +312,56 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-skin", id);
     set({ unlocked, wallet, skin: id, preview: id });
     return true;
+  },
+  wordHunt: loadWordHunt(),
+  showMysteryBox: false,
+  setShowMysteryBox: (showMysteryBox) => set({ showMysteryBox }),
+  collectWordLetter: (index) => {
+    const s = get();
+    const hunt = { ...s.wordHunt };
+    if (index >= 0 && index < hunt.word.length && !hunt.collected[index]) {
+      const nextCollected = [...hunt.collected];
+      nextCollected[index] = true;
+      const allDone = nextCollected.every(Boolean);
+      const updated: WordHuntData = {
+        ...hunt,
+        collected: nextCollected,
+        pendingBox: allDone && !hunt.claimed ? true : hunt.pendingBox,
+      };
+      saveWordHunt(updated);
+      set({ wordHunt: updated });
+      const remaining = nextCollected.filter((c) => !c).length;
+      return {
+        completed: allDone,
+        char: hunt.word[index],
+        remaining,
+      };
+    }
+    const remaining = hunt.collected.filter((c) => !c).length;
+    return { completed: hunt.collected.every(Boolean), char: hunt.word[index] || "", remaining };
+  },
+  claimMysteryBox: () => {
+    const s = get();
+    const hunt = { ...s.wordHunt };
+    const breadReward = 600 + Math.floor(Math.random() * 400); // 600 - 1000 bread
+    const scoreReward = 3000 + Math.floor(Math.random() * 2000); // 3000 - 5000 score
+    const newWallet = s.wallet + breadReward;
+    save("pigeon-sk8-wallet", newWallet);
+
+    const updated: WordHuntData = {
+      ...hunt,
+      pendingBox: false,
+      claimed: true,
+    };
+    saveWordHunt(updated);
+    set({
+      wallet: newWallet,
+      wordHunt: updated,
+    });
+    return {
+      bread: breadReward,
+      score: scoreReward,
+      title: "HADIAH PETI MISTERI!",
+    };
   },
 }));

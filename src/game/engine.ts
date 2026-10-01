@@ -209,6 +209,18 @@ export interface Bread {
   wy: number;
   wz: number;
 }
+export interface TrackLetter {
+  id: number;
+  s: number;
+  lane: number;
+  char: string;
+  charIndex: number;
+  taken: boolean;
+  wx: number;
+  wy: number;
+  wz: number;
+  phase: number;
+}
 export type DecorKind =
   | "building"
   | "tree"
@@ -648,6 +660,9 @@ class Engine {
   nextNosS = 0;
   /** jarak (s) tempat roket langka berikutnya muncul */
   nextRocketS = 0;
+  /** Daily Word Hunt letters on track */
+  letters: TrackLetter[] = [];
+  nextLetterS = 0;
 
   nextRoadworkS = 0;
   nextOverpassS = 0;
@@ -795,6 +810,8 @@ class Engine {
     this.nextCrossingS = START_S + FIRST_CROSSING_M;
     this.nextIntersectionS = START_S + 68;
     this.nextRocketS = START_S + ROCKET_FIRST_S; // roket pertama muncul agak awal biar pemain lihat itemnya
+    this.letters = [];
+    this.nextLetterS = START_S + 50; // Daily Word Hunt letter appears early in run
     this.particles = [];
     this.reserved = [];
     this.nextChunkS = 0;
@@ -2088,6 +2105,13 @@ class Engine {
       this.collectRocket(r);
     }
 
+    // Daily Word Hunt letters
+    for (const l of this.letters) {
+      if (l.taken) continue;
+      if (Math.abs(l.s - d) > 1.0 || Math.abs(LANE_LAT[l.lane] - p.lat) > 1.05 || p.h > 1.8) continue;
+      this.collectLetter(l);
+    }
+
     // puddles: safe, just a splash (and a wet trail)
     this.wet = Math.max(0, this.wet - dt * 0.8);
     for (const pu of this.puddles) {
@@ -2905,6 +2929,7 @@ class Engine {
     this.breads = this.breads.filter((b) => b.s < s - (half - 1) || b.s > s + (half - 1));
     this.nosCans = this.nosCans.filter((c) => c.s < s - half - 8 || c.s > s + half + 8);
     this.rockets = this.rockets.filter((r) => r.s < s - half - 8 || r.s > s + half + 8);
+    this.letters = this.letters.filter((l) => l.s < s - half - 8 || l.s > s + half + 8);
     this.puddles = this.puddles.filter((pu) => pu.s < s - half || pu.s > s + half);
     this.listVersion++;
     return inter;
@@ -2950,6 +2975,7 @@ class Engine {
     this.breads = this.breads.filter((b) => b.s < lo || b.s > hi);
     this.nosCans = this.nosCans.filter((c) => c.s < lo - 8 || c.s > hi + 8);
     this.rockets = this.rockets.filter((r) => r.s < lo - 8 || r.s > hi + 8);
+    this.letters = this.letters.filter((l) => l.s < lo - 8 || l.s > hi + 8);
     this.puddles = this.puddles.filter((pu) => pu.s < lo || pu.s > hi);
     this.movers = this.movers.filter((m) => m.kind !== "chicken" || m.s < lo || m.s > hi);
     const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
@@ -3504,6 +3530,7 @@ class Engine {
         this.movers.some((m) => m.kind !== "pedestrian" && Math.abs(m.lane - lane) < 0.5 && Math.abs(m.s - s) < 12) ||
         this.crossCars.some((cc) => Math.abs(cc.s - s) < 8) ||
         this.breads.some((b) => !b.taken && b.lane === lane && Math.abs(b.s - s) < 7) ||
+        this.letters.some((l) => !l.taken && l.lane === lane && Math.abs(l.s - s) < 8) ||
         this.isNearBonusItem(s, lane, 7) ||
         this.reserved.some((r) => r.lane === lane && s > r.from - 2 && s < r.until + 2);
       if (!blocked) return lane;
@@ -3541,6 +3568,43 @@ class Engine {
         this.rockets.push({ id: this.nextId++, s: x, lane, taken: false, kind: pickRareKind(), wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
         this.listVersion++;
         this.nextRocketS = x + rand(ROCKET_GAP[0], ROCKET_GAP[1]);
+      }
+    }
+    // ---- Daily Word Hunt: Huruf harian (P-I-G-E-O-N) ----
+    if (x >= this.nextLetterS) {
+      const wordHunt = useUI.getState().wordHunt;
+      const uncollected: number[] = [];
+      for (let i = 0; i < wordHunt.word.length; i++) {
+        if (!wordHunt.collected[i]) uncollected.push(i);
+      }
+      if (uncollected.length > 0) {
+        const nextIdx = uncollected[0];
+        const tooCloseToSpecial =
+          this.crossings.some((c) => Math.abs(c.s - x) < 14) ||
+          this.intersections.some((it) => Math.abs(it.s - x) < 16);
+        const lane = this.clearLaneNear(x);
+        if (tooCloseToSpecial || lane < 0) {
+          this.nextLetterS = x + 14;
+        } else {
+          track.frame(x, LANE_LAT[lane], 0, tmpV);
+          this.letters.push({
+            id: this.nextId++,
+            s: x,
+            lane,
+            char: wordHunt.word[nextIdx],
+            charIndex: nextIdx,
+            taken: false,
+            wx: tmpV.x,
+            wy: tmpV.y,
+            wz: tmpV.z,
+            phase: Math.random() * 6,
+          });
+          this.listVersion++;
+          this.nextLetterS = x + rand(130, 210);
+        }
+      } else {
+        // all letters collected for today: schedule far ahead
+        this.nextLetterS = x + 250;
       }
     }
     if (x >= this.nextRoadworkS && !this.crossings.some((c) => Math.abs(c.s - x) < 40)) {
@@ -3898,6 +3962,32 @@ class Engine {
     this.emitWorld("spark", r.wx, r.wy + 0.5, r.wz, r.wy, 18, 0, 0);
     useUI.getState().addPopup(reward.title, r.kind === "diamond" ? "#4fd8ff" : "#ffc93c", reward.sub);
     sfx.rare();
+  }
+
+  /**
+   * Daily Word Hunt letter pickup: awards trick score, nitro, sparks, and checks for word completion.
+   */
+  private collectLetter(l: TrackLetter) {
+    l.taken = true;
+    const res = useUI.getState().collectWordLetter(l.charIndex);
+    sfx.letterPickup();
+    if (res.completed) {
+      sfx.mysteryBox();
+      this.trickScore += 1500;
+      this.addNos(NOS_MAX);
+      this.punch = Math.max(this.punch, 0.25);
+      this.spawnPulse(l.wx, l.wy + 0.6, l.wz, { max: 0.65, r0: 0.6, r1: 4.5, color: [1, 0.85, 0.2] });
+      this.emitWorld("pow", l.wx, l.wy + 0.6, l.wz, l.wy, 24, 0, 0);
+      this.emitWorld("spark", l.wx, l.wy + 0.5, l.wz, l.wy, 26, 0, 0);
+      useUI.getState().addPopup("KATA LENGKAP! 🎁", "#ffd21f", "PETI MISTERI TERBUKA!");
+    } else {
+      this.trickScore += 350;
+      this.addNos(15);
+      this.spawnPulse(l.wx, l.wy + 0.6, l.wz, { max: 0.45, r0: 0.4, r1: 2.2, color: [1, 0.85, 0.2] });
+      this.emitWorld("pow", l.wx, l.wy + 0.6, l.wz, l.wy, 12, 0, 0);
+      this.emitWorld("spark", l.wx, l.wy + 0.5, l.wz, l.wy, 14, 0, 0);
+      useUI.getState().addPopup(`HURUF [${l.char}]! 🔤`, "#ffd21f", `SISA ${res.remaining} HURUF LAGI`);
+    }
   }
 
   private updatePulses(dt: number) {

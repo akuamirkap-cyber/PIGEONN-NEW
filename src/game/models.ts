@@ -3802,3 +3802,105 @@ export function crossCarLightParts(): Part[] {
     { x: -1.62, y: 0.64, z: -0.52, w: 0.1, h: 0.2, d: 0.3, color: "#ff3b3b", glow: true },
   ];
 }
+
+/* ---------- Daily Word Hunt Letter Badge (Subway Surfers-style) ---------- */
+
+const LETTER_5X5: Record<string, number[]> = {
+  A: [0x0e, 0x11, 0x1f, 0x11, 0x11],
+  B: [0x1e, 0x11, 0x1e, 0x11, 0x1e],
+  C: [0x0f, 0x10, 0x10, 0x10, 0x0f],
+  D: [0x1c, 0x12, 0x11, 0x12, 0x1c],
+  E: [0x1f, 0x10, 0x1e, 0x10, 0x1f],
+  F: [0x1f, 0x10, 0x1e, 0x10, 0x10],
+  G: [0x0f, 0x10, 0x17, 0x11, 0x0f],
+  H: [0x11, 0x11, 0x1f, 0x11, 0x11],
+  I: [0x1f, 0x04, 0x04, 0x04, 0x1f],
+  J: [0x07, 0x02, 0x02, 0x12, 0x0c],
+  K: [0x11, 0x12, 0x1c, 0x12, 0x11],
+  L: [0x10, 0x10, 0x10, 0x10, 0x1f],
+  M: [0x11, 0x1b, 0x15, 0x11, 0x11],
+  N: [0x11, 0x19, 0x15, 0x13, 0x11],
+  O: [0x0e, 0x11, 0x11, 0x11, 0x0e],
+  P: [0x1e, 0x11, 0x1e, 0x10, 0x10],
+  Q: [0x0e, 0x11, 0x11, 0x13, 0x0f],
+  R: [0x1e, 0x11, 0x1e, 0x14, 0x12],
+  S: [0x0f, 0x10, 0x0e, 0x01, 0x1e],
+  T: [0x1f, 0x04, 0x04, 0x04, 0x04],
+  U: [0x11, 0x11, 0x11, 0x11, 0x0e],
+  V: [0x11, 0x11, 0x11, 0x0a, 0x04],
+  W: [0x11, 0x11, 0x15, 0x15, 0x0a],
+  X: [0x11, 0x0a, 0x04, 0x0a, 0x11],
+  Y: [0x11, 0x11, 0x0e, 0x04, 0x04],
+  Z: [0x1f, 0x02, 0x04, 0x08, 0x1f],
+};
+
+/**
+ * 3D Voxel Letter Badge:
+ * Golden framed plaque with glowing royal-blue center and illuminated 3D extruded voxel letter.
+ * Origin at (0, 0.55, 0) so it floats naturally above the track.
+ */
+export function letterBadgeParts(char: string): Part[] {
+  const c = char.toUpperCase();
+  const rows = LETTER_5X5[c] ?? LETTER_5X5.P;
+  const gold = "#ffd21f";
+  const goldDark = "#d69a12";
+  const bluePlate = "#0b66e4";
+  const letterColor = "#ffffff";
+
+  const parts: Part[] = [
+    // Golden outer frame
+    { x: 0, y: 0.55, z: 0, w: 0.88, h: 0.88, d: 0.22, color: gold },
+    { x: 0, y: 0.55, z: 0, w: 0.94, h: 0.72, d: 0.2, color: goldDark },
+    { x: 0, y: 0.55, z: 0, w: 0.72, h: 0.94, d: 0.2, color: goldDark },
+
+    // Royal blue glossy inner plaque
+    { x: 0, y: 0.55, z: 0, w: 0.74, h: 0.74, d: 0.25, color: bluePlate },
+
+    // Corner golden studs
+    { x: -0.34, y: 0.89, z: 0, w: 0.08, h: 0.08, d: 0.27, color: gold },
+    { x: 0.34, y: 0.89, z: 0, w: 0.08, h: 0.08, d: 0.27, color: gold },
+    { x: -0.34, y: 0.21, z: 0, w: 0.08, h: 0.08, d: 0.27, color: gold },
+    { x: 0.34, y: 0.21, z: 0, w: 0.08, h: 0.08, d: 0.27, color: gold },
+  ];
+
+  // 5x5 voxel letter extruded on both FRONT (+z) and BACK (-z) sides
+  const step = 0.11;
+  const startX = -2 * step;
+  const startY = 0.55 + 2 * step;
+
+  for (let r = 0; r < 5; r++) {
+    const rowBits = rows[r];
+    const y = startY - r * step;
+    for (let col = 0; col < 5; col++) {
+      const bit = (rowBits >> (4 - col)) & 1;
+      if (bit) {
+        const x = startX + col * step;
+        // Front face letter voxel (+z)
+        parts.push({
+          x,
+          y,
+          z: 0.135,
+          w: step * 0.94,
+          h: step * 0.94,
+          d: 0.05,
+          color: letterColor,
+          glow: true,
+        });
+        // Back face letter voxel (-z)
+        parts.push({
+          x,
+          y,
+          z: -0.135,
+          w: step * 0.94,
+          h: step * 0.94,
+          d: 0.05,
+          color: letterColor,
+          glow: true,
+        });
+      }
+    }
+  }
+
+  return parts;
+}
+
