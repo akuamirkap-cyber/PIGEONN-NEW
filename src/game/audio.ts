@@ -145,6 +145,17 @@ export const sfx = {
     tone(311, 0.75, "sawtooth", { vol: 0.14, attack: 0.03 });
     tone(415, 0.75, "sawtooth", { vol: 0.14, attack: 0.03 });
   },
+  /** Klakson kereta subway / shinkansen yang kencang & bergema di terowongan */
+  subwayHorn: () => {
+    // Twin chord blast with echo
+    tone(277, 0.9, "sawtooth", { vol: 0.28, attack: 0.02 }); // C#4
+    tone(370, 0.9, "sawtooth", { vol: 0.26, attack: 0.02 }); // F#4
+    tone(415, 0.85, "triangle", { vol: 0.18, attack: 0.02 }); // G#4
+    noise(0.35, 0.08, 1200); // Air blast rush
+  },
+  subwayWhoosh: () => {
+    noise(0.6, 0.22, 500); // deep tunnel air rush
+  },
   rumble: (vol = 0.2) => noise(0.3, vol, 260),
   splash: () => {
     noise(0.18, 0.22, 1800);

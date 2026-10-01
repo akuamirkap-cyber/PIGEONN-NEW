@@ -97,6 +97,15 @@ import {
   catSleepingParts,
   catWalkParts,
   catRagdollFlyingParts,
+  subwayPortalParts,
+  subwayTunnelRibParts,
+  subwayWallParts,
+  subwayTrackParts,
+  subwayTrainCarParts,
+  subwayOverheadRailParts,
+  cityBusObstacleParts,
+  SUBWAY_CAR_LEN,
+  SUBWAY_GAP,
 } from "./models";
 import { useUI, type TrackMode } from "./store";
 import { getRayTexture } from "./rays";
@@ -120,6 +129,8 @@ import {
   type Mover,
   type Obstacle,
   type Train,
+  type SubwayTrain,
+  LANE_LAT,
 } from "./engine";
 import { buildGroundGeometry } from "./ground";
 
@@ -189,6 +200,20 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair("guard-fence", () => guardFenceParts(3.2));
       case "sidewalk_planter":
         return getGeometryPair(`sw-planter-${d.variant % 3}`, () => sidewalkPlanterParts(d.variant));
+      case "subway_portal":
+        return getGeometryPair(`subway-portal-${d.variant === 1 ? "exit" : "entry"}`, () => subwayPortalParts(d.variant === 1));
+      case "subway_tunnel_rib":
+        return getGeometryPair(`subway-rib-${d.variant % 3}`, () => subwayTunnelRibParts(d.variant));
+      case "subway_wall":
+        return getGeometryPair(`subway-wall-${d.variant % 3}`, () => subwayWallParts(6.0, d.variant));
+      case "subway_track":
+        return getGeometryPair("subway-track-bed", () => subwayTrackParts(6.0));
+      case "subway_overhead_rail":
+        return getGeometryPair("subway-overhead-rail", () => subwayOverheadRailParts(11.0));
+      case "city_bus":
+        return getGeometryPair(`city-bus-${d.variant % 2}`, () => cityBusObstacleParts(d.variant));
+      default:
+        return getGeometryPair("lamp", lampParts);
     }
   }, [d]);
   useEffect(() => {
@@ -867,6 +892,67 @@ function Trains() {
     <>
       {engine.trains.map((t) => (
         <TrainView key={t.id} tr={t} />
+      ))}
+    </>
+  );
+}
+
+/* ---------- Shibuya Subway Opposing Trains ---------- */
+const SubwayTrainView = memo(function SubwayTrainView({ st }: { st: SubwayTrain }) {
+  const cars = useRef<(THREE.Group | null)[]>([]);
+  const geos = useMemo(
+    () =>
+      Array.from({ length: st.nCars }, (_, i) => {
+        const isFront = i === 0;
+        const isRear = i === st.nCars - 1;
+        const isShinkansen = !!st.isShinkansen;
+        const key = `subway-car-${st.line}-${isFront ? "front" : isRear ? "rear" : "mid"}-${isShinkansen ? "shinkansen" : "metro"}`;
+        return getGeometryPair(key, () => subwayTrainCarParts(st.line, isFront, isRear, isShinkansen));
+      }),
+    [st],
+  );
+
+  useFrame(() => {
+    const lat = LANE_LAT[st.lane];
+    for (let i = 0; i < st.nCars; i++) {
+      const g = cars.current[i];
+      if (!g) continue;
+      const carS = st.s + SUBWAY_CAR_LEN / 2 + i * (SUBWAY_CAR_LEN + SUBWAY_GAP);
+      track.frame(carS, lat, 0.04, g.position);
+      track.quat(carS, g.quaternion);
+    }
+  });
+
+  return (
+    <>
+      {geos.map((pair, i) => (
+        <group
+          key={i}
+          ref={(el) => {
+            cars.current[i] = el;
+          }}
+        >
+          <mesh geometry={pair.lit} material={voxelMaterial} castShadow receiveShadow />
+          {pair.glow && <mesh geometry={pair.glow} material={glowMaterial} />}
+        </group>
+      ))}
+    </>
+  );
+});
+
+function SubwayTrains() {
+  const seen = useRef(-1);
+  const [, force] = useReducer((x: number) => x + 1, 0);
+  useFrame(() => {
+    if (engine.moverVersion !== seen.current) {
+      seen.current = engine.moverVersion;
+      force();
+    }
+  });
+  return (
+    <>
+      {engine.subwayTrains.map((st) => (
+        <SubwayTrainView key={st.id} st={st} />
       ))}
     </>
   );
@@ -2010,6 +2096,7 @@ export function World() {
       <CrossCars />
       <Crossings />
       <Trains />
+      <SubwayTrains />
       <Puddles />
       <Petals />
       <NosCans />

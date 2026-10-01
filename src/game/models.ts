@@ -3904,3 +3904,420 @@ export function letterBadgeParts(char: string): Part[] {
   return parts;
 }
 
+/* ---------- Shibuya Subway / Metro Underground System ---------- */
+
+export const SUBWAY_CAR_LEN = 11.0;
+export const SUBWAY_CAR_W = 2.4;
+export const SUBWAY_GAP = 0.5;
+export const SUBWAY_ROOF_H = 2.45;
+export const BUS_ROOF_H = 2.05;
+
+/**
+ * Pintu masuk & keluar terowongan subway Shibuya (Portal Terowongan Metro Raksasa):
+ * Balok beton bertulang megah & sangat tinggi membentang melintang di atas 3 jalur + trotoar lebar (W = 21.0m),
+ * tinggi plafon H = 17.5m (sangat tinggi & lapang, kamera game masuk dengan leluasa tanpa terbentur plafon),
+ * papan penunjuk stasiun akrilik biru/emas menyala, logo cincin Tokyo Metro,
+ * lampu clearance hijau/merah, dan deretan lampu sorot LED menyinari mulut terowongan.
+ */
+export function subwayPortalParts(isExit = false): Part[] {
+  const concrete = "#7b828e";
+  const concreteDark = "#545a64";
+  const metal = "#373b42";
+  const navy = "#071e40";
+  const cyanMetro = "#00b2e3";
+  const yellow = "#ffd21f";
+  const white = "#ffffff";
+  const amber = "#f59e0b";
+
+  const W = 21.0; // bentang melintang sangat lebar & lapang (z)
+  const H = 17.5; // tinggi portal sangat tinggi & lega untuk kamera (y)
+  const D = 3.8;  // ketebalan pilar portal (x)
+  const parts: Part[] = [
+    // Kolom kiri & kanan tebal beton bertulang raksasa
+    { x: 0, y: H / 2, z: -W / 2 + 0.9, w: D, h: H, d: 1.8, color: concrete },
+    { x: 0, y: H / 2, z: W / 2 - 0.9, w: D, h: H, d: 1.8, color: concrete },
+    // Balok atas penopang utama lengkungan portal (tinggi di atas, clearance buka hingga y = 16.0m)
+    { x: 0, y: H - 0.75, z: 0, w: D + 0.5, h: 1.5, d: W, color: concrete },
+    // Dinding penutup atas tanah
+    { x: -0.6, y: H + 0.75, z: 0, w: 2.6, h: 1.5, d: W + 2.4, color: concreteDark },
+
+    // Papan nama stasiun besar menyala (Marquee header menghadap pemain di -x)
+    { x: -D / 2 - 0.15, y: H - 0.75, z: 0, w: 0.12, h: 1.2, d: W - 3.2, color: navy },
+    { x: -D / 2 - 0.22, y: H - 0.75, z: 0, w: 0.05, h: 1.0, d: W - 3.6, color: isExit ? "#1e3a5f" : "#00388d", glow: true },
+
+    // Logo Metro (lingkaran cincin cyan / gold)
+    { x: -D / 2 - 0.28, y: H - 0.75, z: -6.8, w: 0.05, h: 0.8, d: 0.8, color: cyanMetro, glow: true },
+    { x: -D / 2 - 0.31, y: H - 0.75, z: -6.8, w: 0.05, h: 0.46, d: 0.46, color: white, glow: true },
+    { x: -D / 2 - 0.33, y: H - 0.75, z: -6.8, w: 0.05, h: 0.32, d: 0.32, color: cyanMetro, glow: true },
+
+    // Tulisan stasiun: "渋谷 地下鉄 / SHIBUYA METRO LINE"
+    { x: -D / 2 - 0.28, y: H - 0.6, z: 0.8, w: 0.05, h: 0.4, d: 10.5, color: white, glow: true },
+    { x: -D / 2 - 0.28, y: H - 0.98, z: 0.8, w: 0.05, h: 0.25, d: 9.0, color: isExit ? amber : cyanMetro, glow: true },
+
+    // Strip hazard garis kuning/hitam di bibir portal
+    { x: -D / 2 - 0.08, y: H - 1.55, z: 0, w: 0.12, h: 0.18, d: W - 2.0, color: yellow, glow: true },
+
+    // Lampu sorot LED di portal menyinari pintu masuk
+    { x: -D / 2 + 0.2, y: H - 1.65, z: -5.4, w: 0.35, h: 0.14, d: 0.8, color: "#fff9e6", glow: true },
+    { x: -D / 2 + 0.2, y: H - 1.65, z: 0.0, w: 0.35, h: 0.14, d: 0.8, color: "#fff9e6", glow: true },
+    { x: -D / 2 + 0.2, y: H - 1.65, z: 5.4, w: 0.35, h: 0.14, d: 0.8, color: "#fff9e6", glow: true },
+
+    // Rambu lampu clearance hijau di atas tiap jalur
+    { x: -D / 2 - 0.18, y: H - 1.45, z: -2.4, w: 0.08, h: 0.26, d: 0.26, color: "#00e676", glow: true },
+    { x: -D / 2 - 0.18, y: H - 1.45, z: 0.0, w: 0.08, h: 0.26, d: 0.26, color: "#00e676", glow: true },
+    { x: -D / 2 - 0.18, y: H - 1.45, z: 2.4, w: 0.08, h: 0.26, d: 0.26, color: "#00e676", glow: true },
+
+    // Rangka baja penahan di dalam
+    { x: 1.2, y: H - 1.8, z: 0, w: 0.45, h: 0.35, d: W - 2.2, color: metal },
+  ];
+
+  return parts;
+}
+
+/**
+ * Kerangka Rusuk Terowongan Megah & Sangat Tinggi (Tunnel Rib Arch):
+ * Membentang melintang di atas jalan selebar W = 20.2m (lateral z = -10.1 s.d +10.1),
+ * tinggi plafon H = 17.2m (sangat tinggi & lapang, kamera leluasa di dalam tanpa terpotong),
+ * dilengkapi tabung lampu fluorescent panjang ("TAPI TIDAK GELAP!"),
+ * kabel catenary bracket di tengah, kolom keramik putih bersih, dan rambu darurat.
+ */
+export function subwayTunnelRibParts(line = 0): Part[] {
+  const steel = "#444b56";
+  const whiteTile = "#f4f6fa";
+  const fluoLight = "#fffdf0";
+  const emergencyGreen = "#00e676";
+  const lineColors = ["#f39200", "#00a7e1", "#00b060", "#e60012"]; // Ginza, Tozai, Chiyoda, Marunouchi
+  const stripe = lineColors[line % 4];
+
+  const W = 20.2; // bentang melintang jalan sangat lebar & lapang (z)
+  const H = 17.2; // tinggi plafon terowongan sangat tinggi (y)
+  const parts: Part[] = [
+    // Lengkungan balok atas melintang di plafon
+    { x: 0, y: H, z: 0, w: 0.75, h: 0.65, d: W, color: steel },
+    // Plafon beton atas penutup langit terowongan
+    { x: 0, y: H + 0.45, z: 0, w: 1.6, h: 0.25, d: W + 1.2, color: "#363c46" },
+
+    // Kolom kiri & kanan berkeramik putih bersih (di z = -9.4 dan +9.4)
+    { x: 0, y: H / 2, z: -W / 2 + 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
+    { x: 0, y: H / 2, z: W / 2 - 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
+
+    // Garis aksen warna jalur metro di kolom (tingkat bawah, tengah, dan atas)
+    { x: 0, y: 2.2, z: -W / 2 + 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
+    { x: 0, y: 2.2, z: W / 2 - 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
+    { x: 0, y: 8.5, z: -W / 2 + 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
+    { x: 0, y: 8.5, z: W / 2 - 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
+    { x: 0, y: 14.5, z: -W / 2 + 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
+    { x: 0, y: 14.5, z: W / 2 - 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
+
+    // TABUNG LAMPU FLUORESCENT BESAR DI PLAFON TINGGI: TAPI TIDAK GELAP!
+    // Deret lampu panjang menyala terang menyinari seluruh seisi terowongan
+    { x: 0, y: H - 0.4, z: -5.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
+    { x: 0, y: H - 0.4, z: 0.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
+    { x: 0, y: H - 0.4, z: 5.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
+    // Reflektor casing lampu
+    { x: 0, y: H - 0.3, z: -5.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
+    { x: 0, y: H - 0.3, z: 0.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
+    { x: 0, y: H - 0.3, z: 5.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
+
+    // Lampu dinding samping pencahayaan tambahan (di dinding setinggi 5.5m)
+    { x: 0, y: 5.5, z: -W / 2 + 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
+    { x: 0, y: 5.5, z: W / 2 - 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
+
+    // Tiang penggantung kabel catenary di tengah atas dari plafon turun ke rel
+    { x: 0, y: 10.5, z: 0, w: 0.2, h: 12.0, d: 0.2, color: "#2b3038" },
+    { x: 0, y: 4.5, z: 0, w: 0.12, h: 0.12, d: 3.6, color: "#2b3038" },
+
+    // Rambu EXIT hijau menyala (非常口) di dinding samping
+    { x: 0, y: 3.5, z: -W / 2 + 1.35, w: 0.6, h: 0.38, d: 0.08, color: emergencyGreen, glow: true },
+    { x: 0, y: 3.5, z: W / 2 - 1.35, w: 0.6, h: 0.38, d: 0.08, color: emergencyGreen, glow: true },
+
+    // Pipa kabel utilitas dinding
+    { x: 0, y: 1.2, z: -W / 2 + 1.36, w: 1.4, h: 0.18, d: 0.1, color: "#1e2229" },
+    { x: 0, y: 1.2, z: W / 2 - 1.36, w: 1.4, h: 0.18, d: 0.1, color: "#1e2229" },
+  ];
+
+  return parts;
+}
+
+/**
+ * Dinding Keramik Samping Terowongan (Subway Wall):
+ * Tinggi H = 17.2m (mengikuti tinggi plafon terowongan), keramik putih bersih megah,
+ * pita garis aksen jalur metro bercahaya, dan papan nama stasiun "渋谷 方面 (For Shibuya)".
+ */
+export function subwayWallParts(len = 6.0, line = 0): Part[] {
+  const whiteTile = "#f4f6fa";
+  const groutTile = "#e4e8ee";
+  const darkBase = "#373c46";
+  const lineColors = ["#f39200", "#00a7e1", "#00b060", "#e60012"];
+  const stripe = lineColors[line % 4];
+
+  const H = 17.2; // tinggi dinding mengikuti plafon megah (y)
+  const parts: Part[] = [
+    // Pondasi bawah
+    { x: 0, y: 0.3, z: 0, w: len, h: 0.6, d: 0.45, color: darkBase },
+    // Dinding utama keramik putih bersih
+    { x: 0, y: H / 2, z: 0, w: len, h: H, d: 0.3, color: whiteTile },
+    // Variasi panel keramik
+    { x: 0, y: H / 2, z: 0.01, w: len - 0.4, h: H - 1.6, d: 0.28, color: groutTile },
+
+    // Pita warna jalur metro menyala bersih (di ketinggian 2.2m dan 8.5m)
+    { x: 0, y: 2.2, z: 0.02, w: len, h: 0.4, d: 0.29, color: stripe, glow: true },
+    { x: 0, y: 2.5, z: 0.02, w: len, h: 0.06, d: 0.29, color: "#ffffff", glow: true },
+    { x: 0, y: 8.5, z: 0.02, w: len, h: 0.35, d: 0.29, color: stripe, glow: true },
+    { x: 0, y: 14.5, z: 0.02, w: len, h: 0.3, d: 0.29, color: stripe, glow: true },
+
+    // Papan Stasiun: "渋谷 SHIBUYA ➔" di tengah dinding
+    { x: 0, y: 3.5, z: 0.03, w: 3.2, h: 0.8, d: 0.26, color: "#002b66", glow: true },
+    { x: 0, y: 3.5, z: 0.04, w: 2.9, h: 0.64, d: 0.25, color: "#ffffff", glow: true },
+    { x: 0, y: 3.62, z: 0.05, w: 2.4, h: 0.28, d: 0.24, color: "#111827" },
+    { x: 0, y: 3.32, z: 0.05, w: 2.2, h: 0.16, d: 0.24, color: stripe },
+
+    // Pipa kabel utilitas di bawah
+    { x: 0, y: 0.95, z: 0.04, w: len, h: 0.14, d: 0.18, color: "#22262d" },
+  ];
+
+  return parts;
+}
+
+/**
+ * Landasan Rel Bawah Tanah (Subway Track Bed):
+ * Batuan ballast gelap, bantalan kayu rel di tiap jalur, rel baja mengkilap sepanjang jalan (x),
+ * lebar 19.4m membentang melintang menutupi seluruh dasar terowongan megah.
+ */
+export function subwayTrackParts(len = 6.0): Part[] {
+  const ballast = "#343842";
+  const sleeper = "#483a2c";
+  const steel = "#cdd5e0";
+  const yellowLine = "#ffd21f";
+  const platformConcrete = "#888f9c";
+
+  const parts: Part[] = [
+    // Lapisan ballast aspal/kerikil rel membentang selebar 19.4m
+    { x: 0, y: 0.012, z: 0, w: len, h: 0.02, d: 19.4, color: ballast },
+    // Platform peron samping stasiun di kedua tepi
+    { x: 0, y: 0.15, z: -8.5, w: len, h: 0.28, d: 2.2, color: platformConcrete },
+    { x: 0, y: 0.15, z: 8.5, w: len, h: 0.28, d: 2.2, color: platformConcrete },
+    // Strip kuning pengaman di kedua tepi peron
+    { x: 0, y: 0.3, z: -7.4, w: len, h: 0.02, d: 0.28, color: yellowLine, glow: true },
+    { x: 0, y: 0.3, z: 7.4, w: len, h: 0.02, d: 0.28, color: yellowLine, glow: true },
+  ];
+
+  // Bantalan kayu & rel baja di 3 jalur (z = -2.4, 0, +2.4)
+  const lanes = [-2.4, 0, 2.4];
+  const nSleepers = Math.round(len / 0.8);
+  for (const lz of lanes) {
+    // 2 batang rel baja per jalur
+    parts.push({ x: 0, y: 0.065, z: lz - 0.55, w: len, h: 0.07, d: 0.08, color: steel });
+    parts.push({ x: 0, y: 0.065, z: lz + 0.55, w: len, h: 0.07, d: 0.08, color: steel });
+    // bantalan kayu tiap 0.8m
+    for (let i = 0; i < nSleepers; i++) {
+      const x = -len / 2 + (i + 0.5) * (len / nSleepers);
+      parts.push({ x, y: 0.035, z: lz, w: 0.28, h: 0.045, d: 1.5, color: sleeper });
+    }
+  }
+
+  return parts;
+}
+
+/**
+ * Gerbong Kereta Metro Subway / Commuter / Shinkansen:
+ * Panjang L sepanjang x (w: L), lebar W sepanjang z (d: W).
+ * Moncong depan kabin di -x (menghadap pemain yang datang dari -x).
+ * Dilengkapi: lampu depan terang bercahaya, jendela kabin menyala hangat,
+ * dan ATAP DATAR + CATWALK tempat merpati berselancar (ROOF SURFING).
+ */
+export function subwayTrainCarParts(
+  line = 0,
+  isFrontCab = false,
+  isRearCab = false,
+  isShinkansen = false,
+): Part[] {
+  const silver = isShinkansen ? "#f0f4f8" : "#d7dee6";
+  const darkChassis = "#282d35";
+  const roofGray = "#b2b9c4";
+  const windowGlow = "#fff5cb";
+  const lineColors = ["#f39200", "#00a7e1", "#00b060", "#005bac"];
+  const stripe = isShinkansen ? "#005bac" : lineColors[line % 4];
+
+  const L = SUBWAY_CAR_LEN; // panjang gerbong (x)
+  const W = SUBWAY_CAR_W;   // lebar gerbong (z)
+  const H = 2.45;           // tinggi atap (y)
+  const parts: Part[] = [];
+
+  // Bogie roda kereta
+  for (const bx of [-L * 0.35, L * 0.35]) {
+    parts.push({ x: bx, y: 0.24, z: 0, w: 1.8, h: 0.32, d: 1.9, color: darkChassis });
+    for (const wz of [-1.02, 1.02]) {
+      for (const wx of [-0.65, 0.65]) {
+        parts.push({ x: bx + wx, y: 0.24, z: wz, w: 0.48, h: 0.48, d: 0.14, color: "#16181d" });
+        parts.push({ x: bx + wx, y: 0.24, z: wz, w: 0.22, h: 0.22, d: 0.16, color: "#8a929e" });
+      }
+    }
+  }
+
+  // Sasis bawah
+  parts.push({ x: 0, y: 0.52, z: 0, w: L, h: 0.26, d: W - 0.1, color: "#373d47" });
+
+  // Badan utama gerbong
+  parts.push({ x: 0, y: 1.48, z: 0, w: L, h: 1.7, d: W, color: silver });
+
+  // Pita garis warna jalur metro di kedua sisi (lateral z)
+  for (const sz of [-W / 2 - 0.015, W / 2 + 0.015]) {
+    parts.push({ x: 0, y: 1.05, z: sz, w: L, h: 0.32, d: 0.03, color: stripe, glow: true });
+    parts.push({ x: 0, y: 2.12, z: sz, w: L, h: 0.12, d: 0.03, color: stripe, glow: true });
+  }
+
+  // Jendela penumpang menyala hangat di kedua sisi
+  const nWindows = 5;
+  for (let i = 0; i < nWindows; i++) {
+    const wx = -L * 0.36 + i * (L * 0.72 / (nWindows - 1));
+    for (const sz of [-W / 2 - 0.018, W / 2 + 0.018]) {
+      parts.push({ x: wx, y: 1.62, z: sz, w: 1.1, h: 0.65, d: 0.03, color: windowGlow, glow: true });
+    }
+  }
+
+  // Pintu penumpang otomatis di antara jendela
+  for (const dx of [-L * 0.2, L * 0.2]) {
+    for (const sz of [-W / 2 - 0.02, W / 2 + 0.02]) {
+      parts.push({ x: dx, y: 1.35, z: sz, w: 0.85, h: 1.45, d: 0.03, color: "#a8b0ba" });
+      parts.push({ x: dx, y: 1.62, z: sz, w: 0.45, h: 0.62, d: 0.035, color: windowGlow, glow: true });
+    }
+  }
+
+  // ATAP KERETA (TEMPAT BERSELANCAR / SKATEBOARDING ROOF)
+  // Permukaan atap datar di y = 2.42m
+  parts.push({ x: 0, y: H - 0.06, z: 0, w: L, h: 0.14, d: W - 0.2, color: roofGray });
+  // Catwalk non-slip tengah (jalur skating utama di atap gerbong)
+  parts.push({ x: 0, y: H + 0.02, z: 0, w: L, h: 0.04, d: 0.95, color: "#e4e9f0" });
+  // Strip marka neon tipis di tepi atap kereta agar mudah terlihat pemain
+  parts.push({ x: 0, y: H + 0.01, z: -W / 2 + 0.15, w: L, h: 0.025, d: 0.08, color: stripe, glow: true });
+  parts.push({ x: 0, y: H + 0.01, z: W / 2 - 0.15, w: L, h: 0.025, d: 0.08, color: stripe, glow: true });
+
+  // Unit AC pendingin di atap gerbong
+  for (const acX of [-L * 0.25, L * 0.25]) {
+    parts.push({ x: acX, y: H + 0.16, z: 0, w: 1.8, h: 0.22, d: 1.5, color: "#838c98" });
+    parts.push({ x: acX, y: H + 0.28, z: 0, w: 1.4, h: 0.04, d: 1.2, color: "#505762" });
+  }
+
+  // Pantograf listrik (pada gerbong tengah)
+  if (!isFrontCab && !isRearCab) {
+    parts.push({ x: 0, y: H + 0.12, z: 0, w: 0.8, h: 0.08, d: 0.8, color: "#373b42" });
+    parts.push({ x: 0, y: H + 0.38, z: 0, w: 0.1, h: 0.45, d: 0.1, color: "#373b42" });
+    parts.push({ x: 0, y: H + 0.62, z: 0, w: 0.15, h: 0.08, d: 1.8, color: "#ff5722", glow: true });
+  }
+
+  // KABIN DEPAN (MENGHADAP PEMAIN di -x) - MONCONG DENGAN LAMPU BESAR
+  if (isFrontCab) {
+    const fx = -L / 2 - 0.02; // depan menghadap -x
+    if (isShinkansen) {
+      // Moncong peluru Shinkansen yang aerodinamis
+      parts.push({ x: fx - 0.7, y: 1.25, z: 0, w: 1.4, h: 1.3, d: W - 0.3, color: silver });
+      parts.push({ x: fx - 1.4, y: 0.85, z: 0, w: 1.2, h: 0.7, d: W - 0.6, color: silver });
+      // Kaca kokpit Shinkansen
+      parts.push({ x: fx - 0.45, y: 1.68, z: 0, w: 0.6, h: 0.45, d: 1.5, color: "#141820" });
+      // LAMPU DEPAN BULLET SHINKANSEN MENYALA TERANG
+      parts.push({ x: fx - 1.9, y: 0.85, z: -0.65, w: 0.15, h: 0.18, d: 0.28, color: "#fffde6", glow: true });
+      parts.push({ x: fx - 1.9, y: 0.85, z: 0.65, w: 0.15, h: 0.18, d: 0.28, color: "#fffde6", glow: true });
+    } else {
+      // Moncong kabin commuter metro modern
+      parts.push({ x: fx, y: 1.55, z: 0, w: 0.2, h: 1.65, d: W - 0.15, color: "#161a22" });
+      // Kaca depan besar
+      parts.push({ x: fx - 0.12, y: 1.68, z: 0, w: 0.05, h: 0.8, d: W - 0.5, color: "#0f131a" });
+      // LAMPU DEPAN METRO BESAR & MENYALA TERANG (TWIN HIGH-BEAM)
+      parts.push({ x: fx - 0.15, y: 0.85, z: -0.75, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
+      parts.push({ x: fx - 0.15, y: 0.85, z: 0.75, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
+      // Papan tujuan LED: "渋谷 ➔ 新宿 / SHIBUYA"
+      parts.push({ x: fx - 0.14, y: 2.15, z: 0, w: 0.05, h: 0.22, d: 1.4, color: "#00e5ff", glow: true });
+    }
+  }
+
+  // KABIN BELAKANG (Bila ekor rangkaian)
+  if (isRearCab) {
+    const rx = L / 2 + 0.02;
+    parts.push({ x: rx, y: 1.55, z: 0, w: 0.2, h: 1.65, d: W - 0.15, color: "#161a22" });
+    // Lampu ekor merah menyala
+    parts.push({ x: rx + 0.12, y: 0.85, z: -0.75, w: 0.06, h: 0.18, d: 0.28, color: "#ff2a2a", glow: true });
+    parts.push({ x: rx + 0.12, y: 0.85, z: 0.75, w: 0.06, h: 0.18, d: 0.28, color: "#ff2a2a", glow: true });
+  }
+
+  return parts;
+}
+
+/**
+ * Rel Gantung / Catenary Grind Wire di Atas Atap Kereta:
+ * Menggantung di y = 3.15m (tepat di atas atap kereta sepanjang x).
+ * Pemain bisa ollie dari atap kereta ke rel gantung ini untuk melakukan aksi grind listrik!
+ */
+export function subwayOverheadRailParts(len = 11.0): Part[] {
+  const steel = "#cdd5df";
+  const bracket = "#424853";
+  const sparkBlue = "#00e5ff";
+
+  const parts: Part[] = [
+    // Rel grind atas panjang sepanjang x
+    { x: 0, y: 3.15, z: 0, w: len, h: 0.14, d: 0.14, color: steel },
+    // Strip kontak kabel listrik bercahaya
+    { x: 0, y: 3.23, z: 0, w: len, h: 0.03, d: 0.08, color: sparkBlue, glow: true },
+    // Tiang gantungan catenary di kedua ujung
+    { x: -len * 0.35, y: 3.65, z: 0, w: 0.1, h: 0.88, d: 0.1, color: bracket },
+    { x: len * 0.35, y: 3.65, z: 0, w: 0.1, h: 0.88, d: 0.1, color: bracket },
+  ];
+
+  return parts;
+}
+
+/**
+ * Bus Kota Tokyo (Toei Bus) sebagai platform atap berselancar:
+ * Bus beratap datar di ketinggian y = 2.05m dengan tanjakan (ramp) di depannya.
+ */
+export function cityBusObstacleParts(variant = 0): Part[] {
+  const v = Math.abs(variant) % 2;
+  const greenToei = "#2f7a4d";
+  const yellowToei = "#f4b41a";
+  const white = "#f5f7fa";
+  const tire = "#1f2228";
+  const glass = "#72a8d4";
+  const primary = v === 0 ? greenToei : "#c1121f"; // Toei green or Tokyo red bus
+
+  const L = 8.4; // panjang bus sepanjang x
+  const W = 2.3; // lebar bus sepanjang z
+  const H = BUS_ROOF_H; // tinggi atap bus (y = 2.05m)
+
+  const parts: Part[] = [
+    // Roda bus
+    { x: -2.4, y: 0.36, z: -1.0, w: 0.72, h: 0.72, d: 0.28, color: tire },
+    { x: -2.4, y: 0.36, z: 1.0, w: 0.72, h: 0.72, d: 0.28, color: tire },
+    { x: 2.4, y: 0.36, z: -1.0, w: 0.72, h: 0.72, d: 0.28, color: tire },
+    { x: 2.4, y: 0.36, z: 1.0, w: 0.72, h: 0.72, d: 0.28, color: tire },
+
+    // Badan bus bawah
+    { x: 0, y: 0.65, z: 0, w: L, h: 0.5, d: W, color: primary },
+    // Garis aksen kuning/putih
+    { x: 0, y: 0.95, z: 0, w: L, h: 0.12, d: W + 0.02, color: v === 0 ? yellowToei : white },
+
+    // Badan bus atas (putih)
+    { x: 0, y: 1.48, z: 0, w: L, h: 0.95, d: W, color: white },
+
+    // Kaca depan menghadap -x (ke arah pemain)
+    { x: -L / 2 - 0.02, y: 1.48, z: 0, w: 0.06, h: 0.85, d: W - 0.3, color: glass },
+    // Lampu depan bus menyala
+    { x: -L / 2 - 0.03, y: 0.65, z: -0.75, w: 0.06, h: 0.2, d: 0.3, color: "#fffbe6", glow: true },
+    { x: -L / 2 - 0.03, y: 0.65, z: 0.75, w: 0.06, h: 0.2, d: 0.3, color: "#fffbe6", glow: true },
+    // Papan tujuan rollsign bus: "渋谷駅前 / SHIBUYA STA."
+    { x: -L / 2 - 0.04, y: 1.95, z: 0, w: 0.06, h: 0.2, d: 1.4, color: "#ffd21f", glow: true },
+
+    // Jendela samping
+    { x: 0, y: 1.5, z: 0, w: L - 1.2, h: 0.6, d: W + 0.02, color: glass },
+
+    // ATAP BUS DATAR TEMPAT BERSELANCAR (y = 2.05m)
+    { x: 0, y: H, z: 0, w: L, h: 0.1, d: W - 0.1, color: "#dbe1e8" },
+    // Catwalk / non-slip atap bus
+    { x: 0, y: H + 0.06, z: 0, w: L - 0.6, h: 0.03, d: 0.85, color: "#eef2f7" },
+    // AC bus di belakang
+    { x: 1.8, y: H + 0.18, z: 0, w: 1.8, h: 0.22, d: 1.4, color: "#9ca3af" },
+  ];
+
+  return parts;
+}
+
+

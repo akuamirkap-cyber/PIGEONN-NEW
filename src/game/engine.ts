@@ -1,5 +1,20 @@
 import * as THREE from "three";
-import { ARM_LEN, CHUNK_LEN, GATE_LAT, TRAIN_CAR_LEN, TRAIN_GAP, TRAIN_W, HOOD_JUMP_CLEAR_H, makeBuildingSpec, makeShibuyaTowerSpec, type BuildingSpec } from "./models";
+import {
+  ARM_LEN,
+  CHUNK_LEN,
+  GATE_LAT,
+  TRAIN_CAR_LEN,
+  TRAIN_GAP,
+  TRAIN_W,
+  HOOD_JUMP_CLEAR_H,
+  makeBuildingSpec,
+  makeShibuyaTowerSpec,
+  SUBWAY_CAR_LEN,
+  SUBWAY_GAP,
+  SUBWAY_ROOF_H,
+  BUS_ROOF_H,
+  type BuildingSpec,
+} from "./models";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
 import { sfx } from "./audio";
@@ -252,7 +267,13 @@ export type DecorKind =
   | "tower109"
   | "avenue_lamp"
   | "guard_fence"
-  | "sidewalk_planter";
+  | "sidewalk_planter"
+  | "subway_portal"
+  | "subway_tunnel_rib"
+  | "subway_wall"
+  | "subway_track"
+  | "subway_overhead_rail"
+  | "city_bus";
 export interface Decor {
   kind: DecorKind;
   pos: Vec3;
@@ -262,6 +283,32 @@ export interface Decor {
   /** placed on the camera side of the road (positive lat) => model is turned to face the road */
   frontSide?: boolean;
 }
+
+export interface SubwayTrain {
+  id: number;
+  s: number; // front nose coordinate (moves toward lower s when oncoming)
+  lane: number;
+  speed: number;
+  nCars: number;
+  line: number;
+  isShinkansen?: boolean;
+  hasRamp?: boolean;
+  horned: boolean;
+  passed: boolean;
+  length: number;
+}
+export function subwayTrainLength(st: SubwayTrain) {
+  return st.length;
+}
+
+export interface SubwayTunnel {
+  id: number;
+  startS: number;
+  endS: number;
+  line: number;
+  hasOncoming: boolean;
+}
+
 export interface Chunk {
   id: number;
   s0: number;
@@ -671,6 +718,10 @@ class Engine {
   wet = 0;
   nextCrossingS = 0;
   nextIntersectionS = 0;
+  /** Terowongan subway bawah tanah & kereta metro yang melaju kencang berlawanan arah */
+  subwayTrains: SubwayTrain[] = [];
+  subwayTunnels: SubwayTunnel[] = [];
+  nextSubwayTunnelS = 130;
   /** hitungan perempatan (untuk cadence Shibuya Scramble tiap 2 perempatan) */
   private interCount = 0;
   crashCause: CrashCause = "obstacle";
@@ -699,8 +750,10 @@ class Engine {
     rail: null as Obstacle | null,
     carMover: null as Mover | null,
     carObstacle: null as Obstacle | null,
+    subwayMover: null as SubwayTrain | null,
     carGrace: 0,
     railGrace: 0,
+    subwayGrace: 0,
     onRamp: false,
     trick: null as Trick | null,
     tricksThisAir: 0,
@@ -779,6 +832,9 @@ class Engine {
     this.movers = [];
     this.crossings = [];
     this.trains = [];
+    this.subwayTrains = [];
+    this.subwayTunnels = [];
+    this.nextSubwayTunnelS = START_S + 130;
     this.intersections = [];
     this.interCount = 0;
     this.crossCars = [];
@@ -812,6 +868,9 @@ class Engine {
     this.nextRocketS = START_S + ROCKET_FIRST_S; // roket pertama muncul agak awal biar pemain lihat itemnya
     this.letters = [];
     this.nextLetterS = START_S + 50; // Daily Word Hunt letter appears early in run
+    this.subwayTrains = [];
+    this.subwayTunnels = [];
+    this.nextSubwayTunnelS = START_S + 110;
     this.particles = [];
     this.reserved = [];
     this.nextChunkS = 0;
@@ -828,8 +887,10 @@ class Engine {
     p.rail = null;
     p.carMover = null;
     p.carObstacle = null;
+    p.subwayMover = null;
     p.carGrace = 0;
     p.railGrace = 0;
+    p.subwayGrace = 0;
     p.onRamp = false;
     p.trick = null;
     p.tricksThisAir = 0;
@@ -890,7 +951,9 @@ class Engine {
     p.grinding = false;
     p.carMover = null;
     p.carObstacle = null;
+    p.subwayMover = null;
     p.carGrace = 0;
+    p.subwayGrace = 0;
     p.onRamp = false;
     p.grounded = false;
     p.h = Math.max(p.h, PODIUM_H);
@@ -1173,7 +1236,8 @@ class Engine {
   private jump(v = JUMP_V) {
     const p = this.player;
     if (p.grinding) {
-      if (p.carMover || p.carObstacle) this.endCarGrind();
+      if (p.subwayMover) this.endSubwayGrind();
+      else if (p.carMover || p.carObstacle) this.endCarGrind();
       else this.endGrind();
     }
     p.grounded = false;
@@ -1303,6 +1367,42 @@ class Engine {
     sfx.trick();
   }
 
+  private startSubwayGrind(st: SubwayTrain) {
+    const p = this.player;
+    p.grinding = true;
+    p.grounded = false;
+    p.subwayMover = st;
+    p.carMover = null;
+    p.carObstacle = null;
+    p.rail = null;
+    p.h = SUBWAY_ROOF_H;
+    p.vh = 0;
+    p.squash = 0.4;
+    p.grindPts = 0;
+    if (p.trick) {
+      p.trick.t = p.trick.dur;
+      this.completeTrick();
+    }
+    useUI.getState().addPopup("TRAIN SURF! 🚆", "#00e5ff", st.isShinkansen ? "SHINKANSEN ROOF! ⚡" : "METRO ROOF SURF!");
+    sfx.grind();
+    this.emit("spark", -0.5, SUBWAY_ROOF_H - 0.05, p.lat, 5);
+  }
+
+  private endSubwayGrind() {
+    const p = this.player;
+    if (!p.grinding && !p.subwayMover) return;
+    p.grinding = false;
+    p.subwayMover = null;
+    p.subwayGrace = 0.45;
+    const base = Math.max(50, Math.round(p.grindPts / 10) * 10);
+    p.tricksThisAir++;
+    const pts = base * p.tricksThisAir;
+    this.trickScore += pts;
+    this.addNos(NOS_PER_TRICK * p.tricksThisAir);
+    useUI.getState().addPopup(`TRAIN SURF +${pts}`, "#00e5ff", p.tricksThisAir > 1 ? `COMBO x${p.tricksThisAir}` : "CLEAN DISMOUNT! ✨");
+    sfx.trick();
+  }
+
   private land() {
     const p = this.player;
     p.grounded = true;
@@ -1357,6 +1457,7 @@ class Engine {
     p.grinding = false;
     p.carMover = null;
     p.carObstacle = null;
+    p.subwayMover = null;
     p.carGrace = 0;
     p.grab = 0;
     const v = Math.max(this.speed, 8);
@@ -1540,6 +1641,7 @@ class Engine {
     this.updateCrossings(dt);
     this.updateIntersections(dt);
     this.updateCrossCars(dt);
+    this.updateSubway(dt);
     if (this.phase === "menu" || this.phase === "playing") this.updatePlayer(dt);
     else this.updateCrash(dt);
 
@@ -1670,9 +1772,30 @@ class Engine {
     p.lane = p.targetLane;
     p.railGrace = Math.max(0, p.railGrace - dt);
     p.carGrace = Math.max(0, p.carGrace - dt);
+    p.subwayGrace = Math.max(0, p.subwayGrace - dt);
 
     const ground = this.groundInfo(p.lat);
     const prevH = p.h;
+
+    if (p.grinding && p.subwayMover) {
+      const st = p.subwayMover;
+      const rel = d - st.s;
+      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.15;
+      if (rel < -0.6 || rel > st.length + 0.8 || !inLane) {
+        this.endSubwayGrind();
+        p.grounded = false;
+        p.vh = 0;
+        p.airT = 0;
+      } else {
+        p.h = SUBWAY_ROOF_H;
+        p.grindPts += dt * 180;
+        this.sparkT += dt;
+        if (this.sparkT > 0.04) {
+          this.sparkT = 0;
+          this.emit("spark", -0.5, SUBWAY_ROOF_H, p.lat, 3);
+        }
+      }
+    }
 
     if (p.grinding && p.rail) {
       const r = p.rail;
@@ -2823,10 +2946,14 @@ class Engine {
       const cc = this.crossCars[i];
 
       // Mobil penyeberang melaju menyeberang jalan lintas; hanya melambat jika ada mobil lain tepat di depannya
+      // atau jika lampu jalan utama masih hijau (menunggu di luar jalan sampai lampu utama merah)
+      const inter = this.intersections.find((it) => it.id === cc.intersectionId);
+      const mainRoadGreen = inter ? inter.lightState !== "red" : false;
+      const waitingForLight = mainRoadGreen && Math.abs(cc.lat) > 12 && ((cc.dir > 0 && cc.lat < 0) || (cc.dir < 0 && cc.lat > 0));
       const carAhead = this.crossCars.some(
         (o) => o !== cc && o.dir === cc.dir && Math.abs(o.s - cc.s) < 1.4 && (o.lat - cc.lat) * cc.dir > 0 && (o.lat - cc.lat) * cc.dir < 5.0
       );
-      const yielding = carAhead;
+      const yielding = carAhead || waitingForLight;
       cc.waiting = yielding;
 
       // rem / gas halus
@@ -2858,6 +2985,170 @@ class Engine {
       }
     }
     if (changed) this.moverVersion++;
+  }
+
+  private updateSubway(dt: number) {
+    const d = this.distance;
+    const p = this.player;
+    let changed = false;
+
+    for (let i = this.subwayTrains.length - 1; i >= 0; i--) {
+      const st = this.subwayTrains[i];
+      // Kereta subway / shinkansen melaju berlawanan arah (+s -> -s)
+      st.s -= st.speed * dt;
+      const dist = st.s - d;
+
+      // Klakson peringatan keras saat kereta mendekat dari depan
+      if (!st.horned && dist > 0 && dist < 54) {
+        st.horned = true;
+        sfx.subwayHorn();
+        sfx.subwayWhoosh();
+        useUI.getState().addPopup("KERETA DARI DEPAN! 🚆", "#ff3366", "PINDAH JALUR / NAIK ATAP!");
+      }
+
+      // Deteksi tabrakan & selancar atap kereta
+      const relS = d - st.s;
+      const alongTrain = relS >= -0.6 && relS <= st.length + 0.6;
+      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.05;
+
+      if (this.phase === "playing" && alongTrain && inLane) {
+        // Pemain berada di ketinggian atap (misal naik lewat ramp atau lompat tinggi):
+        if (p.h >= SUBWAY_ROOF_H - 0.28) {
+          if (p.subwayMover !== st) {
+            this.startSubwayGrind(st);
+          }
+        } else if (p.subwayMover !== st && p.subwayGrace <= 0) {
+          // Tabrakan frontal dengan kereta yang melaju kencang
+          this.crash("train", { hardness: 2.2, side: 1 });
+          return;
+        }
+      }
+
+      // Hapus kereta yang sudah lewat jauh di belakang pemain
+      if (st.s + st.length < d - 40) {
+        this.subwayTrains.splice(i, 1);
+        changed = true;
+      }
+    }
+
+    if (changed) this.moverVersion++;
+  }
+
+  private spawnSubwayEncounter(tun: SubwayTunnel) {
+    const d = this.distance;
+    const est = Math.max(this.speed, START_SPEED);
+
+    // 1. Kereta Metro pertama (gerbong komuter) di awal terowongan
+    {
+      const meetS = tun.startS + 24;
+      const speed = 18 + rand(0, 3);
+      const s0 = meetS + (speed * (meetS - d)) / est;
+      const lane = pick([0, 2, 1]);
+      const nCars = 2;
+      const trainLen = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
+      const st: SubwayTrain = {
+        id: this.nextId++,
+        s: s0,
+        lane,
+        speed,
+        nCars,
+        line: tun.line,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: false,
+        passed: false,
+        length: trainLen,
+      };
+      this.subwayTrains.push(st);
+      this.reserved.push({ lane, from: meetS - 6, until: s0 + trainLen + 8 });
+
+      // Tanjakan (ramp) tepat sebelum kereta metro di jalurnya:
+      this.addObstacle("ramp", tun.startS + 8, lane);
+      for (let i = 0; i < 6; i++) {
+        this.addBread(tun.startS + 11 + i * 1.5, lane, SUBWAY_ROOF_H + 0.35);
+      }
+
+      // Bus kota di jalur tetangga dengan ramp di depannya:
+      const other = this.otherLane([lane]);
+      this.addObstacle("ramp", tun.startS + 20, other);
+      const busS = tun.startS + 26;
+      this.addObstacle("car", busS, other);
+      for (let i = 0; i < 4; i++) {
+        this.addBread(busS - 2 + i * 1.2, other, BUS_ROOF_H + 0.35);
+      }
+    }
+
+    // 2. Shinkansen Bullet Train super cepat di bagian tengah terowongan panjang
+    {
+      const meetS = tun.startS + 72;
+      const speed = 22 + rand(0, 3.5);
+      const s0 = meetS + (speed * (meetS - d)) / est;
+      const lane = pick([1, 0, 2]);
+      const nCars = 3;
+      const trainLen = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
+      const st: SubwayTrain = {
+        id: this.nextId++,
+        s: s0,
+        lane,
+        speed,
+        nCars,
+        line: (tun.line + 1) % 4,
+        isShinkansen: true,
+        hasRamp: true,
+        horned: false,
+        passed: false,
+        length: trainLen,
+      };
+      this.subwayTrains.push(st);
+      this.reserved.push({ lane, from: meetS - 6, until: s0 + trainLen + 8 });
+
+      // Ramp menuju atap Shinkansen
+      this.addObstacle("ramp", tun.startS + 54, lane);
+      for (let i = 0; i < 8; i++) {
+        this.addBread(tun.startS + 58 + i * 1.5, lane, SUBWAY_ROOF_H + 0.35);
+      }
+      this.addNosPickup(tun.startS + 68, lane, SUBWAY_ROOF_H + 0.45);
+
+      // Bus kota di jalur lain
+      const other = this.otherLane([lane]);
+      this.addObstacle("ramp", tun.startS + 66, other);
+      this.addObstacle("car", tun.startS + 74, other);
+    }
+
+    // 3. Rangkaian Kereta Metro ketiga di ujung akhir terowongan panjang
+    {
+      const meetS = tun.startS + 118;
+      const speed = 19 + rand(0, 3);
+      const s0 = meetS + (speed * (meetS - d)) / est;
+      const lane = pick([2, 0, 1]);
+      const nCars = 2;
+      const trainLen = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
+      const st: SubwayTrain = {
+        id: this.nextId++,
+        s: s0,
+        lane,
+        speed,
+        nCars,
+        line: (tun.line + 2) % 4,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: false,
+        passed: false,
+        length: trainLen,
+      };
+      this.subwayTrains.push(st);
+      this.reserved.push({ lane, from: meetS - 6, until: s0 + trainLen + 8 });
+
+      // Ramp dan koin roti di atas gerbong
+      this.addObstacle("ramp", tun.startS + 102, lane);
+      for (let i = 0; i < 6; i++) {
+        this.addBread(tun.startS + 105 + i * 1.5, lane, SUBWAY_ROOF_H + 0.35);
+      }
+      this.addNosPickup(tun.startS + 112, lane, SUBWAY_ROOF_H + 0.45);
+    }
+
+    this.moverVersion++;
+    this.listVersion++;
   }
 
   private addIntersection(s: number): Intersection {
@@ -3114,6 +3405,65 @@ class Engine {
     }
 
     if (isShibuya) {
+      // Periksa apakah chunk berada dalam Terowongan Subway Bawah Tanah Shibuya
+      let curTunnel = this.subwayTunnels.find((t) => s0 >= t.startS && s0 < t.endS);
+      if (!curTunnel && s0 >= this.nextSubwayTunnelS) {
+        const nearCrossing = this.crossings.some((c) => Math.abs(c.s - s0) < 30);
+        const nearInter = this.intersections.some((it) => Math.abs(it.s - s0) < 30);
+        if (!nearCrossing && !nearInter) {
+          const tunLen = 144; // 12 chunks (144m terowongan metro megah & panjang)
+          curTunnel = {
+            id: this.nextId++,
+            startS: s0,
+            endS: s0 + tunLen,
+            line: randInt(0, 3),
+            hasOncoming: true,
+          };
+          this.subwayTunnels.push(curTunnel);
+          this.nextSubwayTunnelS = s0 + tunLen + rand(160, 260);
+          this.spawnSubwayEncounter(curTunnel);
+        } else {
+          this.nextSubwayTunnelS = s0 + CHUNK_LEN + 12;
+        }
+      }
+
+      if (curTunnel) {
+        // ---- TEROWONGAN METRO SUBWAY SHIBUYA (TAPI TIDAK GELAP!) ----
+        // Pintu masuk di awal terowongan
+        if (s0 === curTunnel.startS) {
+          add("subway_portal", 0, 0, 0, 0);
+        }
+        // Pintu keluar di akhir terowongan (keluar kembali ke jalan Shibuya & perempatan)
+        if (s0 + CHUNK_LEN === curTunnel.endS) {
+          add("subway_portal", CHUNK_LEN, 0, 0, 1);
+        }
+
+        // Landasan rel & ballast di atas jalan
+        add("subway_track", 3, 0, 0);
+        add("subway_track", 9, 0, 0);
+
+        // Dinding samping berkeramik putih bersih dengan papan nama stasiun (sangat lapang di lat +/-9.4)
+        add("subway_wall", 3, -9.4, 0, curTunnel.line);
+        add("subway_wall", 9, -9.4, 0, curTunnel.line);
+        add("subway_wall", 3, 9.4, 0, curTunnel.line);
+        add("subway_wall", 9, 9.4, 0, curTunnel.line);
+
+        // Rusuk terowongan megah & sangat tinggi (H=17.2m) dengan deretan lampu fluorescent terang di plafon (TIDAK GELAP!)
+        add("subway_tunnel_rib", 0, 0, 0, curTunnel.line);
+        add("subway_tunnel_rib", 6, 0, 0, curTunnel.line);
+
+        // Rel catenary gantung di atas atap kereta
+        add("subway_overhead_rail", 6, 0, 0);
+
+        // Skyline gedung megah Shibuya tetap terlihat di latar belakang jauh (kombinasi indah)
+        if (id % 2 === 0) add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
+        if (id % 2 === 1) add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
+
+        this.chunks.push({ id, s0, kind: "shibuya", decor });
+        this.listVersion++;
+        return;
+      }
+
       // ---- SHIBUYA: grand open avenue with spacious, towering Japanese architecture ----
       // Spacing: ONE substantial lot per 12m chunk (centered at lx = 6) with clean alleyway gaps.
       // 1. Near frontage:
@@ -3350,6 +3700,11 @@ class Engine {
       if (this.isNearObstacle(s + k * 0.75, lane, 5.5)) return;
     }
     for (let k = -3; k <= 3; k++) this.addBread(s + k * 0.75, lane, 0.5 + 1.35 * (1 - (k * k) / 9));
+  }
+  private addNosPickup(s: number, lane: number, h = 0) {
+    track.frame(s, LANE_LAT[lane], h, tmpV);
+    this.nosCans.push({ id: this.nextId++, s, lane, taken: false, wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
+    this.listVersion++;
   }
   private otherLane(exclude: number[]) {
     const opts = [0, 1, 2].filter((l) => !exclude.includes(l));
@@ -3885,6 +4240,10 @@ class Engine {
       const n = this.crossCars.length;
       this.crossCars = this.crossCars.filter((cc) => cc.intersectionId !== gone.id);
       if (this.crossCars.length !== n) this.moverVersion++;
+      changed = true;
+    }
+    if (this.subwayTunnels.length && this.subwayTunnels[0].endS < d - 30) {
+      this.subwayTunnels.shift();
       changed = true;
     }
     if (changed) this.listVersion++;
