@@ -123,9 +123,9 @@ export function Player() {
     const nm = engine.newTurn; // physics turning mode
     const spr = engine.sprint; // 0..1 SHIFT sprint intensity (fast kicks, forward lean)
     if (nm) {
-      // wheel radius ~0.065: spin = speed / r; 0.3x while grinding (wheels barely turn), 0.6x airborne (freewheel).
+      // wheel radius ~0.065: spin = speed / r; 0.3x while grinding rails (wheels barely turn), 1.0x on bus roof, 0.6x airborne (freewheel).
       // The per-frame step is capped so a fast board does not alias into a flickering wheel.
-      const mult = p.grinding ? 0.3 : p.grounded ? 1 : 0.6;
+      const mult = p.subwayMover ? 1 : p.grinding ? 0.3 : p.grounded ? 1 : 0.6;
       const spin = Math.min((engine.speed / 0.065) * dt * mult, 1.2);
       for (const w of wheels.current) if (w) w.rotation.z -= spin;
     } else {

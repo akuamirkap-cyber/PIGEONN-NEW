@@ -37,7 +37,7 @@ check("Subway tunnel is generated in Shibuya mode", spawnedTunnel, `Tunnels: ${e
 if (engine.subwayTunnels.length > 0) {
   const tun = engine.subwayTunnels[0];
   check("Subway tunnel has valid start and end bounds", tun.endS > tun.startS, `${tun.startS}m -> ${tun.endS}m`);
-  check("Subway tunnel is 10x longer (1440m)", tun.endS - tun.startS >= 1440, `Length: ${(tun.endS - tun.startS).toFixed(0)}m`);
+  check("Subway tunnel length is 720m (reduced by 50%)", tun.endS - tun.startS >= 720, `Length: ${(tun.endS - tun.startS).toFixed(0)}m`);
 
   // Verify no crossings or intersections inside subway tunnel
   const crossingsInTunnel = engine.crossings.filter((cr) => cr.s >= tun.startS && cr.s <= tun.endS);
@@ -63,18 +63,21 @@ if (engine.subwayTunnels.length > 0) {
   const walls = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_wall"));
   check("Subway track bed and ceramic walls are present", tracks.length >= 4 && walls.length >= 8, `Tracks: ${tracks.length}, Walls: ${walls.length}`);
 
-  // Verify oncoming subway train
-  check("Oncoming subway train is spawned", engine.subwayTrains.length > 0, `Trains: ${engine.subwayTrains.length}`);
-  if (engine.subwayTrains.length > 0) {
-    const st = engine.subwayTrains[0];
-    const prevS = st.s;
-    engine.update(0.05);
-    check("Oncoming train moves in opposing traffic (-s direction)", st.s < prevS, `moved from ${prevS.toFixed(2)} to ${st.s.toFixed(2)}`);
+  // Verify subway trains/buses in tunnel
+  check("Subway trains/buses are spawned", engine.subwayTrains.length > 0, `Trains: ${engine.subwayTrains.length}`);
+  const stoppedBus = engine.subwayTrains.find((t) => t.speed === 0 || t.isStopped);
+  check("Stationary / stopped bus runway exists in tunnel (Subway Surfers style)", !!stoppedBus, `Found stopped bus: ${!!stoppedBus}`);
 
-    // Verify ramp for roof surfing
-    const rampsInTunnel = engine.obstacles.filter((o) => o.kind === "ramp" && o.s >= tun.startS && o.s <= tun.endS);
-    check("Ramps leading onto train/bus roof exist in tunnel", rampsInTunnel.length >= 1, `Found ${rampsInTunnel.length} ramps`);
+  const movingBus = engine.subwayTrains.find((t) => t.speed > 0);
+  if (movingBus) {
+    const prevS = movingBus.s;
+    engine.update(0.05);
+    check("Oncoming train moves in opposing traffic (-s direction)", movingBus.s < prevS, `moved from ${prevS.toFixed(2)} to ${movingBus.s.toFixed(2)}`);
   }
+
+  // Verify ramp for roof surfing
+  const rampsInTunnel = engine.obstacles.filter((o) => o.kind === "ramp" && o.s >= tun.startS && o.s <= tun.endS);
+  check("Ramps leading onto train/bus roof exist in tunnel", rampsInTunnel.length >= 1, `Found ${rampsInTunnel.length} ramps`);
 }
 
 // 3. Test Roof Surfing mechanics: place train directly under player (player is within train length)

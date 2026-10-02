@@ -296,6 +296,7 @@ export interface SubwayTrain {
   passed: boolean;
   length: number;
   roofBreads?: { offset: number; taken: boolean }[];
+  isStopped?: boolean;
 }
 export function subwayTrainLength(st: SubwayTrain) {
   return st.length;
@@ -1392,23 +1393,30 @@ class Engine {
     p.carMover = null;
     p.carObstacle = null;
     p.rail = null;
+    p.bigAir = false;
     p.h = SUBWAY_ROOF_H;
     p.vh = 0;
-    p.squash = 0.4;
+    p.squash = 0.55; // Pendaratan empuk dengan kompresi suspensi skateboard yang memuaskan
     p.grindPts = 0;
     if (p.trick) {
       p.trick.t = p.trick.dur;
       this.completeTrick();
     }
     if (isTransfer) {
-      useUI.getState().addPopup("BUS TRANSFER! 🛹🚌", "#ffd21f", "ROOF TO ROOF!");
+      useUI.getState().addPopup("ROOF TRANSFER! 🛹💨", "#ffd21f", "ROOF TO ROOF!");
       this.trickScore += 200;
       this.addNos(NOS_PER_TRICK * 1.5);
+      sfx.trick();
+    } else if (st.speed === 0 || st.isStopped) {
+      useUI.getState().addPopup("BUS RUNWAY! 🛹", "#00f5d4", "SUBWAYSURF ROOF!");
+      this.trickScore += 120;
+      sfx.land();
+      sfx.swish();
     } else {
       useUI.getState().addPopup("BUS SURF! 🚌", "#00e5ff", st.isShinkansen ? "EXPRESS BUS ROOF! ⚡" : "BUS ROOF SURF!");
+      sfx.land();
+      sfx.swish();
     }
-    sfx.grind();
-    this.emit("spark", -0.5, SUBWAY_ROOF_H - 0.05, p.lat, 5);
   }
 
   private endSubwayGrind() {
@@ -1419,7 +1427,7 @@ class Engine {
     }
     p.grinding = false;
     p.subwayMover = null;
-    p.subwayGrace = 0.45;
+    p.subwayGrace = 0.1; // Cepat siap mendarat kembali bila hanya lompat kecil di atap bus
     const base = Math.max(50, Math.round(p.grindPts / 10) * 10);
     p.tricksThisAir++;
     const pts = base * p.tricksThisAir;
@@ -1766,7 +1774,7 @@ class Engine {
         target: tl,
         fwd: this.speed,
         air: airborneNow,
-        grind: p.grinding,
+        grind: p.rail !== null,
         minLat: LANE_LAT[0] - 0.35,
         maxLat: LANE_LAT[2] + 0.35,
         dt,
@@ -1805,21 +1813,51 @@ class Engine {
     const prevH = p.h;
 
     if (p.grinding && p.subwayMover) {
-      const st = p.subwayMover;
+      let st = p.subwayMover;
       const rel = d - st.s;
-      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.15;
-      if (rel < -0.6 || rel > st.length + 0.8 || !inLane) {
+
+      // Transfer antar-atap bus yang mulus saat berpindah lajur:
+      // Periksa apakah ada bus lain di lajur tujuan/sebelah yang posisinya sedang dicapai pemain
+      const nextBus = this.subwayTrains.find(
+        (ot) =>
+          ot !== st &&
+          d - ot.s >= -0.8 &&
+          d - ot.s <= ot.length + 0.8 &&
+          Math.abs(LANE_LAT[ot.lane] - p.lat) < Math.abs(LANE_LAT[st.lane] - p.lat) &&
+          Math.abs(LANE_LAT[ot.lane] - p.lat) < 1.35
+      );
+
+      if (nextBus) {
+        st = nextBus;
+        p.subwayMover = nextBus;
+        if (p.subwayLastId !== nextBus.id) {
+          p.subwayLastId = nextBus.id;
+          p.squash = 0.45;
+          this.trickScore += 150;
+          this.addNos(NOS_PER_TRICK);
+          useUI.getState().addPopup("ROOF TRANSFER! 🛹💨", "#ffd21f", "ROOF TO ROOF!");
+          sfx.trick();
+        }
+      }
+
+      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.35;
+      const inLength = rel >= -0.8 && rel <= st.length + 0.8;
+
+      if (!inLength || !inLane) {
         this.endSubwayGrind();
         p.grounded = false;
-        p.vh = 0;
+        // Jika meluncur turun ke samping ke jalan kosong, beri sedikit lengkungan lompat samping yang luwes
+        p.vh = inLane ? 0 : 0.8;
         p.airT = 0;
       } else {
         p.h = SUBWAY_ROOF_H;
         p.grindPts += dt * 180;
         this.sparkT += dt;
-        if (this.sparkT > 0.04) {
+        if (this.sparkT > 0.08) {
           this.sparkT = 0;
-          this.emit("spark", -0.5, SUBWAY_ROOF_H, p.lat, 3);
+          if (Math.abs(p.lean) > 0.35 || Math.abs(p.carve) > 0.35) {
+            this.emit("spark", -0.4, SUBWAY_ROOF_H - 0.02, p.lat, 2);
+          }
         }
       }
     }
@@ -1981,12 +2019,13 @@ class Engine {
           }
         }
         // Mendarat di atas atap bus saat pemain turun menyentuh ketinggian atap (SUBWAY_ROOF_H):
-        if (!p.grinding && p.subwayGrace <= 0 && p.vh <= 0.08) {
+        if (!p.grinding && p.subwayGrace <= 0 && (p.vh <= 0.5 || prevH >= p.h)) {
           for (const st of this.subwayTrains) {
             const relS = d - st.s;
-            if (relS < -0.6 || relS > st.length + 0.6) continue;
-            if (Math.abs(LANE_LAT[st.lane] - p.lat) > 1.05) continue;
-            if (prevH >= SUBWAY_ROOF_H - 0.08 && p.h <= SUBWAY_ROOF_H + 0.12 && p.h >= SUBWAY_ROOF_H - 0.35) {
+            if (relS < -0.8 || relS > st.length + 0.8) continue;
+            if (Math.abs(LANE_LAT[st.lane] - p.lat) > 1.35) continue;
+            const touchesRoof = (prevH >= SUBWAY_ROOF_H - 0.25 && p.h <= SUBWAY_ROOF_H + 0.3) || (p.h >= SUBWAY_ROOF_H - 0.55 && p.h <= SUBWAY_ROOF_H + 0.15);
+            if (touchesRoof) {
               this.startSubwayGrind(st);
               break;
             }
@@ -2747,7 +2786,7 @@ class Engine {
   private updatePush(dt: number) {
     const p = this.player;
     const menu = this.phase === "menu";
-    const canPush = p.grounded && !p.grinding && !p.onRamp && !p.trick && (this.phase === "playing" || menu) && (this.center.g > -0.1 || this.sprintBonus > 0) && this.nosT <= 0;
+    const canPush = (p.grounded || p.subwayMover !== null) && !p.rail && !p.carMover && !p.carObstacle && !p.onRamp && !p.trick && (this.phase === "playing" || menu) && (this.center.g > -0.1 || this.sprintBonus > 0) && this.nosT <= 0;
     if (p.push >= 0) {
       if (!canPush) {
         // interrupted (jump, ramp, crash): snap the foot back onto the deck
@@ -3067,13 +3106,13 @@ class Engine {
 
       // Deteksi tabrakan & selancar atap bus
       const relS = d - st.s;
-      const alongTrain = relS >= -0.6 && relS <= st.length + 0.6;
-      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.05;
+      const alongTrain = relS >= -0.8 && relS <= st.length + 0.8;
+      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.35;
 
       if (this.phase === "playing" && alongTrain && inLane) {
         // Bila pemain sedang terbang tinggi di atas atap bus (misal lompat tinggi, ramp, atau freestyle di udara):
         // JANGAN dipaksa langsung nempel atap bus! Biarkan pemain terbang leluasa dan selesaikan trick di udara.
-        if (p.h > SUBWAY_ROOF_H + 0.12) {
+        if (p.h > SUBWAY_ROOF_H + 0.28) {
           // Aman di udara di atas atap bus — bebas freestyle tanpa ditarik/ditempel paksa ke atap
         } else if (p.subwayMover === st) {
           // Sedang berselancar di atas atap bus ini
@@ -3081,14 +3120,16 @@ class Engine {
           // Masa tenggang HANYA untuk bus yang sama yang baru saja dilompati agar tidak langsung snap kembali ke bus yang sama
         } else {
           // Pemain berada di ketinggian atap bus: periksa apakah sedang MENDARAT (turun menyentuh atap)
-          const isFalling = p.vh <= 0.08;
-          const touchesRoof = isFalling && p.h >= SUBWAY_ROOF_H - 0.35 && p.h <= SUBWAY_ROOF_H + 0.12;
+          const isFalling = p.vh <= 0.5;
+          const touchesRoof = isFalling && p.h >= SUBWAY_ROOF_H - 0.45 && p.h <= SUBWAY_ROOF_H + 0.28;
+          // Bantuan naik dari ramp di depan bus: bila baru meluncur dari ramp (bigAir) dan tiba di bagian depan bus
+          const rampAssist = p.bigAir && relS >= -0.8 && relS <= 4.0 && p.h >= 0.8;
 
-          if (touchesRoof) {
+          if (touchesRoof || rampAssist) {
             // Mendarat di atas atap bus (baik dari jalan, ramp, atau lompat antar-bus / transfer)
             this.startSubwayGrind(st);
-          } else if (p.h < SUBWAY_ROOF_H - 0.35) {
-            // Tabrakan frontal dengan bodi bus
+          } else if (p.h < SUBWAY_ROOF_H - 0.55) {
+            // Tabrakan frontal dengan bodi bus HANYA jika benar-benar di bawah bodi bus
             this.crash("car", { hardness: 2.2, side: 1 });
             return;
           }
@@ -3104,7 +3145,7 @@ class Engine {
 
     if (changed) this.moverVersion++;
 
-    // Munculkan gelombang bus dinamis lebih rapat di sepanjang terowongan (1440m)
+    // Munculkan gelombang bus dinamis lebih rapat di sepanjang terowongan (720m)
     for (const tun of this.subwayTunnels) {
       // Munculkan tanjakan (ramp) di beberapa titik di dalam terowongan agar pemain bisa selalu naik ke atap bus
       if (!tun.nextRampS) tun.nextRampS = tun.startS + 18;
@@ -3119,16 +3160,186 @@ class Engine {
         this.distance >= tun.nextEncounterS - 95 &&
         tun.nextEncounterS < tun.endS - 45
       ) {
-        // Prioritaskan formasi tangga multi-bus (Ramp -> Bus A -> Bus B -> Bus C)
-        if (Math.random() < 0.7) {
+        // Bergantian antara Landasan Bus Berhenti (Subway Surfers), Formasi Bertingkat, dan Bus Ekspres
+        const encounterRoll = Math.random();
+        if (encounterRoll < 0.45) {
+          // Landasan Bus Berhenti (Subway Surfers Style Runway)
+          this.spawnStationaryBusRunway(tun, tun.nextEncounterS, pick([0, 1, 2]));
+          tun.nextEncounterS += rand(48, 64);
+        } else if (encounterRoll < 0.75) {
+          // Formasi multi-bus bertingkat (Ramp -> Bus A -> Bus B -> Bus C)
           this.spawnStaggeredBusChain(tun, tun.nextEncounterS);
           tun.nextEncounterS += rand(54, 70);
         } else {
+          // Bus ekspres jalan raya
           this.spawnSubwaySegment(tun, tun.nextEncounterS);
           tun.nextEncounterS += rand(44, 58);
         }
       }
     }
+  }
+
+  /**
+   * Bus Berhenti / Parkir Sebagai Landasan Seluncur (Subway Surfers Style):
+   * Bus kota/ekspres diparkir (speed = 0) dengan tanjakan (ramp) tepat di depannya
+   * dan jejeran roti di atas atap, sehingga pemain bisa meluncur naik ke atap bus
+   * dan berselancar sepanjang badan bus seperti di Subway Surfers!
+   */
+  private spawnStationaryBusRunway(tun: SubwayTunnel, startS: number, pattern = 0) {
+    const d = this.distance;
+    // Jangan munculkan bila sudah lewat
+    if (startS < d + 10) return;
+
+    if (pattern === 0) {
+      // Pola 1: Bus Parkir Panjang (1 atau 2 gerbong, ~23m) dengan Ramp langsung
+      const lane = pick([0, 1, 2]);
+      const nCars = pick([1, 2, 2]);
+      const trainLen = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
+      const bus: SubwayTrain = {
+        id: this.nextId++,
+        s: startS,
+        lane,
+        speed: 0, // BERHENTI / PARKIR
+        nCars,
+        line: tun.line % 4,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: true,
+        passed: false,
+        length: trainLen,
+        roofBreads: createRoofBreads(trainLen),
+        isStopped: true,
+      };
+      this.subwayTrains.push(bus);
+      this.reserved.push({ lane, from: startS - 8, until: startS + trainLen + 6 });
+
+      // Tanjakan (Ramp) tepat sebelum bus berhenti agar pemain langsung naik ke atap
+      const rampS = startS - 2.8;
+      this.addObstacle("ramp", rampS, lane, true);
+
+      // Jejeran roti memandu naik tanjakan ke atap bus
+      for (let i = 0; i < 3; i++) {
+        this.addBread(rampS - 2.0 + i * 1.2, lane, 0.35 + i * 0.5);
+      }
+      // Tabung NOS hadiah di ujung atap bus
+      this.addNosPickup(startS + trainLen - 2.5, lane, SUBWAY_ROOF_H + 0.45);
+
+    } else if (pattern === 1) {
+      // Pola 2: Dua Bus Berhenti Berdampingan (Staggered Transfer A -> B di atap bus)
+      const laneA = pick([0, 2]);
+      const laneB = 1; // lajur tengah
+      const nCarsA = 2;
+      const lenA = nCarsA * SUBWAY_CAR_LEN + (nCarsA - 1) * SUBWAY_GAP;
+      const busA: SubwayTrain = {
+        id: this.nextId++,
+        s: startS,
+        lane: laneA,
+        speed: 0,
+        nCars: nCarsA,
+        line: tun.line % 4,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: true,
+        passed: false,
+        length: lenA,
+        roofBreads: createRoofBreads(lenA),
+        isStopped: true,
+      };
+      this.subwayTrains.push(busA);
+      this.reserved.push({ lane: laneA, from: startS - 8, until: startS + lenA + 6 });
+
+      const rampS = startS - 2.8;
+      this.addObstacle("ramp", rampS, laneA, true);
+      for (let i = 0; i < 3; i++) {
+        this.addBread(rampS - 2.0 + i * 1.2, laneA, 0.35 + i * 0.5);
+      }
+
+      // Bus B berhenti agak maju (startS + 14m)
+      const startB = startS + 14;
+      const nCarsB = 2;
+      const lenB = nCarsB * SUBWAY_CAR_LEN + (nCarsB - 1) * SUBWAY_GAP;
+      const busB: SubwayTrain = {
+        id: this.nextId++,
+        s: startB,
+        lane: laneB,
+        speed: 0,
+        nCars: nCarsB,
+        line: (tun.line + 1) % 4,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: true,
+        passed: false,
+        length: lenB,
+        roofBreads: createRoofBreads(lenB),
+        isStopped: true,
+      };
+      this.subwayTrains.push(busB);
+      this.reserved.push({ lane: laneB, from: startB - 6, until: startB + lenB + 6 });
+
+      // Roti memandu lompat transfer dari Bus A ke Bus B
+      for (let i = 0; i < 4; i++) {
+        this.addBread(startS + 11 + i * 1.4, laneB, SUBWAY_ROOF_H + 0.35);
+      }
+      this.addNosPickup(startB + lenB - 2.5, laneB, SUBWAY_ROOF_H + 0.45);
+
+    } else {
+      // Pola 3: Bus Berhenti Sebagai Landasan + Bus Melaju di Jalur Sebelah
+      const parkedLane = pick([0, 2]);
+      const oncomingLane = parkedLane === 0 ? 2 : 0;
+      const nCars = 2;
+      const len = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
+
+      // Bus Parkir
+      const bus: SubwayTrain = {
+        id: this.nextId++,
+        s: startS,
+        lane: parkedLane,
+        speed: 0,
+        nCars,
+        line: tun.line % 4,
+        isShinkansen: false,
+        hasRamp: true,
+        horned: true,
+        passed: false,
+        length: len,
+        roofBreads: createRoofBreads(len),
+        isStopped: true,
+      };
+      this.subwayTrains.push(bus);
+      this.reserved.push({ lane: parkedLane, from: startS - 8, until: startS + len + 6 });
+
+      const rampS = startS - 2.8;
+      this.addObstacle("ramp", rampS, parkedLane, true);
+      for (let i = 0; i < 3; i++) {
+        this.addBread(rampS - 2.0 + i * 1.2, parkedLane, 0.35 + i * 0.5);
+      }
+      this.addNosPickup(startS + len - 2.5, parkedLane, SUBWAY_ROOF_H + 0.45);
+
+      // Bus Melaju Berlawanan Arah di Jalur Sebelah
+      const est = Math.max(this.speed, START_SPEED);
+      const onSpeed = 19;
+      const meetS = startS + 12;
+      const s0 = meetS + (onSpeed * (meetS - d)) / est;
+      const onBus: SubwayTrain = {
+        id: this.nextId++,
+        s: s0,
+        lane: oncomingLane,
+        speed: onSpeed,
+        nCars: 1,
+        line: (tun.line + 2) % 4,
+        isShinkansen: true,
+        hasRamp: true,
+        horned: false,
+        passed: false,
+        length: SUBWAY_CAR_LEN,
+        roofBreads: createRoofBreads(SUBWAY_CAR_LEN),
+      };
+      this.subwayTrains.push(onBus);
+      this.reserved.push({ lane: oncomingLane, from: meetS - 6, until: s0 + SUBWAY_CAR_LEN + 6 });
+    }
+
+    this.moverVersion++;
+    this.listVersion++;
   }
 
   /**
@@ -3351,14 +3562,16 @@ class Engine {
   }
 
   private spawnSubwayEncounter(tun: SubwayTunnel) {
-    // 1. Formasi Bus Bertingkat (Ramp -> Bus A -> Bus B -> Bus C) di awal terowongan
-    this.spawnStaggeredBusChain(tun, tun.startS + 22);
-    // 2. Bus Ekspres Jalan Raya di segmen berikutnya
-    this.spawnSubwaySegment(tun, tun.startS + 72, 1);
-    // 3. Formasi Bus Bertingkat (Ramp -> Bus A -> Bus B -> Bus C) berikutnya
-    this.spawnStaggeredBusChain(tun, tun.startS + 120);
-    // Jadwalkan kemunculan berkala bus berikutnya di sepanjang 1440m
-    tun.nextEncounterS = tun.startS + 175;
+    // 1. Bus Berhenti / Landasan Skate Subway Surfers di awal terowongan!
+    this.spawnStationaryBusRunway(tun, tun.startS + 20, 0);
+    // 2. Formasi Bus Bertingkat (Ramp -> Bus A -> Bus B -> Bus C) di segmen berikutnya
+    this.spawnStaggeredBusChain(tun, tun.startS + 75);
+    // 3. Bus Berhenti Pola Staggered Transfer (Lompat antar atap bus berhenti)
+    this.spawnStationaryBusRunway(tun, tun.startS + 135, 1);
+    // 4. Bus Ekspres Jalan Raya di segmen berikutnya
+    this.spawnSubwaySegment(tun, tun.startS + 195, 1);
+    // Jadwalkan kemunculan berkala bus berikutnya di sepanjang 720m
+    tun.nextEncounterS = tun.startS + 245;
   }
 
   private addIntersection(s: number): Intersection | null {
@@ -3527,7 +3740,7 @@ class Engine {
         const nearCrossing = this.crossings.some((c) => Math.abs(c.s - s0) < 36);
         const nearInter = this.intersections.some((it) => Math.abs(it.s - s0) < 36);
         if (!nearCrossing && !nearInter) {
-          const tunLen = 1440; // 120 chunks (1440m terowongan metro megah & panjang - 10x lebih panjang!)
+          const tunLen = 720; // 60 chunks (720m terowongan metro megah - dikurangi 50%)
           curTunnel = {
             id: this.nextId++,
             startS: s0,

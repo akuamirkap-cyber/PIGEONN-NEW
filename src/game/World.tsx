@@ -106,7 +106,6 @@ import {
   cityBusObstacleParts,
   SUBWAY_CAR_LEN,
   SUBWAY_GAP,
-  SUBWAY_ROOF_H,
 } from "./models";
 import { useUI, type TrackMode } from "./store";
 import { getRayTexture } from "./rays";
@@ -910,8 +909,9 @@ const SubwayTrainView = memo(function SubwayTrainView({ st }: { st: SubwayTrain 
         const isFront = i === 0;
         const isRear = i === st.nCars - 1;
         const isShinkansen = !!st.isShinkansen;
-        const key = `subway-car-${st.line}-${isFront ? "front" : isRear ? "rear" : "mid"}-${isShinkansen ? "shinkansen" : "metro"}`;
-        return getGeometryPair(key, () => subwayTrainCarParts(st.line, isFront, isRear, isShinkansen));
+        const isStopped = !!st.isStopped || st.speed === 0;
+        const key = `subway-car-${st.line}-${isFront ? "front" : isRear ? "rear" : "mid"}-${isShinkansen ? "shinkansen" : "metro"}-${isStopped ? "stopped" : "run"}`;
+        return getGeometryPair(key, () => subwayTrainCarParts(st.line, isFront, isRear, isShinkansen, isStopped));
       }),
     [st],
   );

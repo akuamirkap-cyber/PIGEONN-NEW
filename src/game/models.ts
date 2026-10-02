@@ -4134,6 +4134,7 @@ export function subwayTrainCarParts(
   isFrontCab = false,
   isRearCab = false,
   isShinkansen = false,
+  isStopped = false,
 ): Part[] {
   const lineIdx = line % 4;
   // Livery bus khas Tokyo:
@@ -4244,16 +4245,16 @@ export function subwayTrainCarParts(
     // Kaca depan interior glow lembut
     parts.push({ x: fx - 0.05, y: 1.72, z: 0, w: 0.06, h: 0.78, d: W - 0.5, color: warmInterior, glow: true });
 
-    // PAPAN ROLLSIGN TUJUAN BUS BERCAHAYA: "渋谷駅前 / SHIBUYA BUS"
+    // PAPAN ROLLSIGN TUJUAN BUS BERCAHAYA: "回送 / PARKED" atau "渋谷駅前 / SHIBUYA BUS"
     parts.push({ x: fx - 0.12, y: 2.22, z: 0, w: 0.06, h: 0.25, d: 1.55, color: "#111827" });
-    parts.push({ x: fx - 0.14, y: 2.22, z: 0, w: 0.04, h: 0.18, d: 1.45, color: "#ffd21f", glow: true });
+    parts.push({ x: fx - 0.14, y: 2.22, z: 0, w: 0.04, h: 0.18, d: 1.45, color: isStopped ? "#ff9f1c" : "#ffd21f", glow: true });
 
     // LAMPU DEPAN BUS TWIN HIGH-BEAM LED MENYALA TERANG
-    parts.push({ x: fx - 0.14, y: 0.82, z: -0.78, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
-    parts.push({ x: fx - 0.14, y: 0.82, z: 0.78, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
-    // Lampu sein amber di sudut bawah
-    parts.push({ x: fx - 0.14, y: 0.82, z: -1.02, w: 0.07, h: 0.18, d: 0.14, color: "#ff9f1c", glow: true });
-    parts.push({ x: fx - 0.14, y: 0.82, z: 1.02, w: 0.07, h: 0.18, d: 0.14, color: "#ff9f1c", glow: true });
+    parts.push({ x: fx - 0.14, y: 0.82, z: -0.78, w: 0.08, h: 0.24, d: 0.36, color: isStopped ? "#ffe599" : "#fffde6", glow: true });
+    parts.push({ x: fx - 0.14, y: 0.82, z: 0.78, w: 0.08, h: 0.24, d: 0.36, color: isStopped ? "#ffe599" : "#fffde6", glow: true });
+    // Lampu sein / hazard amber di sudut bawah
+    parts.push({ x: fx - 0.14, y: 0.82, z: -1.02, w: 0.08, h: 0.22, d: 0.18, color: "#ff9f1c", glow: true });
+    parts.push({ x: fx - 0.14, y: 0.82, z: 1.02, w: 0.08, h: 0.22, d: 0.18, color: "#ff9f1c", glow: true });
 
     // Grille depan bus & emblem
     parts.push({ x: fx - 0.12, y: 0.78, z: 0, w: 0.06, h: 0.28, d: 0.9, color: "#1e2430" });
