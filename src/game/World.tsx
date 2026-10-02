@@ -65,8 +65,6 @@ import {
   sakuraParts,
   stoneLanternParts,
   petalParts,
-  ramenShopParts,
-  machiyaShopParts,
   japaneseHouseParts,
   japaneseVillageHouseParts,
   hakoneTrainCarParts,
@@ -82,11 +80,9 @@ import {
   mountainRockParts,
   vendingParts,
   mamachariParts,
-  konbiniShopParts,
   neonSignboardParts,
   billboardParts,
   jamCarParts,
-  tower109Parts,
   avenueLampParts,
   stopSignParts,
   pedCrossingSignParts,
@@ -133,12 +129,34 @@ import {
   LANE_LAT,
 } from "./engine";
 import { buildGroundGeometry } from "./ground";
+import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuildingModels";
 
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
+        if (d.spec?.shibuyaAssetId) {
+          return getShibuyaBuildingGeoPair(d.spec.shibuyaAssetId);
+        }
+        if (d.spec?.night) {
+          const mapping: ShibuyaBuildingId[] = [
+            "qfront",
+            "neon",
+            "skyscraper",
+            "shibuya109",
+            "station",
+            "ramen",
+            "izakaya",
+            "konbini",
+            "tokyotower",
+            "machiya",
+            "townhouse",
+            "pagoda",
+          ];
+          const bldId = mapping[(d.spec.shibuyaType ?? 0) % mapping.length];
+          return getShibuyaBuildingGeoPair(bldId);
+        }
         return buildVoxelPair(buildingParts(d.spec!));
       case "tree":
         return getGeometryPair(`tree-${d.variant}`, () => treeParts(d.variant));
@@ -161,9 +179,9 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "lantern":
         return getGeometryPair("lantern", stoneLanternParts);
       case "ramen":
-        return getGeometryPair("ramen", ramenShopParts);
+        return getShibuyaBuildingGeoPair("ramen");
       case "machiya":
-        return getGeometryPair(`machiya-${d.variant % 2}`, () => machiyaShopParts(d.variant));
+        return getShibuyaBuildingGeoPair("machiya");
       case "house":
         return getGeometryPair(`house-${d.variant % 2}`, () => japaneseHouseParts(d.variant));
       case "village_house":
@@ -181,7 +199,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "mamachari":
         return getGeometryPair(`mamachari-${d.variant % 4}`, () => mamachariParts(d.variant));
       case "konbini":
-        return getGeometryPair("konbini", konbiniShopParts);
+        return getShibuyaBuildingGeoPair("konbini");
       case "neon_sign":
         return getGeometryPair(`neon-${d.variant % 2}`, () => neonSignboardParts(d.variant));
       case "touge_sign":
@@ -193,7 +211,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "jam_car":
         return getGeometryPair(`jam-car-${d.variant % 5}`, () => jamCarParts(d.variant));
       case "tower109":
-        return getGeometryPair("tower109", tower109Parts);
+        return getShibuyaBuildingGeoPair("shibuya109");
       case "avenue_lamp":
         return getGeometryPair("avenue-lamp", avenueLampParts);
       case "guard_fence":
@@ -217,7 +235,8 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     }
   }, [d]);
   useEffect(() => {
-    if (d.kind === "building")
+    // Only dispose dynamically generated, non-cached building geometries
+    if (d.kind === "building" && !d.spec?.shibuyaAssetId && !d.spec?.night)
       return () => {
         geo.lit.dispose();
         geo.glow?.dispose();
@@ -234,7 +253,8 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "neon_sign" ||
     d.kind === "touge_sign" ||
     d.kind === "touge_lamp" ||
-    d.kind === "billboard";
+    d.kind === "billboard" ||
+    d.kind === "tower109";
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
   return (

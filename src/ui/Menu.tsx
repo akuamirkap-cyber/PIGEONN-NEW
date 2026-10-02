@@ -340,7 +340,7 @@ function MainMenu() {
       </div>
 
       {/* ── Daily Word Hunt Pill on Main Menu ── */}
-      <div className="absolute left-0 right-0 top-[28.5%] flex justify-center">
+      <div className="absolute left-0 right-0 top-[28.5%] flex flex-col items-center gap-2">
         <button
           type="button"
           onClick={() => {
@@ -369,6 +369,20 @@ function MainMenu() {
           <span className="rounded-full bg-white/10 px-2 py-0.5 font-display text-[2.4cqw] text-white/80">
             {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            unlockAudio();
+            sfx.click();
+            window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
+          }}
+          className="pointer-events-auto flex items-center gap-1.5 rounded-xl border border-[#2ec4b6]/70 bg-[#1c2230]/90 px-3 py-1 font-body text-[2.3cqw] font-black tracking-wide text-[#2ec4b6] shadow-md backdrop-blur-sm transition-all hover:bg-[#2ec4b6]/20 active:scale-95"
+        >
+          <span>🏙️</span>
+          <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
+          <span className="text-white/70">→</span>
         </button>
       </div>
 
@@ -465,6 +479,19 @@ function MainMenu() {
             </div>
             <TrackModeRow />
             <SettingsRow />
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(false);
+                unlockAudio();
+                sfx.click();
+                window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
+              }}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2ec4b6] to-[#3a86ff] py-2.5 font-display text-[3.4cqw] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px]"
+            >
+              <span>🏙️</span>
+              <span>PINDAH KE MODE KOTA SHIBUYA</span>
+            </button>
             <div className="mt-2 flex gap-2">
               <button
                 type="button"

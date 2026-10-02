@@ -8,6 +8,7 @@ import { MysteryBoxModal } from "./ui/MysteryBoxModal";
 import { engine, track } from "./game/engine";
 import { useUI } from "./game/store";
 import { ensureThumbs } from "./game/thumbs";
+import ShibuyaApp from "./shibuya/ShibuyaApp";
 
 // debug handle (harmless in production)
 if (typeof window !== "undefined") {
@@ -59,6 +60,32 @@ export default function App() {
   useInput(inputRef);
   const [glKey, setGlKey] = useState(0);
   const [glLost, setGlLost] = useState(false);
+  const [gameMode, setGameMode] = useState<"pigeon" | "shibuya">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("preferred_game_mode");
+      if (saved === "pigeon" || saved === "shibuya") return saved;
+    }
+    return "shibuya"; // Default ke mode shibuya sesuai permintaan pengguna
+  });
+
+  const switchGameMode = (mode: "pigeon" | "shibuya") => {
+    setGameMode(mode);
+    try {
+      localStorage.setItem("preferred_game_mode", mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<"pigeon" | "shibuya">;
+      if (custom.detail) switchGameMode(custom.detail);
+    };
+    window.addEventListener("switch-game-mode", handler);
+    return () => window.removeEventListener("switch-game-mode", handler);
+  }, []);
+
   const onContextLost = () => {
     setGlLost(true);
     setTimeout(() => {
@@ -66,7 +93,9 @@ export default function App() {
       setGlLost(false);
     }, 900);
   };
+
   useEffect(() => {
+    if (gameMode !== "pigeon") return;
     // pre-render the 3D skin thumbnails lazily after game is running smoothly
     const t = setTimeout(() => {
       try {
@@ -76,42 +105,78 @@ export default function App() {
       }
     }, 3500);
     return () => clearTimeout(t);
-  }, []);
+  }, [gameMode]);
 
   return (
-    <div
-      className="flex h-[100dvh] w-full flex-col items-center justify-center overflow-hidden"
-      style={{
-        background: stage.fullscreen
-          ? "#151823"
-          : "radial-gradient(circle at 30% 20%, #2a3150 0%, #151823 55%, #0e1018 100%)",
-      }}
-    >
-      <div
-        className="sky @container relative overflow-hidden"
-        style={{
-          width: stage.w,
-          height: stage.h,
-          borderRadius: stage.fullscreen ? 0 : 30,
-          boxShadow: stage.fullscreen ? "none" : "0 0 0 10px #262b3a, 0 0 0 12px #3a4158, 0 30px 80px rgba(0,0,0,0.6)",
-        }}
-      >
-        <Scene key={glKey} onContextLost={onContextLost} />
-        {glLost && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#151823]/80">
-            <div className="rounded-2xl bg-white px-5 py-3 font-body text-sm font-extrabold text-[#1f2430]">Restarting graphics…</div>
-          </div>
-        )}
-        {/* input layer sits above the canvas, below the UI */}
-        <div ref={inputRef} className="absolute inset-0 z-10" style={{ touchAction: "none" }} />
-        <HUD />
-        <Menu />
-        <GameOver />
-        <MysteryBoxModal />
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-[#151823]">
+      {/* ── Floating Game Mode Switcher Bar ── */}
+      <div className="fixed top-2.5 left-1/2 -translate-x-1/2 z-50 flex items-center p-1 rounded-full bg-[#151823]/92 border border-white/20 shadow-2xl backdrop-blur-md font-sans">
+        <button
+          type="button"
+          onClick={() => switchGameMode("pigeon")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-extrabold text-xs transition-all ${
+            gameMode === "pigeon"
+              ? "bg-[#ffd21f] text-[#151823] shadow-md scale-105"
+              : "text-white/70 hover:text-white hover:bg-white/10"
+          }`}
+          title="Mode Game: Pigeon Skateboard Runner"
+        >
+          <span>🛹</span>
+          <span>PIGEON SK8</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => switchGameMode("shibuya")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-extrabold text-xs transition-all ${
+            gameMode === "shibuya"
+              ? "bg-[#2ec4b6] text-white shadow-md scale-105"
+              : "text-white/70 hover:text-white hover:bg-white/10"
+          }`}
+          title="Mode Game: Shibuya Blocks Voxel World & Asset Studio"
+        >
+          <span>🏙️</span>
+          <span>SHIBUYA BLOCKS</span>
+        </button>
       </div>
-      {!stage.fullscreen && (
-        <div className="mt-5 font-body text-sm font-bold tracking-wide text-white/50">
-          Keyboard: ← → lanes · ↑ / Space = jump · S = next freestyle (in order) · SHIFT = sprint kick (+40, +50, +70) · N = NOS · ↓ shuv‑it · In air: Space flip, F impossible, ↑ method, hold G indy, ← ← / → → 360
+
+      {gameMode === "shibuya" ? (
+        <ShibuyaApp onBackToPigeon={() => switchGameMode("pigeon")} />
+      ) : (
+        <div
+          className="flex h-[100dvh] w-full flex-col items-center justify-center overflow-hidden"
+          style={{
+            background: stage.fullscreen
+              ? "#151823"
+              : "radial-gradient(circle at 30% 20%, #2a3150 0%, #151823 55%, #0e1018 100%)",
+          }}
+        >
+          <div
+            className="sky @container relative overflow-hidden"
+            style={{
+              width: stage.w,
+              height: stage.h,
+              borderRadius: stage.fullscreen ? 0 : 30,
+              boxShadow: stage.fullscreen ? "none" : "0 0 0 10px #262b3a, 0 0 0 12px #3a4158, 0 30px 80px rgba(0,0,0,0.6)",
+            }}
+          >
+            <Scene key={glKey} onContextLost={onContextLost} />
+            {glLost && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#151823]/80">
+                <div className="rounded-2xl bg-white px-5 py-3 font-body text-sm font-extrabold text-[#1f2430]">Restarting graphics…</div>
+              </div>
+            )}
+            {/* input layer sits above the canvas, below the UI */}
+            <div ref={inputRef} className="absolute inset-0 z-10" style={{ touchAction: "none" }} />
+            <HUD />
+            <Menu />
+            <GameOver />
+            <MysteryBoxModal />
+          </div>
+          {!stage.fullscreen && (
+            <div className="mt-5 font-body text-sm font-bold tracking-wide text-white/50">
+              Keyboard: ← → lanes · ↑ / Space = jump · S = next freestyle · SHIFT = sprint · N = NOS · ↓ shuv‑it
+            </div>
+          )}
         </div>
       )}
     </div>

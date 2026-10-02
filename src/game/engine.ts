@@ -13,6 +13,7 @@ import {
   SUBWAY_GAP,
   SUBWAY_ROOF_H,
   type BuildingSpec,
+  type ShibuyaBuildingId,
 } from "./models";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
@@ -3888,37 +3889,97 @@ class Engine {
         add("subway_tunnel_rib", 6, 0, 0, curTunnel.line);
 
         // Skyline gedung megah Shibuya tetap terlihat di latar belakang jauh (kombinasi indah)
-        if (id % 2 === 0) add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
-        if (id % 2 === 1) add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
+        const skylineBuildings: ShibuyaBuildingId[] = [
+          "tokyotower",
+          "skyscraper",
+          "pagoda",
+          "shibuya109",
+          "neon",
+          "qfront",
+          "station",
+          "ramen",
+          "konbini",
+          "izakaya",
+          "machiya",
+          "townhouse",
+        ];
+        if (id % 2 === 0) {
+          const skyBld = skylineBuildings[Math.abs(Math.floor(id / 2)) % skylineBuildings.length];
+          add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+        }
+        if (id % 2 === 1) {
+          const skyBld = skylineBuildings[Math.abs(Math.floor((id + 3) / 2)) % skylineBuildings.length];
+          add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+        }
 
         this.chunks.push({ id, s0, kind: "shibuya", decor });
         this.listVersion++;
         return;
       }
 
-      // ---- SHIBUYA: grand open avenue with spacious, towering Japanese architecture ----
-      // Spacing: ONE substantial lot per 12m chunk (centered at lx = 6) with clean alleyway gaps.
+      // ---- SHIBUYA: Semua gedung, rumah ramen & gedung ikonik dari Shibuya Blocks (tanpa terkecuali) ----
+      const nearShibuyaBuildings: ShibuyaBuildingId[] = [
+        "ramen",        // Rumah Ramen-ya Shibuya Blocks dengan noren, lampion & counter
+        "shibuya109",   // Gedung Ikonik Shibuya 109
+        "qfront",       // Gedung Ikonik Q-FRONT (Layar LED & Kafe)
+        "konbini",      // Toko Konbini 24H Shibuya
+        "neon",         // Gedung Neon Center-gai
+        "station",      // Gedung Stasiun JR Shibuya
+        "izakaya",      // Kedai Nonbei Yokocho Izakaya
+        "townhouse",    // Tokyo Townhouse
+        "machiya",      // Rumah Tradisional Machiya
+        "skyscraper",   // Gedung Shibuya Tower District
+        "tokyotower",   // Menara Ikonik Tokyo Tower
+        "pagoda",       // Pagoda 5 Tingkat & Sakura
+      ];
+      const farShibuyaBuildings: ShibuyaBuildingId[] = [
+        "skyscraper",   // Gedung Pencakar Langit Shibuya Tower
+        "qfront",       // Gedung Q-FRONT
+        "shibuya109",   // Gedung Shibuya 109
+        "neon",         // Gedung Neon Center-gai
+        "station",      // Stasiun JR Shibuya
+        "ramen",        // Rumah Ramen-ya
+        "konbini",      // Konbini 24H
+        "izakaya",      // Kedai Izakaya
+        "machiya",      // Rumah Kayu Machiya
+        "townhouse",    // Tokyo Townhouse
+        "tokyotower",   // Menara Tokyo Tower
+        "pagoda",       // Pagoda 5 Tingkat
+      ];
+      const skylineBuildings: ShibuyaBuildingId[] = [
+        "tokyotower",   // Menara Ikonik Tokyo Tower
+        "skyscraper",   // Gedung Pencakar Langit
+        "pagoda",       // Pagoda 5 Tingkat & Sakura
+        "shibuya109",   // Gedung Shibuya 109
+        "neon",         // Gedung Neon Center-gai
+        "qfront",       // Menara Q-FRONT
+        "station",      // Stasiun JR Shibuya
+        "ramen",        // Rumah Ramen
+        "konbini",      // Konbini 24H
+        "izakaya",      // Kedai Izakaya
+        "machiya",      // Rumah Machiya
+        "townhouse",    // Tokyo Townhouse
+      ];
+
       // 1. Near frontage:
-      if (id % 21 === 7) {
-        add("tower109", 6, -10.8, -0.12);
-      } else {
-        const r = Math.random();
-        if (r < 0.70) add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(rand(9.8, 12.8)));
-        else if (r < 0.86) add("konbini", 6, -10.2, 0.1, 0); // large 10.4m wide 24h konbini
-        else add("ramen", 6, -10.2, 0.1, 0); // large 8.6m wide 2-storey ramen house
-      }
+      const nearBld = nearShibuyaBuildings[Math.abs(id) % nearShibuyaBuildings.length];
+      add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
 
       // 2. Far frontage across all 6 lanes:
-      if (Math.random() < 0.88) {
-        const rFar = Math.random();
-        if (rFar < 0.78) add("building", 6, 23.8, -0.14, 0, makeShibuyaTowerSpec(rand(12.5, 16.5), 8 + Math.floor(Math.random() * 6)));
-        else if (rFar < 0.90) add("konbini", 6, 23.8, -0.14, 0);
-        else add("ramen", 6, 23.8, -0.14, 0);
+      if (Math.random() < 0.92) {
+        const farBld = farShibuyaBuildings[Math.abs(id + 4) % farShibuyaBuildings.length];
+        add("building", 6, 23.8, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
       }
 
-      // 3. Second skyline row: towering background skyscrapers (placed every 2 chunks so no clutter)
-      if (id % 2 === 0) add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
-      if (id % 2 === 1) add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(rand(14.0, 18.5), 12 + Math.floor(Math.random() * 8)));
+      // 3. Second skyline row: towering background skyscrapers & landmarks (placed every 2 chunks so no clutter)
+      if (id % 2 === 0) {
+        const skyBld = skylineBuildings[Math.abs(Math.floor(id / 2)) % skylineBuildings.length];
+        add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      }
+      if (id % 2 === 1) {
+        const skyBld = skylineBuildings[Math.abs(Math.floor((id + 3) / 2)) % skylineBuildings.length];
+        add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      }
 
       // 4. Department store display billboards across the wide boulevard (far background only)
       if (id % 6 === 3) add("billboard", 6, 27.5, -0.16, randInt(0, 2));

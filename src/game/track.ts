@@ -47,7 +47,7 @@ const _s: TrackSample = { x: 0, y: 0, z: 0, th: 0, g: 0, kappa: 0 };
  */
 export class Track {
   end = 0;
-  mode: "tokyo" | "haruna" | "shibuya" = "haruna";
+  mode: "tokyo" | "haruna" | "shibuya" = "shibuya";
   private turns: Turn[] = [];
   private ramps: Ramp[] = [];
   private planEnd = 0;
@@ -63,7 +63,7 @@ export class Track {
   private iz = 0;
   private ith = 0;
 
-  constructor(mode: "tokyo" | "haruna" | "shibuya" = "haruna") {
+  constructor(mode: "tokyo" | "haruna" | "shibuya" = "shibuya") {
     this.mode = mode;
     this.reset(mode);
   }

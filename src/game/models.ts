@@ -1,4 +1,10 @@
 import type { Part } from "./voxel";
+import {
+  type ShibuyaBuildingId,
+  getShibuyaBuildingParts,
+} from "./shibuyaBuildingModels";
+
+export type { ShibuyaBuildingId };
 
 /* ---------- Obstacles ---------- */
 
@@ -463,6 +469,7 @@ export interface BuildingSpec {
   shibuyaType?: 0 | 1 | 2 | 3 | 4;
   accentColor?: string;
   spandrelColor?: string;
+  shibuyaAssetId?: ShibuyaBuildingId;
 }
 
 /** Neon hues used across the Shibuya night city (signs, windows, billboards). */
@@ -497,7 +504,7 @@ const ACCENT_FACADES = [
   "#d0d8e2", // silver anodized aluminium
 ];
 
-export function makeShibuyaTowerSpec(w: number, floorCount?: number): BuildingSpec {
+export function makeShibuyaTowerSpec(w: number, floorCount?: number, assetId?: ShibuyaBuildingId): BuildingSpec {
   const neon = NEON_COLORS[Math.floor(Math.random() * NEON_COLORS.length)];
   const floors = floorCount ?? (7 + Math.floor(Math.random() * 5)); // 7..11 floors: a proper grand Tokyo canyon
   const shibuyaType = Math.floor(Math.random() * 5) as 0 | 1 | 2 | 3 | 4;
@@ -521,6 +528,7 @@ export function makeShibuyaTowerSpec(w: number, floorCount?: number): BuildingSp
     shibuyaType,
     accentColor,
     spandrelColor: "#262c3a",
+    shibuyaAssetId: assetId,
   };
 }
 
@@ -544,347 +552,29 @@ export function makeBuildingSpec(w: number): BuildingSpec {
  * rich physical facade depth, recessed window bays, and authentic Tokyo silhouettes.
  */
 function shibuyaTowerParts(s: BuildingSpec): Part[] {
-  const parts: Part[] = [];
-  const depth = 6.4;
-  const floorH = 2.15;
-  const h = s.floors * floorH + 0.8;
-  const type = s.shibuyaType ?? 0;
-  const primary = s.color;
-  const accent = s.accentColor ?? "#d6dfe8";
-  // Light, elegant Japanese architectural materials — ZERO solid black!
-  const groundGranite = "#bcc4cf"; // clean light architectural polished granite
-  const framePewter = "#929dae"; // refined satin architectural champagne steel
-  const glassReflect = "#c2d2e2"; // soft reflective sky-glass (gentle calm sky tone, never black!)
-  const winColors = ["#fff9ed", "#fff4dc", "#fffaee", "#faeed4"]; // warm, luxurious incandescent office glow
-  const seed = Math.abs(Math.round(s.w * 13 + s.floors * 7));
-  const fasciaColor = SIGN_COLORS[(seed + 3) % SIGN_COLORS.length];
-
-  // 1. Solid deep foundation base in clean light granite (never floats on sloped street)
-  parts.push({ x: 0, y: -1.4, z: -depth / 2, w: s.w + 0.35, h: 2.8, d: depth + 0.35, color: "#a4aeb9" });
-
-  // -------------------------------------------------------------
-  // ARCHETYPE 0: Stepped Terraces (Cascading Setback with Rooftop Garden)
-  // -------------------------------------------------------------
-  if (type === 0) {
-    const podiumFloors = 3;
-    const podiumH = podiumFloors * floorH + 0.6;
-    const stepW = Math.max(2.4, s.w * 0.32);
-    const upperW = s.w - stepW;
-    const upperX = stepW / 2;
-    const upperH = Math.max(floorH, (s.floors - podiumFloors) * floorH + 0.2);
-
-    // Podium lower block (pure porcelain / travertine)
-    parts.push({ x: 0, y: podiumH / 2, z: -depth / 2, w: s.w, h: podiumH, d: depth, color: primary });
-    // Upper stepped tower
-    parts.push({ x: upperX, y: podiumH + upperH / 2, z: -depth / 2, w: upperW, h: upperH, d: depth, color: primary });
-
-    // Terrace floor slab on podium roof (clean warm limestone tile)
-    parts.push({ x: -s.w / 2 + stepW / 2, y: podiumH + 0.08, z: -depth * 0.35, w: stepW, h: 0.16, d: depth * 0.75, color: "#e4e9f0" });
-    // Terrace glass balustrade railing (clear architectural sky glass)
-    parts.push({ x: -s.w / 2 + stepW / 2, y: podiumH + 0.52, z: 0.04, w: stepW, h: 0.72, d: 0.06, color: "#b8cce0" });
-    parts.push({ x: -s.w / 2 + stepW / 2, y: podiumH + 0.9, z: 0.04, w: stepW, h: 0.08, d: 0.09, color: framePewter });
-    // Terrace greenery / planter
-    parts.push({ x: -s.w / 2 + stepW * 0.45, y: podiumH + 0.44, z: -depth * 0.3, w: stepW * 0.6, h: 0.65, d: 1.4, color: "#2d6a4f" });
-    // Terrace warm cafe table glow (soft, cozy warm light)
-    parts.push({ x: -s.w / 2 + stepW * 0.8, y: podiumH + 0.6, z: -depth * 0.25, w: 0.45, h: 0.65, d: 0.45, color: "#fff2d0", glow: true });
-
-    // Ground floor storefront & canopy (warm stone & satin steel, NOT black!)
-    parts.push({ x: 0, y: 1.3, z: 0.04, w: s.w * 0.92, h: 2.1, d: 0.12, color: groundGranite });
-    parts.push({ x: 0, y: 1.3, z: 0.1, w: s.w * 0.86, h: 1.85, d: 0.08, color: "#fff7ea", glow: true });
-    parts.push({ x: 0, y: 2.5, z: 0.16, w: s.w * 0.92, h: 0.65, d: 0.18, color: fasciaColor, glow: true });
-    parts.push({ x: 0, y: 2.45, z: 0.6, w: s.w * 0.65, h: 0.12, d: 1.25, color: framePewter });
-
-    // Windows for podium floors 2-3
-    for (let f = 1; f < podiumFloors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      const cols = Math.max(3, Math.floor(s.w / 1.7));
-      const sp = s.w / cols;
-      for (let c = 0; c < cols; c++) {
-        const x = -s.w / 2 + sp * (c + 0.5);
-        const lit = (f * 5 + c * 3 + seed) % 7 !== 0;
-        parts.push({ x, y: fy, z: 0.04, w: sp * 0.68, h: 1.15, d: 0.12, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-      }
-    }
-
-    // Upper tower vertical fins & windows
-    const upCols = Math.max(2, Math.floor(upperW / 1.6));
-    const upSp = upperW / upCols;
-    for (let f = podiumFloors; f < s.floors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      for (let c = 0; c < upCols; c++) {
-        const x = upperX - upperW / 2 + upSp * (c + 0.5);
-        const lit = (f * 7 + c * 5 + seed) % 9 !== 0;
-        parts.push({ x, y: fy, z: 0.04, w: upSp * 0.68, h: 1.15, d: 0.12, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-      }
-    }
-    // Vertical fins on upper tower (champagne / brushed silver)
-    for (let c = 0; c <= upCols; c++) {
-      const x = upperX - upperW / 2 + upSp * c;
-      parts.push({ x, y: podiumH + upperH / 2, z: 0.1, w: 0.14, h: upperH, d: 0.2, color: accent });
-    }
-
-    // Stepped rooftop penthouse & antenna
-    parts.push({ x: upperX, y: h + 0.8, z: -depth / 2, w: upperW * 0.65, h: 1.6, d: depth * 0.65, color: accent });
-    parts.push({ x: upperX - upperW * 0.18, y: h + 0.6, z: -depth * 0.32, w: 1.3, h: 0.9, d: 0.9, color: "#cbd3dc" });
-    parts.push({ x: upperX + upperW * 0.16, y: h + 2.0, z: -depth / 2, w: 0.14, h: 2.8, d: 0.14, color: framePewter });
-    parts.push({ x: upperX + upperW * 0.16, y: h + 3.45, z: -depth / 2, w: 0.28, h: 0.28, d: 0.28, color: "#e03b48", glow: true });
-  }
-
-  // -------------------------------------------------------------
-  // ARCHETYPE 1: Cantilever Podium & Pillar Arcade (Modern Tokyo Hub)
-  // -------------------------------------------------------------
-  else if (type === 1) {
-    const upperH = (s.floors - 1) * floorH + 0.8;
-    // Ground floor recessed body behind pillars (light warm stone)
-    parts.push({ x: 0, y: 1.35, z: -depth / 2 - 0.4, w: s.w, h: 2.7, d: depth - 0.8, color: groundGranite });
-    // Upper cantilevered body
-    parts.push({ x: 0, y: 2.7 + upperH / 2, z: -depth / 2 + 0.1, w: s.w, h: upperH, d: depth, color: primary });
-
-    // Front structural pilotis (pillars) at sidewalk edge (light architectural granite)
-    const nCols = Math.max(3, Math.floor(s.w / 2.4));
-    const colSp = s.w / nCols;
-    for (let i = 0; i < nCols; i++) {
-      const x = -s.w / 2 + colSp * (i + 0.5);
-      parts.push({ x, y: 1.35, z: 0.08, w: 0.52, h: 2.7, d: 0.52, color: groundGranite });
-    }
-    // Expressive structural transfer beam above arcade (brushed champagne)
-    parts.push({ x: 0, y: 2.75, z: 0.15, w: s.w, h: 0.55, d: depth * 0.4, color: accent });
-    // Recessed storefront behind pillars (soft warm luxury shop glow)
-    parts.push({ x: 0, y: 1.25, z: -0.55, w: s.w * 0.88, h: 1.85, d: 0.1, color: "#fff7ea", glow: true });
-
-    // Expressed vertical glass elevator core on the left (refined curtain glass)
-    const elevW = 1.65;
-    const elevX = -s.w / 2 + elevW / 2 + 0.2;
-    parts.push({ x: elevX, y: h / 2, z: 0.26, w: elevW, h, d: 0.38, color: framePewter });
-    parts.push({ x: elevX, y: h / 2, z: 0.46, w: elevW - 0.35, h: h - 1.6, d: 0.06, color: glassReflect });
-    // Lit elevator cab on a mid floor (warm golden ambient)
-    parts.push({ x: elevX, y: h * 0.58, z: 0.48, w: elevW - 0.45, h: 1.2, d: 0.05, color: "#fff2d0", glow: true });
-
-    // Upper facade windows
-    const winCols = Math.max(2, Math.floor((s.w - elevW) / 1.7));
-    const winSp = (s.w - elevW) / winCols;
-    const winStart = elevX + elevW / 2;
-    for (let f = 1; f < s.floors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      for (let c = 0; c < winCols; c++) {
-        const x = winStart + winSp * (c + 0.5);
-        const lit = (f * 3 + c * 7 + seed) % 8 !== 0;
-        parts.push({ x, y: fy, z: 0.18, w: winSp * 0.68, h: 1.15, d: 0.1, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-      }
-      // Horizontal spandrel band between floors (brushed silver aluminum)
-      parts.push({ x: s.w / 2 - (s.w - elevW) / 2, y: fy - 0.65, z: 0.19, w: s.w - elevW - 0.1, h: 0.25, d: 0.14, color: accent });
-    }
-
-    // Rooftop water tank & HVAC
-    parts.push({ x: s.w * 0.24, y: h + 1.0, z: -depth * 0.38, w: 1.65, h: 1.65, d: 1.65, color: "#cbd3dc" });
-    parts.push({ x: -s.w * 0.12, y: h + 0.6, z: -depth * 0.4, w: 1.8, h: 0.85, d: 0.95, color: "#b8c2ce" });
-    parts.push({ x: 0, y: h + 0.18, z: -depth / 2, w: s.w + 0.3, h: 0.35, d: depth + 0.3, color: "#cbd4de" });
-  }
-
-  // -------------------------------------------------------------
-  // ARCHETYPE 2: Twin Split Bay (Interlocking Dual-Volume Skyscraper)
-  // -------------------------------------------------------------
-  else if (type === 2) {
-    const wA = Math.round(s.w * 0.58 * 10) / 10;
-    const wB = s.w - wA;
-    const xA = -s.w / 2 + wA / 2;
-    const xB = s.w / 2 - wB / 2;
-    const hB = Math.max(3 * floorH, (s.floors - 2) * floorH + 0.8);
-
-    // Primary Bay A (taller, porcelain white / warm limestone)
-    parts.push({ x: xA, y: h / 2, z: -depth / 2, w: wA, h, d: depth, color: primary });
-    // Secondary Bay B (shorter, set back 0.35m in z, champagne / silver accent)
-    parts.push({ x: xB, y: hB / 2, z: -depth / 2 - 0.18, w: wB, h: hB, d: depth - 0.36, color: accent });
-
-    // Recessed joint shadow slot between bays (satin steel)
-    parts.push({ x: xA + wA / 2, y: hB / 2, z: -0.22, w: 0.36, h: hB, d: depth * 0.55, color: framePewter });
-    // Connecting skybridge link at floor 3-4 (warm illuminated glass link, NOT cyber neon)
-    parts.push({ x: (xA + xB) / 2, y: 3.5 * floorH, z: 0.18, w: 1.1, h: 1.25, d: 0.35, color: framePewter });
-    parts.push({ x: (xA + xB) / 2, y: 3.5 * floorH, z: 0.36, w: 0.88, h: 0.95, d: 0.06, color: "#fff5dc", glow: true });
-
-    // Ground storefront on Bay A (warm stone)
-    parts.push({ x: xA, y: 1.3, z: 0.05, w: wA * 0.9, h: 1.95, d: 0.12, color: groundGranite });
-    parts.push({ x: xA, y: 1.3, z: 0.13, w: wA * 0.82, h: 1.65, d: 0.08, color: "#fff7ea", glow: true });
-    parts.push({ x: xA, y: 2.5, z: 0.18, w: wA * 0.9, h: 0.65, d: 0.18, color: fasciaColor, glow: true });
-
-    // Bay A windows (vertical grid)
-    const colsA = Math.max(2, Math.floor(wA / 1.7));
-    const spA = wA / colsA;
-    for (let f = 1; f < s.floors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      for (let c = 0; c < colsA; c++) {
-        const x = xA - wA / 2 + spA * (c + 0.5);
-        const lit = (f * 5 + c * 7 + seed) % 8 !== 0;
-        parts.push({ x, y: fy, z: 0.05, w: spA * 0.66, h: 1.1, d: 0.1, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-      }
-    }
-
-    // Bay B horizontal ribbon windows
-    const bFloors = Math.floor(hB / floorH);
-    for (let f = 0; f < bFloors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      const lit = (f * 11 + seed) % 6 !== 0;
-      parts.push({ x: xB, y: fy, z: -0.06, w: wB * 0.84, h: 0.95, d: 0.1, color: lit ? "#fff3dc" : glassReflect, glow: lit });
-    }
-
-    // Bay B roof terrace / observation lounge (soft warm ambient, NOT neon!)
-    parts.push({ x: xB, y: hB + 0.45, z: -depth * 0.35, w: wB * 0.82, h: 0.8, d: depth * 0.55, color: "#fff0d0", glow: true });
-    parts.push({ x: xB, y: hB + 0.88, z: -depth * 0.35, w: wB * 0.88, h: 0.14, d: depth * 0.6, color: framePewter });
-
-    // Bay A crown blade & beacon
-    parts.push({ x: xA, y: h + 1.0, z: 0.05, w: wA * 0.85, h: 1.9, d: 0.3, color: primary });
-    parts.push({ x: xA + wA * 0.2, y: h + 2.2, z: -depth / 2, w: 0.14, h: 3.2, d: 0.14, color: framePewter });
-    parts.push({ x: xA + wA * 0.2, y: h + 3.85, z: -depth / 2, w: 0.28, h: 0.28, d: 0.28, color: "#e03b48", glow: true });
-  }
-
-  // -------------------------------------------------------------
-  // ARCHETYPE 3: Corner Chamfer / Modern Architectural Spire (NO NEON GLITCH!)
-  // -------------------------------------------------------------
-  else if (type === 3) {
-    const bodyW = s.w * 0.76;
-    const bodyX = -s.w * 0.12;
-    parts.push({ x: bodyX, y: h / 2, z: -depth / 2, w: bodyW, h, d: depth, color: primary });
-    // Step 1
-    parts.push({ x: s.w * 0.32, y: h / 2, z: -depth / 2 - 0.25, w: s.w * 0.24, h, d: depth - 0.5, color: primary });
-    // Step 2
-    parts.push({ x: s.w * 0.44, y: h / 2, z: -depth / 2 - 0.6, w: s.w * 0.16, h, d: depth - 1.1, color: primary });
-
-    // Elegant vertical glass ribbon along the chamfer (subtle sky reflection with warm window frames, NOT a glowing neon laser!)
-    const chX = s.w * 0.34;
-    parts.push({ x: chX, y: h * 0.52, z: 0.24, w: 0.58, h: h * 0.78, d: 0.18, color: glassReflect });
-    // Architectural window mullions along the chamfer
-    const nK = Math.floor((h * 0.78) / 1.6);
-    for (let i = 0; i < nK; i++) {
-      const cy = h * 0.52 + h * 0.34 - i * 1.6;
-      parts.push({ x: chX, y: cy, z: 0.34, w: 0.48, h: 0.9, d: 0.04, color: "#fff5df", glow: true });
-      parts.push({ x: chX, y: cy - 0.5, z: 0.36, w: 0.54, h: 0.12, d: 0.06, color: accent });
-    }
-
-    // Ground floor storefront (warm stone & brass)
-    parts.push({ x: bodyX, y: 1.3, z: 0.05, w: bodyW * 0.9, h: 1.95, d: 0.12, color: groundGranite });
-    parts.push({ x: bodyX, y: 1.3, z: 0.13, w: bodyW * 0.84, h: 1.65, d: 0.08, color: "#fff7ea", glow: true });
-    parts.push({ x: bodyX, y: 2.5, z: 0.18, w: bodyW * 0.9, h: 0.65, d: 0.18, color: fasciaColor, glow: true });
-
-    // Facade windows
-    const cols = Math.max(2, Math.floor(bodyW / 1.7));
-    const sp = bodyW / cols;
-    for (let f = 1; f < s.floors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      for (let c = 0; c < cols; c++) {
-        const x = bodyX - bodyW / 2 + sp * (c + 0.5);
-        const lit = (f * 5 + c * 3 + seed) % 7 !== 0;
-        parts.push({ x, y: fy, z: 0.05, w: sp * 0.68, h: 1.1, d: 0.1, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-      }
-    }
-
-    // Architectural blade crown extending past the roof (clean silver coping, NO NEON TRIM!)
-    parts.push({ x: bodyX, y: h + 1.25, z: 0.05, w: bodyW * 0.88, h: 2.4, d: 0.3, color: primary });
-    parts.push({ x: bodyX, y: h + 2.48, z: 0.05, w: bodyW * 0.9, h: 0.18, d: 0.32, color: "#d6dde6" });
-
-    // Communications spire on top
-    parts.push({ x: bodyX - bodyW * 0.2, y: h + 2.5, z: -depth / 2, w: 0.14, h: 4.0, d: 0.14, color: framePewter });
-    parts.push({ x: bodyX - bodyW * 0.2, y: h + 4.55, z: -depth / 2, w: 0.28, h: 0.28, d: 0.28, color: "#e03b48", glow: true });
-  }
-
-  // -------------------------------------------------------------
-  // ARCHETYPE 4: Zakkyo Commercial Center (Balconies & Department Store Billboard)
-  // -------------------------------------------------------------
-  else {
-    // Full width body (bright porcelain / travertine)
-    parts.push({ x: 0, y: h / 2, z: -depth / 2, w: s.w, h, d: depth, color: primary });
-    // Roof slab (clean aluminum coping)
-    parts.push({ x: 0, y: h + 0.18, z: -depth / 2, w: s.w + 0.3, h: 0.35, d: depth + 0.3, color: "#cbd4de" });
-
-    // Ground floor: Izakaya entrance with warm lantern glow & noren
-    parts.push({ x: 0, y: 1.3, z: 0.04, w: s.w * 0.92, h: 2.1, d: 0.12, color: groundGranite });
-    parts.push({ x: 0, y: 1.3, z: 0.12, w: s.w * 0.86, h: 1.8, d: 0.08, color: "#fff7ea", glow: true });
-    // Japanese noren doorway
-    parts.push({ x: 0, y: 1.95, z: 0.2, w: s.w * 0.52, h: 0.52, d: 0.05, color: "#b32028" });
-    // Fascia lightbox
-    parts.push({ x: 0, y: 2.5, z: 0.2, w: s.w * 0.92, h: 0.65, d: 0.2, color: fasciaColor, glow: true });
-
-    // Alternating recessed balcony niches (floors 2, 4, 6) in warm travertine tone (NOT black!)
-    const balW = s.w * 0.44;
-    const balX = s.w * 0.14;
-    for (let f = 1; f < s.floors; f++) {
-      const fy = 0.8 + f * floorH + 0.9;
-      const isBalcony = f % 2 === 1;
-      if (isBalcony) {
-        // Recessed cavity in soft warm limestone tone
-        parts.push({ x: balX, y: fy, z: 0.05, w: balW, h: 1.55, d: 0.95, color: "#ede6d8" });
-        // Steel balcony safety balustrade
-        parts.push({ x: balX, y: fy - 0.38, z: 0.48, w: balW, h: 0.72, d: 0.06, color: framePewter });
-        // Doorway glow inside balcony
-        parts.push({ x: balX, y: fy, z: -0.32, w: balW * 0.65, h: 1.3, d: 0.05, color: "#fff2d0", glow: true });
-        // Left side regular window
-        const winW = s.w - balW - 1.5;
-        parts.push({ x: -s.w / 2 + winW / 2 + 0.8, y: fy, z: 0.05, w: winW, h: 1.1, d: 0.1, color: winColors[f % winColors.length], glow: true });
-      } else {
-        // Standard floor windows
-        const cols = Math.max(3, Math.floor(s.w / 1.7));
-        const sp = s.w / cols;
-        for (let c = 0; c < cols; c++) {
-          const x = -s.w / 2 + sp * (c + 0.5);
-          const lit = (f * 3 + c * 5 + seed) % 7 !== 0;
-          parts.push({ x, y: fy, z: 0.05, w: sp * 0.68, h: 1.1, d: 0.1, color: lit ? winColors[(f + c) % winColors.length] : glassReflect, glow: lit });
-        }
-      }
-    }
-
-    // 4-legged steel lattice rooftop billboard (clean corporate styling, NOT cyber neon!)
-    const bbW = s.w * 0.88;
-    const bbH = 2.4;
-    const bbY = h + 3.2;
-    // 4 steel truss legs
-    parts.push({ x: -bbW * 0.38, y: h + 1.2, z: -depth * 0.35, w: 0.18, h: 2.4, d: 0.18, color: framePewter });
-    parts.push({ x: bbW * 0.38, y: h + 1.2, z: -depth * 0.35, w: 0.18, h: 2.4, d: 0.18, color: framePewter });
-    parts.push({ x: -bbW * 0.38, y: h + 1.2, z: -depth * 0.65, w: 0.18, h: 2.4, d: 0.18, color: framePewter });
-    parts.push({ x: bbW * 0.38, y: h + 1.2, z: -depth * 0.65, w: 0.18, h: 2.4, d: 0.18, color: framePewter });
-    // Billboard display panel in clean warm ivory/white
-    parts.push({ x: 0, y: bbY, z: -depth * 0.35, w: bbW, h: bbH, d: 0.3, color: "#ffffff", glow: true });
-    // Japanese logo bar across the billboard (clean crimson / navy corporate logo)
-    parts.push({ x: -bbW * 0.12, y: bbY + 0.15, z: -depth * 0.35 + 0.22, w: bbW * 0.55, h: 0.6, d: 0.04, color: "#b91c1c", glow: true });
-    parts.push({ x: bbW * 0.28, y: bbY - 0.3, z: -depth * 0.35 + 0.22, w: bbW * 0.25, h: 0.35, d: 0.04, color: "#1e3a5f" });
-  }
-
-  // -------------------------------------------------------------
-  // SHARED ACCENTS: ZAKKYO SIGN STACK & ATRIUM (CLEAN JAPANESE DESIGN)
-  // -------------------------------------------------------------
-
-  // Zakkyo company lightbox stack climbing the left corner (Archetypes 0, 3, 4)
-  // Real Japanese lightboxes: clean white acrylic face with tasteful typography
-  const nSigns = Math.min(s.signStack ?? 0, s.floors - 1);
-  if (nSigns > 0 && (type === 0 || type === 3 || type === 4)) {
-    const sxL = -s.w / 2 + 0.75;
-    // Vertical steel support spine
-    parts.push({ x: sxL, y: 1.8 + (nSigns * floorH) / 2, z: 0.35, w: 0.16, h: nSigns * floorH + 0.4, d: 0.16, color: framePewter });
-    const signBadgeColors = ["#b91c1c", "#1e3a5f", "#2b7a4b", "#c59b27", "#334155"];
-    for (let i = 0; i < nSigns; i++) {
-      const sy = 2.4 + i * floorH;
-      // White acrylic lightbox
-      parts.push({ x: sxL, y: sy, z: 0.46, w: 1.35, h: 1.05, d: 0.28, color: "#ffffff", glow: true });
-      // Tasteful brand emblem bar
-      const badgeColor = signBadgeColors[(i * 2 + seed) % signBadgeColors.length];
-      parts.push({ x: sxL, y: sy + (i % 2 ? 0.14 : -0.14), z: 0.62, w: 0.9, h: 0.28, d: 0.04, color: badgeColor });
-    }
-  }
-
-  // Mid-floor department store / boutique glass atrium (soft warm shop lighting, NOT neon!)
-  if (s.screen && s.floors >= 5 && type !== 2) {
-    const scW = s.w * 0.65;
-    const scH = floorH * 2.1;
-    const scY = 0.8 + 2.4 * floorH + scH / 2;
-    parts.push({ x: s.w * 0.06, y: scY, z: 0.18, w: scW + 0.3, h: scH + 0.3, d: 0.16, color: framePewter });
-    parts.push({ x: s.w * 0.06, y: scY, z: 0.28, w: scW, h: scH, d: 0.06, color: "#fff5dc", glow: true });
-    parts.push({ x: s.w * 0.06 - scW * 0.18, y: scY + scH * 0.2, z: 0.33, w: scW * 0.48, h: 0.35, d: 0.04, color: "#ffffff", glow: true });
-    parts.push({ x: s.w * 0.06 + scW * 0.2, y: scY - scH * 0.22, z: 0.33, w: scW * 0.34, h: 0.28, d: 0.04, color: "#1e3a5f" });
-  }
-
-  return parts;
+  const mapping: Record<number, ShibuyaBuildingId> = {
+    0: "qfront",
+    1: "neon",
+    2: "skyscraper",
+    3: "shibuya109",
+    4: "station",
+    5: "ramen",
+    6: "izakaya",
+    7: "konbini",
+    8: "tokyotower",
+    9: "machiya",
+    10: "townhouse",
+    11: "pagoda",
+  };
+  const bldId: ShibuyaBuildingId = s.shibuyaAssetId || mapping[(s.shibuyaType ?? 0) % 12] || "skyscraper";
+  return getShibuyaBuildingParts(bldId);
 }
 
 /** Building whose front face is at z = 0 and extends toward -z. */
 export function buildingParts(s: BuildingSpec): Part[] {
+  if (s.shibuyaAssetId) {
+    return getShibuyaBuildingParts(s.shibuyaAssetId);
+  }
   if (s.night) {
     return shibuyaTowerParts(s);
   }
@@ -2459,59 +2149,9 @@ function noren(x: number, y: number, z: number, w: number, color: string): Part[
   return parts;
 }
 
-/** Ramen shop: grand two-storey wooden shopfront, red noren, kitchen window, menu board, lanterns, stools outside. */
+/** Ramen shop: authentic Shibuya Blocks voxel Ramen-ya with curved tile roof, ramen counter, bowls, noren, and lanterns. */
 export function ramenShopParts(): Part[] {
-  const W = 8.6;
-  const D = 5.8;
-  const parts: Part[] = [
-    { x: 0, y: -1.2, z: -D / 2, w: W + 0.25, h: 2.6, d: D + 0.25, color: "#1a1d24" }, // foundation
-    { x: 0, y: 2.4, z: -D / 2, w: W, h: 4.8, d: D, color: PLASTER }, // body
-    { x: 0, y: 1.35, z: 0.03, w: W, h: 2.7, d: 0.1, color: WOOD }, // wooden ground floor front
-    // sliding door + big kitchen window
-    { x: -2.2, y: 1.35, z: 0.1, w: 1.8, h: 2.4, d: 0.06, color: "#3b2a1a" },
-    { x: -2.2, y: 1.45, z: 0.14, w: 1.5, h: 1.7, d: 0.04, color: "#ffd98a", glow: true }, // warm light inside
-    { x: 1.4, y: 1.6, z: 0.1, w: 3.4, h: 1.4, d: 0.06, color: "#ffd98a", glow: true },
-    { x: 1.4, y: 1.6, z: 0.14, w: 3.5, h: 0.08, d: 0.04, color: WOOD_D },
-    { x: 1.4, y: 1.6, z: 0.14, w: 0.08, h: 1.4, d: 0.04, color: WOOD_D },
-    // counter with steaming bowls
-    { x: 1.4, y: 1.05, z: 0.14, w: 3.4, h: 0.14, d: 0.08, color: WOOD_D },
-    { x: 0.6, y: 1.2, z: 0.14, w: 0.32, h: 0.16, d: 0.08, color: "#ffffff" },
-    { x: 1.8, y: 1.2, z: 0.14, w: 0.32, h: 0.16, d: 0.08, color: "#ffffff" },
-    // signboard 「ラーメン」 (chunky glyph blocks) on a red board above the noren
-    { x: 0, y: 3.15, z: 0.14, w: W - 1.0, h: 0.85, d: 0.14, color: "#c1121f", glow: true },
-    { x: -2.4, y: 3.15, z: 0.22, w: 0.16, h: 0.55, d: 0.03, color: "#ffffff" },
-    { x: -2.15, y: 3.35, z: 0.22, w: 0.42, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: -1.35, y: 3.15, z: 0.22, w: 0.42, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: -1.35, y: 2.95, z: 0.22, w: 0.1, h: 0.4, d: 0.03, color: "#ffffff" },
-    { x: -0.45, y: 3.15, z: 0.22, w: 0.1, h: 0.55, d: 0.03, color: "#ffffff" },
-    { x: -0.18, y: 3.35, z: 0.22, w: 0.38, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: 0.6, y: 3.15, z: 0.22, w: 0.42, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: 0.6, y: 2.95, z: 0.22, w: 0.42, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: 1.5, y: 3.15, z: 0.22, w: 0.1, h: 0.55, d: 0.03, color: "#ffffff" },
-    { x: 1.8, y: 3.35, z: 0.22, w: 0.4, h: 0.1, d: 0.03, color: "#ffffff" },
-    { x: 1.8, y: 2.95, z: 0.22, w: 0.4, h: 0.1, d: 0.03, color: "#ffffff" },
-    // small awning roof over the ground floor
-    { x: 0, y: 2.75, z: 0.5, w: W + 0.6, h: 0.14, d: 1.25, color: TILE },
-    { x: 0, y: 2.8, z: 0.95, w: W + 0.6, h: 0.08, d: 0.25, color: TILE_D },
-    // upstairs: two windows with wooden balcony rail
-    { x: -1.8, y: 4.25, z: 0.04, w: 1.4, h: 1.25, d: 0.1, color: "#bfe8ff" },
-    { x: 1.8, y: 4.25, z: 0.04, w: 1.4, h: 1.25, d: 0.1, color: "#ffe9a3" },
-    { x: 0, y: 3.65, z: 0.18, w: W - 0.6, h: 0.08, d: 0.4, color: WOOD },
-    { x: 0, y: 3.9, z: 0.35, w: W - 0.6, h: 0.08, d: 0.08, color: WOOD },
-    // menu board + stools + trash bin outside
-    { x: 3.4, y: 0.65, z: 0.7, w: 0.7, h: 1.25, d: 0.1, color: "#1f2430" },
-    { x: 3.4, y: 0.8, z: 0.76, w: 0.5, h: 0.08, d: 0.03, color: "#ffffff" },
-    { x: 3.4, y: 0.58, z: 0.76, w: 0.42, h: 0.08, d: 0.03, color: "#ffffff" },
-    { x: -3.3, y: 0.32, z: 0.75, w: 0.42, h: 0.1, d: 0.42, color: "#c1121f" },
-    { x: -3.3, y: 0.15, z: 0.75, w: 0.1, h: 0.28, d: 0.1, color: "#4a4f57" },
-    { x: -2.6, y: 0.32, z: 0.75, w: 0.42, h: 0.1, d: 0.42, color: "#c1121f" },
-    { x: -2.6, y: 0.15, z: 0.75, w: 0.1, h: 0.28, d: 0.1, color: "#4a4f57" },
-  ];
-  parts.push(...noren(-2.2, 2.15, 0.25, 1.8, "#c1121f"));
-  parts.push(...chochin(-3.6, 2.25, 0.65));
-  parts.push(...chochin(3.6, 2.25, 0.65));
-  parts.push(...kawaraRoof(0, 5.2, 0, W, D, 1.15));
-  return parts;
+  return getShibuyaBuildingParts("ramen");
 }
 
 /** Traditional merchant shop (machiya): dark wood lattice (kōshi) front, indigo noren, tiled roof, display shelf. */
@@ -3177,54 +2817,9 @@ export function mamachariParts(variant: number): Part[] {
   ];
 }
 
-/** Japanese 24-hour convenience store (Konbini / コンビニ). */
+/** Japanese 24-hour convenience store (Konbini / コンビニ) from Shibuya Blocks. */
 export function konbiniShopParts(): Part[] {
-  const plaster = "#f8fafc";
-  const glass = "#a5f3fc";
-  const frame = "#334155";
-  const W = 10.4;
-  const H = 5.4;
-  const D = 5.8;
-
-  return [
-    // Deep foundation
-    { x: 0, y: -1.2, z: -D / 2, w: W + 0.3, h: 2.5, d: D + 0.3, color: "#1a1d24" },
-    // Main building body
-    { x: 0, y: H / 2, z: -D / 2, w: W, h: H, d: D, color: plaster },
-    // Roof parapet
-    { x: 0, y: H + 0.15, z: -D / 2, w: W + 0.3, h: 0.3, d: D + 0.3, color: "#cbd5e1" },
-    // Iconic Konbini 3-Stripe Fascia Header
-    { x: 0, y: 4.65, z: 0.05, w: W, h: 1.25, d: 0.18, color: "#ffffff", glow: true },
-    { x: 0, y: 5.0, z: 0.15, w: W - 0.2, h: 0.18, d: 0.04, color: "#10b981", glow: true }, // Green stripe
-    { x: 0, y: 4.75, z: 0.15, w: W - 0.2, h: 0.18, d: 0.04, color: "#f97316", glow: true }, // Orange stripe
-    { x: 0, y: 4.5, z: 0.15, w: W - 0.2, h: 0.18, d: 0.04, color: "#ef4444", glow: true }, // Red stripe
-    // Illuminated "24h" logo box
-    { x: -3.6, y: 4.75, z: 0.2, w: 1.1, h: 0.75, d: 0.08, color: "#0284c7" },
-    { x: -3.6, y: 4.75, z: 0.25, w: 0.8, h: 0.5, d: 0.03, color: "#ffffff", glow: true },
-    // Large glass front windows (left & right)
-    { x: -2.6, y: 2.1, z: 0.03, w: 4.2, h: 3.2, d: 0.1, color: glass, glow: true },
-    { x: 2.9, y: 2.1, z: 0.03, w: 3.4, h: 3.2, d: 0.1, color: glass, glow: true },
-    // Window mullions / dark metal framing
-    { x: -2.6, y: 3.65, z: 0.08, w: 4.25, h: 0.1, d: 0.08, color: frame },
-    { x: -2.6, y: 0.5, z: 0.08, w: 4.25, h: 0.1, d: 0.08, color: frame },
-    { x: 2.9, y: 3.65, z: 0.08, w: 3.45, h: 0.1, d: 0.08, color: frame },
-    { x: 2.9, y: 0.5, z: 0.08, w: 3.45, h: 0.1, d: 0.08, color: frame },
-    // Automatic sliding glass doors
-    { x: 0.5, y: 1.85, z: 0.03, w: 1.8, h: 3.2, d: 0.1, color: "#67e8f9" },
-    { x: 0.5, y: 1.85, z: 0.08, w: 1.85, h: 0.08, d: 0.06, color: frame },
-    { x: 0.5, y: 0.05, z: 0.25, w: 2.0, h: 0.08, d: 0.85, color: "#475569" }, // entrance rubber mat
-    // Interior magazine rack visible through window
-    { x: -2.6, y: 1.15, z: -0.6, w: 3.0, h: 1.25, d: 0.45, color: "#f59e0b" },
-    { x: -2.6, y: 1.45, z: -0.4, w: 2.8, h: 0.5, d: 0.1, color: "#ffffff" }, // manga/magazines
-    // Interior warm fluorescent store lighting glow
-    { x: 0, y: 3.8, z: -2.0, w: 8.5, h: 0.18, d: 3.5, color: "#fef08a" },
-    // Exterior trash bin pair (burnable & PET bottles) beside door
-    { x: 1.8, y: 0.6, z: 0.45, w: 0.48, h: 1.2, d: 0.48, color: "#3b82f6" },
-    { x: 2.35, y: 0.6, z: 0.45, w: 0.48, h: 1.2, d: 0.48, color: "#10b981" },
-    // Rooftop HVAC units
-    { x: -2.0, y: H + 0.65, z: -D * 0.4, w: 1.5, h: 0.9, d: 1.2, color: "#64748b" },
-    { x: 2.0, y: H + 0.65, z: -D * 0.4, w: 1.5, h: 0.9, d: 1.2, color: "#64748b" },
-  ];
+  return getShibuyaBuildingParts("konbini");
 }
 
 /** Illuminated sidewalk signboard: warm traditional wooden lantern or minimalist Japanese boutique lightbox. */
@@ -3349,38 +2944,9 @@ export function jamCarParts(variant: number): Part[] {
   return parts;
 }
 
-/** Shibuya landmark: silver cylindrical fashion tower (109-style) with a glowing crown sign. */
+/** Shibuya landmark: authentic Shibuya Blocks voxel Shibuya 109 building. */
 export function tower109Parts(): Part[] {
-  const tile = "#f4f6fa"; // bright white porcelain tile
-  const tileDark = "#e2e6ec"; // champagne-silver aluminum
-  const H = 18.5;
-  const parts: Part[] = [
-    // cylinder approximated by a plus-shaped voxel core (reads round from the road)
-    { x: 0, y: H / 2, z: -3.6, w: 8.2, h: H, d: 5.6, color: tile },
-    { x: 0, y: H / 2, z: -3.6, w: 5.6, h: H, d: 8.2, color: tile },
-    { x: 0, y: H / 2, z: -3.6, w: 7.2, h: H, d: 7.2, color: tileDark },
-    // deep foundation (clean light architectural granite, NOT black!)
-    { x: 0, y: -1.2, z: -3.6, w: 8.6, h: 2.6, d: 8.6, color: "#a0aab6" },
-  ];
-  // ribbon windows wrapping every floor (warm inviting illumination & serene sky glass)
-  for (let f = 0; f < 9; f++) {
-    const y = 2.2 + f * 1.75;
-    const lit = f % 3 !== 1;
-    parts.push({ x: 0, y, z: -0.74, w: 5.8, h: 0.95, d: 0.1, color: lit ? "#fff8e8" : "#c2d2e2", glow: lit });
-    parts.push({ x: 0, y, z: -6.46, w: 5.8, h: 0.95, d: 0.1, color: lit ? "#fff8e8" : "#c2d2e2", glow: lit });
-  }
-  // glowing entrance
-  parts.push({ x: 0, y: 1.4, z: -0.65, w: 3.6, h: 2.4, d: 0.16, color: "#fff7ea", glow: true });
-  // crown: clean silver coping + the iconic glowing sign panel
-  parts.push({ x: 0, y: H + 0.45, z: -3.6, w: 8.6, h: 0.9, d: 8.6, color: "#c8d0da" });
-  parts.push({ x: 0, y: H + 1.15, z: -3.6, w: 7.6, h: 0.7, d: 7.6, color: tile });
-  parts.push({ x: 0, y: H + 0.5, z: 0.05, w: 4.4, h: 0.85, d: 0.14, color: "#ffffff", glow: true });
-  parts.push({ x: -0.9, y: H + 0.5, z: 0.16, w: 0.65, h: 0.55, d: 0.04, color: "#b91c1c", glow: true }); // 1
-  parts.push({ x: 0.0, y: H + 0.5, z: 0.16, w: 0.65, h: 0.55, d: 0.04, color: "#b91c1c", glow: true }); // 0
-  parts.push({ x: 0.9, y: H + 0.5, z: 0.16, w: 0.65, h: 0.55, d: 0.04, color: "#b91c1c", glow: true }); // 9
-  // red aircraft beacon at apex
-  parts.push({ x: 0, y: H + 2.0, z: -3.6, w: 0.35, h: 0.8, d: 0.35, color: "#e03b48", glow: true });
-  return parts;
+  return getShibuyaBuildingParts("shibuya109");
 }
 
 /** Mount Haruna Touge Route 33 Sign (Gunma Prefecture Road / 県道33号). */
