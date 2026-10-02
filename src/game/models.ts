@@ -353,15 +353,12 @@ export function rampParts(): Part[] {
       x: -len / 2 + (len / steps) * (i - 0.5),
       y: h / 2,
       z: 0,
-      w: len / steps + 0.01,
+      w: len / steps,
       h,
-      d: 1.7,
-      color: i % 2 ? "#d9b47a" : "#c9a36b",
+      d: 1.4,
+      color: "#ff8c00",
     });
   }
-  // side rails
-  parts.push({ x: 0.9, y: 0.4, z: 0.88, w: 0.6, h: 0.8, d: 0.08, color: "#8a6a3f" });
-  parts.push({ x: 0.9, y: 0.4, z: -0.88, w: 0.6, h: 0.8, d: 0.08, color: "#8a6a3f" });
   return parts;
 }
 
@@ -3735,9 +3732,6 @@ export function subwayTrainCarParts(
   // Strip marka neon di tepi atap bus
   parts.push({ x: 0, y: H + 0.01, z: -W / 2 + 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
   parts.push({ x: 0, y: H + 0.01, z: W / 2 - 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
-  // Rel coping logam perak di pinggiran atap bus untuk freestyle menyeimbangkan skate (50-50 / Edge Grind)
-  parts.push({ x: 0, y: H + 0.045, z: -W / 2 + 0.1, w: L, h: 0.05, d: 0.09, color: "#f1f5f9" });
-  parts.push({ x: 0, y: H + 0.045, z: W / 2 - 0.1, w: L, h: 0.05, d: 0.09, color: "#f1f5f9" });
 
   // DUA UNIT AC PENDINGIN BUS (BUS ROOFTOP AC UNITS) DI ATAP
   for (const acX of [-L * 0.22, L * 0.24]) {

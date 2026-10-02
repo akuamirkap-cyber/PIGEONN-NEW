@@ -50,6 +50,12 @@ check("future obstacle cannot cover a NOS can", !engine.obstacles.some((o: Obsta
 e.rockets.push({ id: 9002, s: tokenS + 20, lane: 2, taken: false, kind: "diamond" });
 addObstacle("car", tokenS + 20, 2);
 check("future obstacle cannot cover a rare bonus", !engine.obstacles.some((o: Obstacle) => o.s === tokenS + 20 && o.lane === 2));
+const letterS = tokenS + 40;
+e.letters.push({ id: 9003, s: letterS, lane: 0, char: "S", charIndex: 0, taken: false });
+addObstacle("barrier", letterS, 0);
+check("future obstacle cannot cover a letter", !engine.obstacles.some((o: Obstacle) => o.s === letterS && o.lane === 0));
+addObstacle("barrier", letterS + 12, 0);
+check("future obstacle cannot spawn behind a letter", !engine.obstacles.some((o: Obstacle) => o.s === letterS + 12 && o.lane === 0));
 
 // Through-traffic obeys the signal and holds at the marked stop line.
 const greenApproach = trafficSignalApproach(s + 20, s, "green");
@@ -141,6 +147,9 @@ e.movers = [];
 e.crossCars = [];
 e.crossings = [];
 e.reserved = [];
+e.nosCans = [];
+e.rockets = [];
+e.letters = [];
 const spawnShibuyaTrafficWave = e.spawnShibuyaTrafficWave.bind(engine) as (s: number, t: number) => number;
 const waveLength = spawnShibuyaTrafficWave(engine.distance + 140, 0.8);
 const waveCars = engine.movers.filter((m: { kind: string }) => m.kind === "car" || m.kind === "motorcycle");

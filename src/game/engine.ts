@@ -783,13 +783,6 @@ class Engine {
     railGrace: 0,
     subwayGrace: 0,
     subwayLastId: null as number | null,
-    /** Freestyle menyeimbangkan skate di pinggiran atap bis */
-    busBalance: 0,
-    busBalanceVel: 0,
-    busBalanceCombo: 1,
-    busBalancePts: 0,
-    busBalanceTime: 0,
-    busBalanceActive: false,
     onRamp: false,
     trick: null as Trick | null,
     tricksThisAir: 0,
@@ -928,12 +921,6 @@ class Engine {
     p.railGrace = 0;
     p.subwayGrace = 0;
     p.subwayLastId = null;
-    p.busBalance = 0;
-    p.busBalanceVel = 0;
-    p.busBalanceCombo = 1;
-    p.busBalancePts = 0;
-    p.busBalanceTime = 0;
-    p.busBalanceActive = false;
     p.onRamp = false;
     p.trick = null;
     p.tricksThisAir = 0;
@@ -998,12 +985,6 @@ class Engine {
     p.carGrace = 0;
     p.subwayGrace = 0;
     p.subwayLastId = null;
-    p.busBalance = 0;
-    p.busBalanceVel = 0;
-    p.busBalanceCombo = 1;
-    p.busBalancePts = 0;
-    p.busBalanceTime = 0;
-    p.busBalanceActive = false;
     p.onRamp = false;
     p.grounded = false;
     p.h = Math.max(p.h, PODIUM_H);
@@ -1050,16 +1031,6 @@ class Engine {
     useUI.getState().setMenuView("main");
   }
 
-  /** Kontrol menyeimbangkan papan skate ke kiri / kanan saat berada di pinggiran atap bis */
-  adjustBusBalance(dir: number) {
-    const p = this.player;
-    if (!p.grinding || !p.subwayMover || !p.busBalanceActive) return;
-    p.busBalanceVel += dir * 4.6;
-    p.busBalance += dir * 0.18;
-    p.busBalance = clamp(p.busBalance, -1.0, 1.0);
-    sfx.swish();
-  }
-
   /* ---------- Input ---------- */
   input(a: InputAction) {
     if (this.phase === "menu") return;
@@ -1076,13 +1047,6 @@ class Engine {
       case "left":
       case "right": {
         const dir = a === "left" ? -1 : 1;
-        // Bila sedang melakukan aksi freestyle menyeimbangkan skate di pinggiran atap bis:
-        // Pencet Kiri / Kanan akan langsung mengarahkan dan menyeimbangkan papan!
-        if (p.grinding && p.subwayMover && p.busBalanceActive) {
-          this.adjustBusBalance(dir);
-          break;
-        }
-
         // Swipe ↔ = lane change (also in the air: a smooth carve/drift). The 360 spin is a deliberate move:
         // a second swipe in the same direction within 0.3 s, or a swipe toward the edge when no lane is left.
         // NEW turn mode: while grinding a rail the board is locked to the rail lane (no diagonal moves on a rail);
@@ -1455,64 +1419,36 @@ class Engine {
       this.completeTrick();
     }
 
-    // Inisialisasi aksi freestyle menyeimbangkan skate di pinggiran atap bis
-    p.busBalanceActive = true;
-    p.busBalance = Math.random() < 0.5 ? -0.15 : 0.15;
-    p.busBalanceVel = Math.sign(p.busBalance) * 0.45;
-    p.busBalanceCombo = 1;
-    p.busBalancePts = 0;
-    p.busBalanceTime = 0;
-    useUI.getState().setBusBalance(true, p.busBalance, 1, 0);
-
     if (isTransfer) {
       useUI.getState().addPopup("ROOF TRANSFER! 🛹💨", "#ffd21f", "ROOF TO ROOF!");
       this.trickScore += 200;
       this.addNos(NOS_PER_TRICK * 1.5);
       sfx.trick();
-    } else if (st.speed === 0 || st.isStopped) {
-      useUI.getState().addPopup("50-50 BUS EDGE GRIND! 🛹⚡", "#00f5d4", "SEIMBANGKAN KANAN-KIRI!");
-      this.trickScore += 120;
-      sfx.land();
-      sfx.swish();
     } else {
-      useUI.getState().addPopup("BUS COPING BALANCE! 🚌⚡", "#00e5ff", "SEIMBANGKAN KANAN-KIRI!");
+      useUI.getState().addPopup("BUS ROOF SURF! 🚌💨", "#00e5ff", "RIDE THE ROOF!");
+      this.trickScore += 100;
       sfx.land();
       sfx.swish();
     }
   }
 
-  private endSubwayGrind(lostBalance = false) {
+  private endSubwayGrind() {
     const p = this.player;
     if (!p.grinding && !p.subwayMover) return;
     if (p.subwayMover) {
       p.subwayLastId = p.subwayMover.id;
     }
-    const finalCombo = p.busBalanceCombo;
-    const finalBalPts = p.busBalancePts;
-
     p.grinding = false;
     p.subwayMover = null;
-    p.busBalanceActive = false;
-    p.busBalance = 0;
-    p.busBalanceVel = 0;
-    useUI.getState().setBusBalance(false, 0, 1, 0);
-    p.subwayGrace = 0.1; // Cepat siap mendarat kembali bila hanya lompat kecil di atap bus
+    p.subwayGrace = 0.25;
 
-    if (lostBalance) {
-      const base = Math.max(30, Math.round(p.grindPts / 10) * 10);
-      this.trickScore += base;
-      sfx.impact();
-    } else {
-      const base = Math.max(50, Math.round((p.grindPts + finalBalPts) / 10) * 10);
-      p.tricksThisAir++;
-      const multiplier = p.tricksThisAir * finalCombo;
-      const pts = base * multiplier;
-      this.trickScore += pts;
-      this.addNos(NOS_PER_TRICK * multiplier);
-      const subMsg = finalCombo > 1 ? `PERFECT BALANCE x${finalCombo} COMBO! ✨` : "CLEAN DISMOUNT! ✨";
-      useUI.getState().addPopup(`BUS EDGE GRIND +${pts}`, "#00e5ff", subMsg);
-      sfx.trick();
-    }
+    const base = Math.max(50, Math.round(p.grindPts / 10) * 10);
+    p.tricksThisAir++;
+    const pts = base * p.tricksThisAir;
+    this.trickScore += pts;
+    this.addNos(NOS_PER_TRICK * p.tricksThisAir);
+    useUI.getState().addPopup(`ROOF RIDE +${pts}`, "#00e5ff", p.tricksThisAir > 1 ? `${p.tricksThisAir}× COMBO! ✨` : undefined);
+    sfx.trick();
   }
 
   private land() {
@@ -1798,7 +1734,8 @@ class Engine {
       const def = OBSTACLE_DEFS.ramp;
       if (Math.abs(rel) > def.halfLen) continue;
       if (Math.abs(LANE_LAT[o.lane] - lat) > 1.0) continue;
-      return { y: (def.height * (rel + def.halfLen)) / (def.halfLen * 2), ramp: o };
+      const u = (rel + def.halfLen) / (def.halfLen * 2);
+      return { y: def.height * u, ramp: o };
     }
     return { y: 0, ramp: null };
   }
@@ -1922,68 +1859,14 @@ class Engine {
       const inLength = rel >= -0.8 && rel <= st.length + 0.8;
 
       if (!inLength || !inLane) {
-        this.endSubwayGrind(false);
+        this.endSubwayGrind();
         p.grounded = false;
         // Jika meluncur turun ke samping ke jalan kosong, beri sedikit lengkungan lompat samping yang luwes
         p.vh = inLane ? 0 : 0.8;
         p.airT = 0;
       } else {
         p.h = SUBWAY_ROOF_H;
-
-        // ---- FREESTYLE MENYEIMBANGKAN SKATE DI PINGGIRAN BIS (50-50 EDGE BALANCE) ----
-        if (p.busBalanceActive) {
-          p.busBalanceTime += dt;
-          // Gravitasi / inersia perlahan menarik skate miring ke samping
-          const difficulty = 1.0 + Math.min(1.2, p.busBalanceTime * 0.22);
-          const tiltDrift = (p.busBalance * 2.5 + Math.sin(p.busBalanceTime * 7.5) * 0.4) * difficulty;
-          p.busBalanceVel += tiltDrift * dt;
-          p.busBalanceVel *= Math.exp(-dt * 2.8);
-          p.busBalance += p.busBalanceVel * dt;
-
-          // Animasi miring skateboard & badan mengikuti keseimbangan
-          p.roll = p.busBalance * 0.52;
-          p.carve = -p.busBalance * 0.52;
-          p.lean = p.busBalance;
-
-          // Cek Sweet-spot tengah: |busBalance| < 0.35 (zona hijau seimbang)
-          const inSweetSpot = Math.abs(p.busBalance) < 0.35;
-          if (inSweetSpot) {
-            const gain = dt * 320 * p.busBalanceCombo;
-            p.busBalancePts += gain;
-            p.grindPts += gain;
-            // Combo bertambah seiring bertahan di zona tengah
-            if (p.busBalanceTime > p.busBalanceCombo * 0.85 && p.busBalanceCombo < 10) {
-              p.busBalanceCombo++;
-              sfx.coin();
-              useUI.getState().addPopup(`PERFECT BALANCE x${p.busBalanceCombo}! ⚡`, "#00f5d4", "TAHANKAN DI TENGAH!");
-            }
-            // Percikan api metalik grinding di pinggiran atap bis
-            this.sparkT += dt;
-            if (this.sparkT > 0.04) {
-              this.sparkT = 0;
-              const edgeOffset = p.busBalance >= 0 ? 1.05 : -1.05;
-              this.emit("spark", -0.4, SUBWAY_ROOF_H - 0.02, LANE_LAT[st.lane] + edgeOffset, 3);
-            }
-          } else {
-            p.grindPts += dt * 100;
-          }
-
-          // Sinkronisasi ke HUD
-          useUI.getState().setBusBalance(true, p.busBalance, p.busBalanceCombo, Math.round(p.busBalancePts));
-
-          // Cek bila miring kebablasan / hilang keseimbangan (|busBalance| >= 1.0)
-          if (Math.abs(p.busBalance) >= 1.0) {
-            useUI.getState().addPopup("HILANG KESEIMBANGAN! 💥", "#ff5964", "TERGELINCIR DARI ATAP!");
-            const slipDir = Math.sign(p.busBalance);
-            this.endSubwayGrind(true);
-            p.grounded = false;
-            p.vh = -1.2;
-            p.latVel = slipDir * 2.8;
-            p.airT = 0;
-          }
-        } else {
-          p.grindPts += dt * 180;
-        }
+        p.grindPts += dt * 180;
       }
     }
 
@@ -2051,7 +1934,7 @@ class Engine {
           const prevS = d - this.speed * dt;
           for (const o of this.obstacles) {
             if (o.kind !== "ramp" || Math.abs(LANE_LAT[o.lane] - p.lat) > 1.0) continue;
-            const top = o.s + OBSTACLE_DEFS.ramp.halfLen;
+            const top = o.s + obstacleHalf(o);
             if (prevS < top && d >= top) {
               p.onRamp = true;
               break;
@@ -3413,12 +3296,16 @@ class Engine {
   }
 
   /**
-   * Cek apakah rentang lajur terowongan [fromS, toS] bebas dari bus lain
-   * agar bus baru TIDAK spawn menumpuk / menembus bus yang sudah ada.
+   * Cek apakah rentang lajur terowongan [fromS, toS] bebas dari bus lain dan item collectible (huruf, roket, kaleng NOS)
+   * agar bus baru TIDAK spawn menumpuk, menembus bus yang sudah ada, atau menghalangi item.
    */
   private isSubwayLaneClear(lane: number, fromS: number, toS: number, buffer = 14): boolean {
     const minS = Math.min(fromS, toS) - buffer;
     const maxS = Math.max(fromS, toS) + buffer;
+    if (this.letters.some((l) => (!l.taken || this.distance < l.s + 50) && l.lane === lane && l.s >= minS - 15 && l.s <= maxS + 35)) return false;
+    if (this.rockets.some((r) => (!r.taken || this.distance < r.s + 50) && r.lane === lane && r.s >= minS - 15 && r.s <= maxS + 35)) return false;
+    if (this.nosCans.some((c) => (!c.taken || this.distance < c.s + 45) && c.lane === lane && c.s >= minS - 15 && c.s <= maxS + 30)) return false;
+    if (this.reserved.some((r) => r.lane === lane && !(maxS < r.from || minS > r.until))) return false;
     return !this.subwayTrains.some((st) => {
       if (st.lane !== lane) return false;
       const stMin = st.s - buffer;
@@ -3474,14 +3361,14 @@ class Engine {
       this.subwayTrains.push(bus);
       this.reserved.push({ lane, from: startS - 8, until: startS + trainLen + 6 });
 
-      // Tanjakan (Ramp) tepat sebelum bus berhenti agar pemain langsung naik ke atap
+      // Ramp di depan bus parkir
       const rampS = startS - 2.8;
       this.addObstacle("ramp", rampS, lane, true);
 
       // Jejeran roti memandu naik tanjakan ke atap bus
-      for (let i = 0; i < 3; i++) {
-        this.addBread(rampS - 2.0 + i * 1.2, lane, 0.35 + i * 0.5);
-      }
+      this.addBread(rampS - 1.2, lane, 0.4);
+      this.addBread(rampS, lane, 0.9);
+      this.addBread(rampS + 1.2, lane, 1.4);
       // Tabung NOS hadiah di ujung atap bus
       this.addNosPickup(startS + trainLen - 2.5, lane, SUBWAY_ROOF_H + 0.45);
 
@@ -3513,11 +3400,11 @@ class Engine {
       this.subwayTrains.push(busA);
       this.reserved.push({ lane: laneA, from: startS - 8, until: startS + lenA + 6 });
 
-      const rampS = startS - 2.8;
-      this.addObstacle("ramp", rampS, laneA, true);
-      for (let i = 0; i < 3; i++) {
-        this.addBread(rampS - 2.0 + i * 1.2, laneA, 0.35 + i * 0.5);
-      }
+      const rampSA = startS - 2.8;
+      this.addObstacle("ramp", rampSA, laneA, true);
+      this.addBread(rampSA - 1.2, laneA, 0.4);
+      this.addBread(rampSA, laneA, 0.9);
+      this.addBread(rampSA + 1.2, laneA, 1.4);
 
       // Bus B berhenti agak maju (startS + 14m)
       const startB = startS + 14;
@@ -3581,11 +3468,11 @@ class Engine {
       this.subwayTrains.push(bus);
       this.reserved.push({ lane: parkedLane, from: startS - 8, until: startS + len + 6 });
 
-      const rampS = startS - 2.8;
-      this.addObstacle("ramp", rampS, parkedLane, true);
-      for (let i = 0; i < 3; i++) {
-        this.addBread(rampS - 2.0 + i * 1.2, parkedLane, 0.35 + i * 0.5);
-      }
+      const rampSP = startS - 2.8;
+      this.addObstacle("ramp", rampSP, parkedLane, true);
+      this.addBread(rampSP - 1.2, parkedLane, 0.4);
+      this.addBread(rampSP, parkedLane, 0.9);
+      this.addBread(rampSP + 1.2, parkedLane, 1.4);
       this.addNosPickup(startS + len - 2.5, parkedLane, SUBWAY_ROOF_H + 0.45);
 
       // Bus Melaju Berlawanan Arah di Jalur Sebelah
@@ -4383,48 +4270,94 @@ class Engine {
     return false;
   }
 
-  private isNearObstacle(s: number, lane: number, extraBuffer = 5.0): boolean {
+  private isNearObstacle(s: number, lane: number, bufferBefore = 10.0, bufferAfter = 24.0): boolean {
     for (const o of this.obstacles) {
+      if (o.kind === "ramp" || o.kind === "rail") continue; // tanjakan & rel boleh dilewati
       const laneGap = Math.abs(o.lane - lane);
-      const buffer = laneGap === 0 ? extraBuffer : laneGap === 1 ? 2.6 : 0;
-      if (buffer > 0 && Math.abs(o.s - s) < obstacleHalf(o) + buffer) return true;
+      if (laneGap === 0) {
+        const half = obstacleHalf(o);
+        // Item dilarang berada terlalu dekat di depan rintangan (o.s > s) atau di belakang rintangan (o.s < s)
+        if (s >= o.s - half - bufferAfter && s <= o.s + half + bufferBefore) return true;
+      } else if (laneGap === 1) {
+        if (Math.abs(o.s - s) < obstacleHalf(o) + 3.0) return true;
+      }
     }
     for (const m of this.movers) {
       const laneGap = Math.abs(m.lane - lane);
-      const buffer = laneGap === 0 ? extraBuffer + 2.0 : laneGap === 1 ? 2.6 : 0;
-      if (buffer > 0 && Math.abs(m.s - s) < buffer) return true;
+      if (laneGap === 0) {
+        if (s >= m.s - bufferAfter && s <= m.s + bufferBefore) return true;
+      } else if (laneGap === 1) {
+        if (Math.abs(m.s - s) < 3.5) return true;
+      }
+    }
+    for (const st of this.subwayTrains) {
+      if (st.lane === lane) {
+        if (s >= st.s - bufferAfter && s <= st.s + st.length + bufferBefore) return true;
+      }
     }
     if (this.laneReserved(lane, s)) return true;
     return false;
   }
 
-  private isNearBread(s: number, lane: number, extraBuffer = 5.0): boolean {
+  private isNearBread(s: number, lane: number, bufferBefore = 10.0, bufferAfter = 24.0): boolean {
     for (const b of this.breads) {
+      if (b.taken) continue;
       const laneGap = Math.abs(b.lane - lane);
-      const buffer = laneGap === 0 ? extraBuffer : laneGap === 1 ? Math.min(extraBuffer, 3.0) : 0;
-      if (buffer > 0 && Math.abs(b.s - s) < buffer) return true;
+      if (laneGap === 0) {
+        // Obstacle di titik s dilarang berada di depan roti (bufferBefore) atau di belakang roti (bufferAfter)
+        if (s >= b.s - bufferBefore && s <= b.s + bufferAfter) return true;
+      } else if (laneGap === 1) {
+        if (Math.abs(b.s - s) < 3.2) return true;
+      }
     }
     return false;
   }
 
-  /** Pickups always get a clear runway; later obstacle patterns must respect this reservation too. */
-  private isNearBonusItem(s: number, lane: number, buffer = 8.0): boolean {
-    return (
-      this.nosCans.some((c) => !c.taken && c.lane === lane && Math.abs(c.s - s) < buffer) ||
-      this.rockets.some((r) => !r.taken && r.lane === lane && Math.abs(r.s - s) < buffer)
-    );
+  /**
+   * Cek apakah titik s di lajur lane terlalu dekat atau di belakang item collectible (huruf harian, roket langka, kaleng NOS).
+   * Menjamin area bebas hambatan: bufferBefore meter di depan item dan bufferAfter meter di belakang item.
+   */
+  isNearCollectibleItem(s: number, lane: number, bufferBefore = 22.0, bufferAfter = 55.0): boolean {
+    for (const l of this.letters) {
+      if ((!l.taken || this.distance < l.s + 45) && l.lane === lane) {
+        if (s >= l.s - bufferBefore && s <= l.s + bufferAfter) return true;
+      } else if ((!l.taken || this.distance < l.s + 45) && Math.abs(l.lane - lane) === 1) {
+        if (Math.abs(s - l.s) < 10.0) return true;
+      }
+    }
+    for (const r of this.rockets) {
+      if ((!r.taken || this.distance < r.s + 45) && r.lane === lane) {
+        if (s >= r.s - bufferBefore && s <= r.s + bufferAfter) return true;
+      } else if ((!r.taken || this.distance < r.s + 45) && Math.abs(r.lane - lane) === 1) {
+        if (Math.abs(s - r.s) < 10.0) return true;
+      }
+    }
+    for (const c of this.nosCans) {
+      if ((!c.taken || this.distance < c.s + 40) && c.lane === lane) {
+        if (s >= c.s - bufferBefore && s <= c.s + bufferAfter) return true;
+      } else if ((!c.taken || this.distance < c.s + 40) && Math.abs(c.lane - lane) === 1) {
+        if (Math.abs(s - c.s) < 8.0) return true;
+      }
+    }
+    return false;
   }
 
-  private addObstacle(kind: ObstacleKind, s: number, lane: number, force = false, half?: number, variant?: number) {
+  /** Pickups & letters always get a clear runway; later obstacle patterns must respect this reservation too. */
+  private isNearBonusItem(s: number, lane: number, buffer = 10.0): boolean {
+    return this.isNearCollectibleItem(s, lane, buffer, Math.max(buffer, 55.0));
+  }
+
+  private addObstacle(kind: ObstacleKind, s: number, lane: number, _force = false, half?: number, variant?: number) {
     // Jaring pengaman per-item: pattern panjang tidak boleh menjulurkan obstacle
     // ke dalam zona perempatan (apalagi scramble crossing yang penuh penyeberang)
     if (this.intersections.some((it) => Math.abs(it.s - s) < (it.scramble ? 11 : it.wide ? 10.5 : 8.5))) return;
-    if (!force && this.laneReserved(lane, s)) return;
+    if (this.laneReserved(lane, s)) return;
     const hLen = half ?? OBSTACLE_DEFS[kind].halfLen;
-    // Jangan pernah menutup roti / bonus dengan obstacle, termasuk obstacle yang datang dari pola berikutnya (kecuali dipaksa dengan force=true).
-    if (!force && this.isNearBonusItem(s, lane, hLen + 8.0)) return;
-    // Bread lines must stay readable; don't place hazards in their immediate approach/landing space.
-    if (!force && this.isNearBread(s, lane, hLen + 5.0)) return;
+    // JANGAN PERNAH menempatkan obstacle di dekat apalagi di belakang item (huruf, roket, kaleng NOS)!
+    // Clearance 22m di depan item dan 55m di belakang item agar pemain bebas & aman mengambil item.
+    if (this.isNearCollectibleItem(s, lane, hLen + 22.0, hLen + 55.0)) return;
+    // Bread lines must stay readable and never have obstacles in their path or immediately behind them
+    if (this.isNearBread(s, lane, hLen + 10.0, hLen + 24.0)) return;
     track.frame(s, LANE_LAT[lane], 0, tmpV);
     track.quat(s, tmpQ);
     const catVariant = kind === "car" && Math.random() < 0.48 ? randInt(0, 3) : undefined;
@@ -4441,25 +4374,25 @@ class Engine {
       catVariant,
     });
     // Remove any bread that might somehow collide or be within the safety buffer of this obstacle
-    this.breads = this.breads.filter((b) => !(b.lane === lane && Math.abs(b.s - s) < hLen + 5.0));
+    this.breads = this.breads.filter((b) => !(b.lane === lane && b.s >= s - (hLen + 24.0) && b.s <= s + (hLen + 10.0)));
     this.listVersion++;
   }
   private addBread(s: number, lane: number, h: number) {
-    // Roti tidak pernah ditempelkan ke rel/ramp: collectible harus terbaca dan punya ruang mendarat.
-    if (this.isNearObstacle(s, lane, 5.5) || this.isNearBonusItem(s, lane, 4.0)) return;
+    // Roti tidak pernah diletakkan di dekat atau di belakang rintangan: collectible harus terbaca dan punya ruang mendarat.
+    if (this.isNearObstacle(s, lane, 10.0, 24.0) || this.isNearBonusItem(s, lane, 4.0)) return;
     track.frame(s, LANE_LAT[lane], h, tmpV);
     this.breads.push({ id: this.nextId++, s, lane, h, taken: false, phase: Math.random() * Math.PI * 2, wx: tmpV.x, wy: tmpV.y, wz: tmpV.z });
   }
   private breadLine(s: number, lane: number, n = 5, h = 0.5) {
     // Entire row is either clear or omitted; never leave a broken trail tangled with a hazard.
     for (let i = 0; i < n; i++) {
-      if (this.isNearObstacle(s + i, lane, 5.5) || this.isNearBonusItem(s + i, lane, 4.0)) return;
+      if (this.isNearObstacle(s + i, lane, 10.0, 24.0) || this.isNearBonusItem(s + i, lane, 4.0)) return;
     }
     for (let i = 0; i < n; i++) this.addBread(s + i * 1.0, lane, h);
   }
   private breadArc(s: number, lane: number) {
     for (let k = -3; k <= 3; k++) {
-      if (this.isNearObstacle(s + k * 0.75, lane, 5.5)) return;
+      if (this.isNearObstacle(s + k * 0.75, lane, 10.0, 24.0)) return;
     }
     for (let k = -3; k <= 3; k++) this.addBread(s + k * 0.75, lane, 0.5 + 1.35 * (1 - (k * k) / 9));
   }
@@ -4511,15 +4444,21 @@ class Engine {
     if (this.crossings.some((c) => Math.abs(c.s - meetS) < 14 || Math.abs(c.s - s0) < 12)) {
       return;
     }
+    // Jangan pernah spawn kendaraan lawan arah di lajur yang memiliki item / huruf (koridor aman 22m sebelum s/d 55m sesudah)
+    if (this.laneReserved(lane, meetS) || this.isNearCollectibleItem(meetS, lane, 22, 55)) {
+      return;
+    }
     // High motorcycle presence in Shibuya with companion riders
     if (isMotorcycle) {
       this.spawnMotorcycle(s0, lane, baseSpeed, motorcycleFactor);
       this.reserved.push({ lane, from: meetS - 7, until: s0 + 6 });
       if (allowCompanion && (track.mode === "shibuya" ? Math.random() < 0.60 : (t > 0.35 && Math.random() < 0.35))) {
         const companionLane = this.otherLane([lane]);
-        const companionS = s0 + 3.0;
-        this.spawnMotorcycle(companionS, companionLane, baseSpeed * rand(0.95, 1.05));
-        this.reserved.push({ lane: companionLane, from: meetS - 5, until: companionS + 6 });
+        if (!this.laneReserved(companionLane, meetS) && !this.isNearCollectibleItem(meetS, companionLane, 22, 55)) {
+          const companionS = s0 + 3.0;
+          this.spawnMotorcycle(companionS, companionLane, baseSpeed * rand(0.95, 1.05));
+          this.reserved.push({ lane: companionLane, from: meetS - 5, until: companionS + 6 });
+        }
       }
       return;
     }
@@ -4539,7 +4478,10 @@ class Engine {
     const lanes = [firstLane, (firstLane + 1) % 3, (firstLane + 2) % 3];
     const headway = 12;
     for (let i = 0; i < lanes.length; i++) {
-      this.spawnOncoming(meetS + i * headway, lanes[i], t, false);
+      const s = meetS + i * headway;
+      const lane = lanes[i];
+      if (this.isNearCollectibleItem(s, lane, 22, 55) || this.laneReserved(lane, s)) continue;
+      this.spawnOncoming(s, lane, t, false);
     }
     return headway * (lanes.length - 1) + 8;
   }
@@ -4593,6 +4535,7 @@ class Engine {
   }
 
   private spawnPedestrians(x: number, t: number) {
+    if ([0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55))) return 6;
     const n = 2 + (Math.random() < 0.7 ? 1 : 0) + (t > 0.4 && Math.random() < 0.5 ? 1 : 0);
     const est = Math.max(this.speed, START_SPEED);
     const d = this.distance;
@@ -4651,25 +4594,26 @@ class Engine {
   }
 
   /**
-   * Jalur yang bebas rintangan & kendaraan di sekitar jarak `s` — dipakai item langka biar
-   * roketnya benar-benar bisa diambil (bukan muncul di dalam barrier atau di jalur mobil datang).
+   * Jalur yang bebas rintangan & kendaraan di sekitar jarak `s` — dipakai huruf harian & item langka
+   * agar item benar-benar bisa diambil dengan aman dan nyaman tanpa obstacle di depan atau di belakangnya.
    * Kembalikan -1 kalau semua jalur sedang penuh.
    */
-  private clearLaneNear(s: number): number {
+  private clearLaneNear(s: number, bufferBefore = 22, bufferAfter = 55): number {
     const lanes = [1, 0, 2]; // tengah dulu (paling gampang diambil), lalu pinggir
-    const inIntersection = this.intersections.some((it) => Math.abs(it.s - s) < 14);
-    const atRailCrossing = this.crossings.some((cr) => Math.abs(cr.s - s) < 14);
-    if (inIntersection || atRailCrossing) return -1;
+    const inIntersection = this.intersections.some((it) => Math.abs(it.s - s) < 22);
+    const atRailCrossing = this.crossings.some((cr) => Math.abs(cr.s - s) < 22);
+    const inTunnelPortal = this.subwayTunnels.some((st) => Math.abs(st.startS - s) < 22 || Math.abs(st.endS - s) < 22);
+    if (inIntersection || atRailCrossing || inTunnelPortal) return -1;
     for (const lane of lanes) {
       const blocked =
-        // Termasuk ramp dan rail: bonus tidak boleh berada tepat di atas / di belakang obstacle.
-        this.obstacles.some((o) => o.lane === lane && Math.abs(o.s - s) < obstacleHalf(o) + 9) ||
-        this.movers.some((m) => m.kind !== "pedestrian" && Math.abs(m.lane - lane) < 0.5 && Math.abs(m.s - s) < 12) ||
-        this.crossCars.some((cc) => Math.abs(cc.s - s) < 8) ||
-        this.breads.some((b) => !b.taken && b.lane === lane && Math.abs(b.s - s) < 7) ||
-        this.letters.some((l) => !l.taken && l.lane === lane && Math.abs(l.s - s) < 8) ||
-        this.isNearBonusItem(s, lane, 7) ||
-        this.reserved.some((r) => r.lane === lane && s > r.from - 2 && s < r.until + 2);
+        // Rintangan di depan ATAU di belakang item:
+        this.obstacles.some((o) => o.lane === lane && o.s >= s - (obstacleHalf(o) + bufferBefore) && o.s <= s + (obstacleHalf(o) + bufferAfter)) ||
+        this.movers.some((m) => Math.abs(m.lane - lane) < 0.6 && m.s >= s - bufferBefore && m.s <= s + bufferAfter + 12) ||
+        this.subwayTrains.some((st) => st.lane === lane && s >= st.s - bufferBefore && s <= st.s + st.length + bufferAfter) ||
+        this.crossCars.some((cc) => Math.abs(cc.s - s) < 18) ||
+        this.letters.some((l) => (!l.taken || this.distance < l.s + 50) && l.lane === lane && Math.abs(l.s - s) < 35) ||
+        this.isNearCollectibleItem(s, lane, bufferBefore, bufferAfter) ||
+        this.reserved.some((r) => r.lane === lane && s >= r.from - 8 && s <= r.until + 8);
       if (!blocked) return lane;
     }
     return -1;
@@ -4680,34 +4624,67 @@ class Engine {
     const x = this.nextObstacleS;
     const d = this.distance;
     if (x >= this.nextNosS) {
-      const lane = this.clearLaneNear(x);
+      const lane = this.clearLaneNear(x, 18, 48);
       if (lane >= 0) {
         track.frame(x, LANE_LAT[lane], 0, tmpV);
         this.nosCans.push({ id: this.nextId++, s: x, lane, taken: false, wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
+        // Koridor bebas rintangan di sekeliling kaleng NOS: 18m sebelum s/d 48m sesudah
+        this.reserved.push({ lane, from: x - 18, until: x + 48 });
+        this.obstacles = this.obstacles.filter(
+          (o) => !(o.lane === lane && o.s >= x - 18 && o.s <= x + 48) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 8)
+        );
+        this.movers = this.movers.filter(
+          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 18 && m.s <= x + 48) &&
+                 !(m.kind === "pedestrian" && Math.abs(m.s - x) < 14) &&
+                 !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 14)
+        );
+        for (let b = 1; b <= 3; b++) {
+          this.addBread(x + b * 2.2, lane, 0.45);
+        }
         this.listVersion++;
+        this.moverVersion++;
         this.nextNosS = x + NOS_CAN_S + rand(0, 30);
+        this.nextObstacleS = x + 48;
+        return;
       } else {
-        // Coba lagi sedikit lebih depan; jangan paksa NOS muncul di obstacle/perempatan.
-        this.nextNosS = x + 12;
+        this.nextNosS = x + 14;
       }
     }
     // ---- item LANGKA: roket NOS (jarang, dan selalu di jalur yang bebas rintangan) ----
     if (x >= this.nextRocketS) {
       const tooCloseToSpecial =
-        this.crossings.some((c) => Math.abs(c.s - x) < 14) ||
-        this.intersections.some((it) => Math.abs(it.s - x) < 16);
-      const lane = this.clearLaneNear(x);
+        this.crossings.some((c) => Math.abs(c.s - x) < 22) ||
+        this.intersections.some((it) => Math.abs(it.s - x) < 22) ||
+        this.subwayTunnels.some((st) => Math.abs(st.startS - x) < 22 || Math.abs(st.endS - x) < 22);
+      const lane = this.clearLaneNear(x, 22, 55);
       if (tooCloseToSpecial || lane < 0) {
-        // tempatnya tidak aman: coba lagi beberapa meter kemudian
-        this.nextRocketS = x + 12;
+        this.nextRocketS = x + 16;
       } else {
         track.frame(x, LANE_LAT[lane], 0, tmpV);
         this.rockets.push({ id: this.nextId++, s: x, lane, taken: false, kind: pickRareKind(), wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
+        // Koridor bebas rintangan di sekeliling roket langka: 22m sebelum s/d 55m sesudah
+        this.reserved.push({ lane, from: x - 22, until: x + 55 });
+        this.obstacles = this.obstacles.filter(
+          (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 55) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 10)
+        );
+        this.movers = this.movers.filter(
+          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 55) &&
+                 !(m.kind === "pedestrian" && Math.abs(m.s - x) < 16) &&
+                 !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 16) &&
+                 !(m.kind === "chicken" && Math.abs(m.s - x) < 16) &&
+                 !(m.kind === "cat" && Math.abs(m.s - x) < 16)
+        );
+        for (let b = 1; b <= 4; b++) {
+          this.addBread(x + b * 2.2, lane, 0.45);
+        }
         this.listVersion++;
+        this.moverVersion++;
         this.nextRocketS = x + rand(ROCKET_GAP[0], ROCKET_GAP[1]);
+        this.nextObstacleS = x + 55;
+        return;
       }
     }
-    // ---- Daily Word Hunt: Huruf harian (P-I-G-E-O-N) ----
+    // ---- Daily Word Hunt: Huruf harian (P-I-G-E-O-N / S-K-A-T-E) ----
     if (x >= this.nextLetterS) {
       const wordHunt = useUI.getState().wordHunt;
       const uncollected: number[] = [];
@@ -4717,11 +4694,13 @@ class Engine {
       if (uncollected.length > 0) {
         const nextIdx = uncollected[0];
         const tooCloseToSpecial =
-          this.crossings.some((c) => Math.abs(c.s - x) < 14) ||
-          this.intersections.some((it) => Math.abs(it.s - x) < 16);
-        const lane = this.clearLaneNear(x);
+          this.crossings.some((c) => Math.abs(c.s - x) < 24) ||
+          this.intersections.some((it) => Math.abs(it.s - x) < 24) ||
+          this.subwayTunnels.some((st) => Math.abs(st.startS - x) < 24 || Math.abs(st.endS - x) < 24);
+        // Pastikan koridor lajur bebas rintangan luas: 22m sebelum s/d 55m sesudah huruf
+        const lane = this.clearLaneNear(x, 22, 55);
         if (tooCloseToSpecial || lane < 0) {
-          this.nextLetterS = x + 14;
+          this.nextLetterS = x + 16;
         } else {
           track.frame(x, LANE_LAT[lane], 0, tmpV);
           this.letters.push({
@@ -4736,8 +4715,31 @@ class Engine {
             wz: tmpV.z,
             phase: Math.random() * 6,
           });
+          // KUNCI: Reserve lajur ini sepanjang 22m sebelum hingga 55m sesudah huruf
+          // Ini menjamin TIDAK ADA obstacle, mobil, motor, atau bus yang bisa muncul di belakang huruf!
+          this.reserved.push({ lane, from: x - 22, until: x + 55 });
+          // Bersihkan obstacle apa pun yang berpotensi overlap di lajur ini dan lajur samping
+          this.obstacles = this.obstacles.filter(
+            (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 55) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 12)
+          );
+          // Bersihkan kendaraan/hewan yang melintas di sekitar huruf
+          this.movers = this.movers.filter(
+            (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 55) &&
+                   !(m.kind === "pedestrian" && Math.abs(m.s - x) < 18) &&
+                   !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 18) &&
+                   !(m.kind === "chicken" && Math.abs(m.s - x) < 18) &&
+                   !(m.kind === "cat" && Math.abs(m.s - x) < 18)
+          );
+          // Beri deretan roti pemandu yang bersih setelah huruf agar pemain merasa nyaman & puas
+          for (let b = 1; b <= 5; b++) {
+            this.addBread(x + b * 2.2, lane, 0.45);
+          }
           this.listVersion++;
-          this.nextLetterS = x + rand(130, 210);
+          this.moverVersion++;
+          this.nextLetterS = x + rand(150, 240);
+          // Selesai spawn huruf: beri jalan lapang tanpa rintangan di belakangnya
+          this.nextObstacleS = x + 55;
+          return;
         }
       } else {
         // all letters collected for today: schedule far ahead
@@ -4749,10 +4751,15 @@ class Engine {
       this.nextRoadworkS = x + 60;
     }
     if (!inTunnel && x >= this.nextRoadworkS && !this.crossings.some((c) => Math.abs(c.s - x) < 40)) {
-      const len = this.spawnRoadworks(x, t);
-      this.nextRoadworkS = x + rand(160, 260);
-      this.nextObstacleS = x + len + lerp(10, 6, t) + rand(0, 3);
-      return;
+      const itemAroundRoadwork = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55));
+      if (!itemAroundRoadwork) {
+        const len = this.spawnRoadworks(x, t);
+        this.nextRoadworkS = x + rand(160, 260);
+        this.nextObstacleS = x + len + lerp(10, 6, t) + rand(0, 3);
+        return;
+      } else {
+        this.nextRoadworkS = x + 40;
+      }
     }
     const weights: [string, number][] = inTunnel
       ? [
@@ -4808,37 +4815,59 @@ class Engine {
       else if (idx === 4) pattern = "oncoming"; // Fast oncoming with motorcycles!
       else if (idx === 5) pattern = "motorcycles"; // Japan Vehicle Pack squad!
     }
+
+    const itemNearby = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55));
+    if (itemNearby) {
+      if (pattern === "wall" || pattern === "zigzag" || pattern === "oncoming" || pattern === "motorcycles") {
+        pattern = "single";
+      }
+    }
+
     let len = 1;
     switch (pattern) {
       case "single": {
-        const lane = randInt(0, 2);
-        const kind = pick(JUMPABLES);
-        this.addObstacle(kind, x, lane);
-        const freeLane = this.otherLane([lane]);
-        const rr = Math.random();
-        if (rr < 0.6) this.breadLine(x + 8, freeLane);
-        len = OBSTACLE_DEFS[kind].halfLen * 2;
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
+        if (lane >= 0) {
+          const kind = pick(JUMPABLES);
+          this.addObstacle(kind, x, lane);
+          const freeCandidateLanes = [0, 1, 2].filter((l) => l !== lane);
+          const freeLane = pick(freeCandidateLanes);
+          const rr = Math.random();
+          if (rr < 0.6) this.breadLine(x + 8, freeLane);
+          len = OBSTACLE_DEFS[kind].halfLen * 2;
+        }
         break;
       }
       case "car": {
-        const lane = randInt(0, 2);
-        this.addObstacle("car", x, lane);
-        const freeLane = this.otherLane([lane]);
-        if (t > 0.35 && Math.random() < 0.5) {
-          const l2 = freeLane;
-          this.addObstacle(pick(SMALL_JUMPABLES), x + 4, l2);
-          const safeLane = this.otherLane([lane, l2]);
-          this.breadLine(x + 8, safeLane);
-          len = 5;
-        } else {
-          if (Math.random() < 0.6) this.breadLine(x + 8, freeLane);
-          len = 3.4;
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
+        if (lane >= 0) {
+          this.addObstacle("car", x, lane);
+          const freeCandidate = [0, 1, 2].filter((l) => l !== lane);
+          const freeLane = pick(freeCandidate);
+          if (t > 0.35 && Math.random() < 0.5) {
+            const l2 = freeLane;
+            if (!this.isNearCollectibleItem(x + 4, l2, 22, 55)) {
+              this.addObstacle(pick(SMALL_JUMPABLES), x + 4, l2);
+              const safeCandidates = [0, 1, 2].filter((l) => l !== lane && l !== l2);
+              const safeLane = safeCandidates.length > 0 ? pick(safeCandidates) : 1;
+              this.breadLine(x + 8, safeLane);
+              len = 5;
+            } else {
+              len = 3.4;
+            }
+          } else {
+            if (Math.random() < 0.6) this.breadLine(x + 8, freeLane);
+            len = 3.4;
+          }
         }
         break;
       }
       case "double": {
-        const free = randInt(0, 2);
-        const lanes = [0, 1, 2].filter((l) => l !== free);
+        const itemLane = [0, 1, 2].find((l) => this.isNearCollectibleItem(x, l, 22, 55));
+        const free = itemLane !== undefined ? itemLane : randInt(0, 2);
+        const lanes = [0, 1, 2].filter((l) => l !== free && !this.isNearCollectibleItem(x, l, 22, 55));
         const twoCars = t > 0.4 && Math.random() < 0.4;
         for (const l of lanes) {
           const kind = twoCars ? "car" : Math.random() < 0.45 ? "car" : pick(JUMPABLES);
@@ -4850,8 +4879,11 @@ class Engine {
       }
       case "wall": {
         const kind = pick(["cone", "barrier", "planter"] as ObstacleKind[]);
-        for (let l = 0; l < 3; l++) this.addObstacle(kind, x, l);
-        // Wall is a jump-check: no misleading bread arcs over obstacles!
+        for (let l = 0; l < 3; l++) {
+          if (!this.isNearCollectibleItem(x, l, 22, 55)) {
+            this.addObstacle(kind, x, l);
+          }
+        }
         len = OBSTACLE_DEFS[kind].halfLen * 2;
         break;
       }
@@ -4863,7 +4895,7 @@ class Engine {
           const rx = x + i * step;
           let carUsed = false;
           for (const l of [0, 1, 2]) {
-            if (l === free) continue;
+            if (l === free || this.isNearCollectibleItem(rx, l, 22, 55)) continue;
             const useCar = !carUsed && t > 0.35 && Math.random() < 0.45;
             if (useCar) carUsed = true;
             this.addObstacle(useCar ? "car" : pick(SMALL_JUMPABLES), rx, l);
@@ -4875,40 +4907,47 @@ class Engine {
         break;
       }
       case "ramp": {
-        const lane = randInt(0, 2);
-        this.addObstacle("ramp", x, lane);
-        const end = x + OBSTACLE_DEFS.ramp.halfLen;
-        const v = this.speed + 1;
-        for (let i = 0; i < 7; i++) {
-          const dx = 1 + i * 1.1;
-          const tt = dx / v;
-          const y = 1 + RAMP_V * tt - 0.5 * GRAVITY * tt * tt;
-          if (y > 0.4) this.addBread(end + dx, lane, y + 0.2);
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
+        if (lane >= 0) {
+          this.addObstacle("ramp", x, lane);
+          const end = x + OBSTACLE_DEFS.ramp.halfLen;
+          const v = this.speed + 1;
+          for (let i = 0; i < 7; i++) {
+            const dx = 1 + i * 1.1;
+            const tt = dx / v;
+            const y = 1 + RAMP_V * tt - 0.5 * GRAVITY * tt * tt;
+            if (y > 0.4) this.addBread(end + dx, lane, y + 0.2);
+          }
+          len = OBSTACLE_DEFS.ramp.halfLen + v * 1.05 + 1.5;
         }
-        // Landing zone is completely safe - no trap cars!
-        len = OBSTACLE_DEFS.ramp.halfLen + v * 1.05 + 1.5;
         break;
       }
       case "rail": {
-        const lane = randInt(0, 2);
-        const weights = [3, 2 + 2 * t, 1 + 3 * t, 0.5 + 3 * t];
-        let rr = Math.random() * weights.reduce((a, b) => a + b, 0);
-        let li = 0;
-        for (; li < weights.length - 1; li++) {
-          rr -= weights[li];
-          if (rr <= 0) break;
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
+        if (lane >= 0) {
+          const weights = [3, 2 + 2 * t, 1 + 3 * t, 0.5 + 3 * t];
+          let rr = Math.random() * weights.reduce((a, b) => a + b, 0);
+          let li = 0;
+          for (; li < weights.length - 1; li++) {
+            rr -= weights[li];
+            if (rr <= 0) break;
+          }
+          const L = RAIL_LENGTHS[li];
+          const half = L / 2;
+          const cx = x + half;
+          const variant = L >= 18 && Math.random() < 0.4 ? 1 : 0;
+          this.addObstacle("rail", cx, lane, false, half, variant);
+          if (L >= 12 && t > 0.3 && Math.random() < 0.6) {
+            const l2 = this.otherLane([lane]);
+            if (!this.isNearCollectibleItem(cx, l2, 22, 55)) {
+              const L2 = pick([7, 12]);
+              this.addObstacle("rail", cx + rand(-2, 2), l2, false, L2 / 2, 0);
+            }
+          }
+          len = L + 0.5;
         }
-        const L = RAIL_LENGTHS[li];
-        const half = L / 2;
-        const cx = x + half;
-        const variant = L >= 18 && Math.random() < 0.4 ? 1 : 0;
-        this.addObstacle("rail", cx, lane, false, half, variant);
-        if (L >= 12 && t > 0.3 && Math.random() < 0.6) {
-          const l2 = this.otherLane([lane]);
-          const L2 = pick([7, 12]);
-          this.addObstacle("rail", cx + rand(-2, 2), l2, false, L2 / 2, 0);
-        }
-        len = L + 0.5;
         break;
       }
       case "bread": {
@@ -4929,33 +4968,49 @@ class Engine {
           len = this.spawnShibuyaTrafficWave(x, t);
           break;
         }
-        const lane = randInt(0, 2);
-        this.spawnOncoming(x, lane, t);
-        if (t > 0.5 && Math.random() < 0.4) {
-          const l2 = this.otherLane([lane]);
-          this.spawnOncoming(x + 10, l2, t);
-          const safeLane = this.otherLane([lane, l2]);
-          this.breadLine(x + 8, safeLane);
-          len = 18;
-        } else {
-          const safeLane = this.otherLane([lane]);
-          if (Math.random() < 0.6) this.breadLine(x + 8, safeLane);
-          len = 8;
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
+        if (lane >= 0) {
+          this.spawnOncoming(x, lane, t);
+          if (t > 0.5 && Math.random() < 0.4) {
+            const otherCandidates = [0, 1, 2].filter((l) => l !== lane && !this.isNearCollectibleItem(x + 10, l, 22, 55));
+            if (otherCandidates.length > 0) {
+              const l2 = pick(otherCandidates);
+              this.spawnOncoming(x + 10, l2, t);
+              const safeCandidates = [0, 1, 2].filter((l) => l !== lane && l !== l2);
+              const safeLane = safeCandidates.length > 0 ? pick(safeCandidates) : 1;
+              this.breadLine(x + 8, safeLane);
+              len = 18;
+            } else {
+              len = 8;
+            }
+          } else {
+            const freeCandidate = [0, 1, 2].filter((l) => l !== lane);
+            const safeLane = pick(freeCandidate);
+            if (Math.random() < 0.6) this.breadLine(x + 8, safeLane);
+            len = 8;
+          }
         }
         break;
       }
       case "motorcycles": {
-        const lane1 = randInt(0, 2);
-        const lane2 = this.otherLane([lane1]);
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        if (candidateLanes.length === 0) break;
+        const lane1 = pick(candidateLanes);
+        const remLanes = candidateLanes.filter((l) => l !== lane1);
+        const lane2 = remLanes.length > 0 ? pick(remLanes) : -1;
         const baseSpeed = rand(3.4, 4.6) + 1.2 * t;
         const est = Math.max(this.speed, 6);
         const s1 = x + (baseSpeed * (x - d)) / est;
-        const s2 = s1 + rand(6, 12);
         this.spawnMotorcycle(s1, lane1, baseSpeed);
-        this.spawnMotorcycle(s2, lane2, baseSpeed * rand(0.96, 1.06));
         this.reserved.push({ lane: lane1, from: x - 6, until: s1 + 6 });
-        this.reserved.push({ lane: lane2, from: x + 2, until: s2 + 6 });
-        const safeLane = this.otherLane([lane1, lane2]);
+        if (lane2 >= 0) {
+          const s2 = s1 + rand(6, 12);
+          this.spawnMotorcycle(s2, lane2, baseSpeed * rand(0.96, 1.06));
+          this.reserved.push({ lane: lane2, from: x + 2, until: s2 + 6 });
+        }
+        const safeCandidates = [0, 1, 2].filter((l) => l !== lane1 && l !== lane2);
+        const safeLane = safeCandidates.length > 0 ? pick(safeCandidates) : 1;
         if (Math.random() < 0.6) this.breadLine(x + 6, safeLane);
         len = 16;
         break;
@@ -4965,6 +5020,7 @@ class Engine {
         break;
       }
       case "puddles": {
+        if (itemNearby) break;
         const lane = randInt(0, 2);
         const l2 = this.otherLane([lane]);
         this.addPuddle(x, lane);
@@ -4975,6 +5031,7 @@ class Engine {
         break;
       }
       case "chickens": {
+        if (itemNearby) break;
         const n = 1 + (Math.random() < 0.55 ? 1 : 0) + (t > 0.4 && Math.random() < 0.4 ? 1 : 0);
         const dir = Math.random() < 0.5 ? 1 : -1;
         const est = Math.max(this.speed, 6);
@@ -4992,6 +5049,7 @@ class Engine {
         break;
       }
       case "cats": {
+        if (itemNearby) break;
         const n = 1 + (Math.random() < 0.45 ? 1 : 0);
         const dir = Math.random() < 0.5 ? 1 : -1;
         const est = Math.max(this.speed, 6);
@@ -5010,6 +5068,7 @@ class Engine {
         break;
       }
       case "shibuya_animals": {
+        if (itemNearby) break;
         const n = 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
         const dir = Math.random() < 0.5 ? 1 : -1;
         const est = Math.max(this.speed, START_SPEED);
@@ -5035,8 +5094,10 @@ class Engine {
       }
     }
     // Denser than the old 10–13 m opening gap, but keep a readable landing/reset window.
+    const itemAtX = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 15, 55));
     const gap = lerp(8.5, 5.5, t) + rand(0, 2.5);
-    this.nextObstacleS = x + len + gap;
+    const minNext = itemAtX ? x + 55 : x + len + gap;
+    this.nextObstacleS = Math.max(x + len + gap, minNext);
   }
 
   private cull() {
