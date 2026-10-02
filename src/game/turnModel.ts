@@ -14,44 +14,42 @@ import { clamp } from "./voxel";
  * The renderer converts to three.js signs (yaw = -heading, front truck yaw = -sF, roll = +lean * ROLL).
  */
 export const TURN = {
-  /** distance between the trucks (board units) and the "effective" factor: skateboard trucks steer far less than
-   *  a car's wheels for the same tilt, so the bicycle model uses wheelbase * 3.5 */
+  /** distance between the trucks (board units) and the "effective" factor: tuned for fast, agile response */
   WHEELBASE: 0.5,
-  EFFECTIVE: 3.5,
+  EFFECTIVE: 1.25,
   REAR_RATIO: 0.85,
-  STEER_MAX_GROUND: 0.42, // rad (~24°)
-  STEER_MAX_AIR: 0.28,
+  STEER_MAX_GROUND: 0.65, // rad (~37° agile carve)
+  STEER_MAX_AIR: 0.48,
   GRIP_GROUND: 1,
-  GRIP_AIR: 0.55, // wheels do not bite in the air
-  HEADING_MAX: 0.8,
-  DESIRED_MAX: 0.75,
-  REF_OMEGA: 11, // critically damped reference toward the lane centre (no overshoot)
-  POS_GAIN: 5, // pulls the board back onto the reference
-  HEADING_GAIN: 18, // 1/s: how hard we chase the desired heading
-  LEAN_RATE_GROUND: 14, // lean units / s
-  LEAN_RATE_AIR: 17,
-  TRUCK_DAMP_GROUND: 18, // 1/s
-  TRUCK_DAMP_AIR: 10,
-  YAW_DAMP: 16,
-  LEAN_VIS_DAMP: 20,
+  GRIP_AIR: 0.85, // responsive air drift
+  HEADING_MAX: 1.18,
+  DESIRED_MAX: 1.10,
+  REF_OMEGA: 32.0, // fast, critically damped reference toward the lane centre (no overshoot)
+  POS_GAIN: 22.0, // pulls the board crisply onto the reference
+  HEADING_GAIN: 60, // 1/s: fast heading response
+  LEAN_RATE_GROUND: 65, // lean units / s: immediate rider carve reaction
+  LEAN_RATE_AIR: 60,
+  TRUCK_DAMP_GROUND: 65, // 1/s: trucks turn quickly with rider lean
+  TRUCK_DAMP_AIR: 45,
+  YAW_DAMP: 32,
+  LEAN_VIS_DAMP: 32,
   ROLL_GROUND: 0.5, // rad of bank at lean = 1
   ROLL_AIR: 0.62,
   MIN_FWD: 4.5,
   SUBSTEP: 1 / 120,
   /** how much of the truck/lean lag we compensate when planning the stop (s); trucks hang looser in the air */
-  LAG: 0.09,
-  LAG_AIR: 0.2,
-  /** 0..1: how much of the stopping capability we are willing to rely on (lower = earlier, gentler braking) */
-  BRAKE_MARGIN: 1.0,
-  BRAKE_MARGIN_AIR: 0.4,
+  LAG: 0.034,
+  LAG_AIR: 0.08,
+  /** 0..1: critically damped stopping capability prevents overshoot ("PAS" tepat di tengah jalur) */
+  BRAKE_MARGIN: 0.94,
+  BRAKE_MARGIN_AIR: 0.68,
   /** the trucks lag the lean command, so we compare the desired heading with where the heading WILL be (s) */
-  PREDICT: 0.04,
-  PREDICT_AIR: 0.12,
-  /** "arrived at the lane" thresholds (spec: dx < 0.02, heading < 0.03, lean < 0.06). Slightly wider on x so the
-   *  last few centimetres ease in instead of creeping (still invisible: the lane is ~2 units wide). */
+  PREDICT: 0.014,
+  PREDICT_AIR: 0.035,
+  /** "arrived at the lane" thresholds: crisp lock-on without dragging or creeping */
   ARRIVE_POS: 0.05,
   ARRIVE_HEADING: 0.05,
-  ARRIVE_LEAN: 0.1,
+  ARRIVE_LEAN: 0.08,
 };
 const effWb = () => TURN.WHEELBASE * TURN.EFFECTIVE;
 

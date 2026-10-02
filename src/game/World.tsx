@@ -130,6 +130,13 @@ import {
 } from "./engine";
 import { buildGroundGeometry } from "./ground";
 import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuildingModels";
+import {
+  getShibuyaAnimalGeo,
+  getShibuyaCharacterGeo,
+  getShibuyaMotorcycleGeo,
+  getShibuyaMotorcycleLightsGeo,
+  getShibuyaSalarymanGeo,
+} from "./shibuyaPacks";
 
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
@@ -547,6 +554,52 @@ const PedestrianMover = memo(function PedestrianMover({ m }: { m: Mover }) {
   );
 });
 
+const ShibuyaPedestrianMover = memo(function ShibuyaPedestrianMover({ m }: { m: Mover }) {
+  const rootRef = useRef<THREE.Group>(null);
+  const innerRef = useRef<THREE.Group>(null);
+  const geo = useMemo(() => {
+    if (m.shibuyaChar === "salaryman") return getShibuyaSalarymanGeo();
+    return getShibuyaCharacterGeo(m.shibuyaChar ?? "salaryman");
+  }, [m.shibuyaChar]);
+
+  useFrame(() => {
+    const root = rootRef.current;
+    const inner = innerRef.current;
+    if (!root || !inner) return;
+
+    track.frame(m.s, m.lat, m.h, root.position);
+    track.quat(m.s, root.quaternion);
+
+    const isHit = m.phase === "hit" && !!m.rag;
+    if (isHit && m.rag) {
+      inner.position.set(0, m.rag.radius, 0);
+      inner.rotation.set(
+        m.rag.rx,
+        m.rag.ry + (m.dir > 0 ? -Math.PI / 2 : Math.PI / 2),
+        m.rag.rz
+      );
+      inner.scale.setScalar(1);
+    } else {
+      inner.position.set(0, 0, 0);
+      inner.rotation.set(0, m.dir > 0 ? -Math.PI / 2 : Math.PI / 2, 0);
+      inner.scale.setScalar(1);
+      if (m.phase === "hop") {
+        const strideFreq = (m.speed / 0.88) * Math.PI;
+        inner.position.y = Math.abs(Math.sin(m.hopT * strideFreq)) * 0.04;
+        inner.rotation.z = Math.sin(m.hopT * strideFreq) * 0.05;
+      }
+    }
+  });
+
+  return (
+    <group ref={rootRef}>
+      <group ref={innerRef}>
+        <mesh geometry={geo} material={voxelMaterial} castShadow receiveShadow />
+      </group>
+    </group>
+  );
+});
+
 const MoverView = memo(function MoverView({
   m,
   register,
@@ -556,7 +609,7 @@ const MoverView = memo(function MoverView({
   register: (id: number, g: THREE.Group | null) => void;
   registerSign: (id: number, g: THREE.Group | null) => void;
 }) {
-  const isAnimal = m.kind === "cat" || m.kind === "chicken";
+  const isAnimal = m.kind === "cat" || m.kind === "chicken" || m.kind === "shibuya_animal";
   /**
    * Kilatan putih ("denyut") pada tubuh hewan tepat setelah di-YEET: material
    * klon dari voxelMaterial dengan emissive, dipakai hanya oleh hewan.
@@ -585,7 +638,13 @@ const MoverView = memo(function MoverView({
       return getGeometry(`car-${m.variant % 7}`, () => carParts(m.variant));
     }
     if (m.kind === "motorcycle") {
+      if (m.shibuyaMoto) {
+        return getShibuyaMotorcycleGeo(m.shibuyaMoto);
+      }
       return getGeometry(`moto-${m.variant % 6}`, () => motorcycleParts(m.variant));
+    }
+    if (m.kind === "shibuya_animal") {
+      return getShibuyaAnimalGeo(m.shibuyaAnimal ?? "shiba");
     }
     if (m.kind === "cat") {
       if (m.phase === "hit") {
@@ -594,16 +653,21 @@ const MoverView = memo(function MoverView({
       return getGeometry(`cat-walk-${m.variant % 4}`, () => catWalkParts(m.variant));
     }
     return getGeometry("chicken", chickenParts);
-  }, [m.kind, m.variant, m.phase]);
+  }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.shibuyaAnimal]);
   const diamond = useMemo(() => getGeometry("sign-diamond", signDiamondParts), []);
   const exclaim = useMemo(() => getGeometry("sign-ex", signExclaimParts), []);
   const night = useUI((s) => s.trackMode === "shibuya" && s.shibuyaTime === "malam");
   const lightsGeo = useMemo(() => {
     if (!night) return null;
     if (m.kind === "car") return getGeometry("car-lights", carLightParts);
-    if (m.kind === "motorcycle") return getGeometry("moto-lights", motoLightParts);
+    if (m.kind === "motorcycle") {
+      if (m.shibuyaMoto) {
+        return getShibuyaMotorcycleLightsGeo();
+      }
+      return getGeometry("moto-lights", motoLightParts);
+    }
     return null;
-  }, [night, m.kind]);
+  }, [night, m.kind, m.shibuyaMoto]);
   const innerRot = m.kind === "car" || m.kind === "motorcycle" ? Math.PI : m.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
   return (
     <>
@@ -669,6 +733,8 @@ function Movers() {
             inner.scale.set(CAT_SCALE * (1 + flutter), CAT_SCALE * (1 - flutter * 0.5), CAT_SCALE * (1 + flutter));
           } else if (m.kind === "chicken") {
             inner.scale.setScalar(CHICKEN_SCALE);
+          } else if (m.kind === "shibuya_animal") {
+            inner.scale.setScalar(1);
           } else {
             inner.scale.setScalar(1);
           }
@@ -676,8 +742,16 @@ function Movers() {
           // Body offset from the ragdoll pivot also follows the size boost, so the
           // bigger chicken/cat still lies flat on the asphalt during the ragdoll tumble.
           if (child) {
-            child.position.set(0, m.kind === "cat" ? 0 : m.kind === "chicken" ? -0.32 * CHICKEN_SIZE_BOOST : -0.55, 0);
+            child.position.set(0, m.kind === "cat" ? 0 : m.kind === "chicken" ? -0.32 * CHICKEN_SIZE_BOOST : m.kind === "shibuya_animal" ? -0.2 : -0.55, 0);
           }
+        } else if (m.kind === "shibuya_animal") {
+          const inner = g.children[0];
+          inner.position.set(0, 0, 0);
+          if (inner.children[0]) inner.children[0].position.set(0, 0, 0);
+          const walk = Math.abs(Math.sin(m.hopT * 11)) * 0.035;
+          inner.position.y = walk;
+          inner.rotation.x = Math.sin(m.hopT * 11) * 0.04;
+          inner.scale.setScalar(1);
         } else if (m.kind === "cat") {
           const inner = g.children[0];
           inner.position.set(0, 0, 0);
@@ -741,7 +815,11 @@ function Movers() {
     <>
       {engine.movers.map((m) =>
         m.kind === "pedestrian" ? (
-          <PedestrianMover key={m.id} m={m} />
+          m.shibuyaChar ? (
+            <ShibuyaPedestrianMover key={m.id} m={m} />
+          ) : (
+            <PedestrianMover key={m.id} m={m} />
+          )
         ) : (
           <MoverView key={m.id} m={m} register={register} registerSign={registerSign} />
         )

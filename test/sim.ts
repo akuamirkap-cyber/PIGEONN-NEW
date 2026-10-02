@@ -680,9 +680,9 @@ function scenarioTurnNewAir() {
     if (reached < 0 && Math.abs(p.lat - 2.4) < 0.08) reached = f / 60;
     if (landed < 0 && p.grounded && f > 5) landed = f / 60;
   }
-  // air authority is lower than ground authority (steerMax 0.28 vs 0.42, grip 0.55): lane takes longer than on the ground
-  gripSlow = reached > 0.62;
-  log.push(`  NEW air lane change: peakFrontTruckInAir=${(pkTruckAir * DEG).toFixed(1)}° (max ${(0.28 * DEG).toFixed(1)}°) laneReached=${reached.toFixed(2)}s landed=${landed.toFixed(2)}s looserThanGround=${gripSlow} finalLat=${p.lat.toFixed(2)} steer=${p.steer.toFixed(3)}`);
+  // air authority is lower than ground authority (steerMax 0.48 vs 0.65, grip 0.85): air takes longer than on the ground
+  gripSlow = reached > 0.42;
+  log.push(`  NEW air lane change: peakFrontTruckInAir=${(pkTruckAir * DEG).toFixed(1)}° (max ${(0.48 * DEG).toFixed(1)}°) laneReached=${reached.toFixed(2)}s landed=${landed.toFixed(2)}s looserThanGround=${gripSlow} finalLat=${p.lat.toFixed(2)} steer=${p.steer.toFixed(3)}`);
   (engine as unknown as { crash: (c: string) => void }).crash("obstacle");
   step(150);
 }

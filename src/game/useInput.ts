@@ -3,7 +3,7 @@ import { engine, type InputAction } from "./engine";
 import { unlockAudio } from "./audio";
 import { useUI } from "./store";
 
-const SWIPE_PX = 22;
+const SWIPE_PX = 15;
 
 /** Swipe / tap / keyboard → engine actions. Menu buttons are handled by the UI layer. */
 export function useInput(ref: RefObject<HTMLElement | null>) {

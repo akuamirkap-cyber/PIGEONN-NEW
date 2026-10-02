@@ -1224,7 +1224,7 @@ export const isSuitVariant = (v: number) => {
 
 /** Kakek/nenek yang menyeberang: cardigan hangat, rambut putih, kacamata, dan tongkat. */
 const ELDER_OUTFITS: PedOutfit[] = [
-  { top: "#b8a389", pants: "#4a4e57", hair: "#e9e9ea", skin: "#e8c9a8", gender: "female", glasses: "round" },
+  { top: "#b8a389", pants: "#4a4e57", hair: "#e9e9ea", skin: "#e8c9a8", gender: "female", skirt: true, glasses: "round" },
   { top: "#c9a0dc", pants: "#5b5560", hair: "#f2f2f4", skin: "#f0d3b6", gender: "female", glasses: "round" },
   { top: "#8fbf9f", pants: "#454b52", hair: "#e4e4e6", skin: "#dfbb95", gender: "male", glasses: "round" },
 ];
@@ -1260,8 +1260,13 @@ export function pedestrianHeadParts(variant: number, isHit = false, elderly = fa
     { x: -0.05, y: 0.24, z: -0.21, w: 0.26, h: 0.22, d: 0.04, color: o.hair },
   ];
 
-  // Rambut panjang / kuncir untuk wanita
-  if (isFemale && !elderly) {
+  // Rambut lansia & sanggul uban nenek
+  if (elderly) {
+    parts.push({ x: -0.22, y: 0.28, z: 0, w: 0.14, h: 0.18, d: 0.18, color: o.hair });
+    parts.push({ x: -0.21, y: 0.38, z: 0, w: 0.12, h: 0.08, d: 0.16, color: o.hair });
+    parts.push({ x: 0.04, y: 0.1, z: 0.21, w: 0.12, h: 0.24, d: 0.04, color: o.hair });
+    parts.push({ x: 0.04, y: 0.1, z: -0.21, w: 0.12, h: 0.24, d: 0.04, color: o.hair });
+  } else if (isFemale) {
     parts.push({ x: -0.2, y: 0.06, z: 0, w: 0.12, h: 0.36, d: 0.34, color: o.hair }); // rambut belakang menjuntai
     parts.push({ x: 0.04, y: 0.1, z: 0.21, w: 0.12, h: 0.24, d: 0.04, color: o.hair }); // poni samping
     parts.push({ x: 0.04, y: 0.1, z: -0.21, w: 0.12, h: 0.24, d: 0.04, color: o.hair });
@@ -3473,7 +3478,7 @@ export function letterBadgeParts(char: string): Part[] {
 /* ---------- Shibuya Subway / Metro Underground System ---------- */
 
 export const SUBWAY_CAR_LEN = 11.0;
-export const SUBWAY_CAR_W = 2.4;
+export const SUBWAY_CAR_W = 2.18;
 export const SUBWAY_GAP = 0.5;
 export const SUBWAY_ROOF_H = 2.45;
 export const BUS_ROOF_H = 2.05;
@@ -3541,147 +3546,90 @@ export function subwayPortalParts(isExit = false): Part[] {
 }
 
 /**
- * Kerangka Rusuk Terowongan Megah & Sangat Tinggi (Tunnel Rib Arch):
+ * Kerangka Rusuk Terowongan Bersih & Lapang (Tunnel Rib Arch):
  * Membentang melintang di atas jalan selebar W = 20.2m (lateral z = -10.1 s.d +10.1),
  * tinggi plafon H = 17.2m (sangat tinggi & lapang, kamera leluasa di dalam tanpa terpotong),
- * dilengkapi tabung lampu fluorescent panjang ("TAPI TIDAK GELAP!"),
- * kabel catenary bracket di tengah, kolom keramik putih bersih, dan rambu darurat.
+ * dilengkapi tabung lampu fluorescent plafon yang terang benderang ("TIDAK GELAP!"),
+ * kolom samping yang bersih dan serasi dengan dinding, tanpa rambu/papan matrix yang ribet.
  */
 export function subwayTunnelRibParts(line = 0): Part[] {
-  const steel = "#444b56";
-  const whiteTile = "#f4f6fa";
+  const steel = "#383f4b";
+  const whiteTile = "#eaeff5";
   const fluoLight = "#fffdf0";
-  const emergencyGreen = "#00e676";
   const lineColors = ["#f39200", "#00a7e1", "#00b060", "#e60012"]; // Ginza, Tozai, Chiyoda, Marunouchi
   const stripe = lineColors[line % 4];
 
   const W = 20.2; // bentang melintang jalan sangat lebar & lapang (z)
   const H = 17.2; // tinggi plafon terowongan sangat tinggi (y)
   const parts: Part[] = [
-    // Lengkungan balok atas melintang di plafon
-    { x: 0, y: H, z: 0, w: 0.75, h: 0.65, d: W, color: steel },
+    // Lengkungan balok atas melintang di plafon yang kokoh & rapi
+    { x: 0, y: H, z: 0, w: 0.65, h: 0.55, d: W, color: steel },
     // Plafon beton atas penutup langit terowongan
-    { x: 0, y: H + 0.45, z: 0, w: 1.6, h: 0.25, d: W + 1.2, color: "#363c46" },
+    { x: 0, y: H + 0.35, z: 0, w: 1.4, h: 0.2, d: W + 0.8, color: "#282d37" },
 
-    // Kolom kiri & kanan berkeramik putih bersih (di z = -9.4 dan +9.4)
-    { x: 0, y: H / 2, z: -W / 2 + 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
-    { x: 0, y: H / 2, z: W / 2 - 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
+    // Kolom kiri & kanan bersih & mulus (di z = -W / 2 + 0.7 dan W / 2 - 0.7)
+    { x: 0, y: H / 2, z: -W / 2 + 0.7, w: 0.75, h: H, d: 1.1, color: whiteTile },
+    { x: 0, y: H / 2, z: W / 2 - 0.7, w: 0.75, h: H, d: 1.1, color: whiteTile },
 
-    // Garis aksen warna jalur metro/bus di kolom (tingkat bawah, tengah, dan atas)
-    { x: 0, y: 2.2, z: -W / 2 + 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
-    { x: 0, y: 2.2, z: W / 2 - 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
-    { x: 0, y: 8.5, z: -W / 2 + 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
-    { x: 0, y: 8.5, z: W / 2 - 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
-    { x: 0, y: 14.5, z: -W / 2 + 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
-    { x: 0, y: 14.5, z: W / 2 - 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
+    // Satu garis aksen selaras di ketinggian mata pada kolom (y = 2.2m)
+    { x: 0, y: 2.2, z: -W / 2 + 0.7, w: 0.77, h: 0.22, d: 1.12, color: stripe },
+    { x: 0, y: 2.2, z: W / 2 - 0.7, w: 0.77, h: 0.22, d: 1.12, color: stripe },
 
-    // TABUNG LAMPU FLUORESCENT BESAR DI PLAFON TINGGI: TAPI TIDAK GELAP!
-    // Deret lampu panjang menyala terang menyinari seluruh seisi terowongan
-    { x: 0, y: H - 0.4, z: -5.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
-    { x: 0, y: H - 0.4, z: 0.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
-    { x: 0, y: H - 0.4, z: 5.0, w: 0.24, h: 0.12, d: 3.8, color: fluoLight, glow: true },
-    // Reflektor casing lampu
-    { x: 0, y: H - 0.3, z: -5.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
-    { x: 0, y: H - 0.3, z: 0.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
-    { x: 0, y: H - 0.3, z: 5.0, w: 0.3, h: 0.08, d: 3.9, color: "#22252a" },
-
-    // Lampu dinding samping pencahayaan tambahan (di dinding setinggi 5.5m)
-    { x: 0, y: 5.5, z: -W / 2 + 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
-    { x: 0, y: 5.5, z: W / 2 - 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
-
-    // PAPAN PENGUMUMAN ELEKTRONIK OVERHEAD (DIPASANG TINGGI DI y = 12.2m)
-    // Frame papan matrix hitam membentang di atas 3 jalur
-    { x: 0, y: 12.2, z: 0, w: 0.55, h: 1.7, d: 11.2, color: "#16191f" },
-    // Bingkai luar pelindung
-    { x: 0, y: 12.2, z: 0, w: 0.58, h: 1.8, d: 11.4, color: "#373e4b" },
-    // Layar LED Matrix teks oranye/kuning menyala: "渋谷トンネル バス専用 / BUS WAY"
-    { x: -0.29, y: 12.45, z: 0, w: 0.05, h: 0.55, d: 10.4, color: "#ffb703", glow: true },
-    { x: -0.29, y: 11.95, z: 0, w: 0.05, h: 0.38, d: 9.6, color: "#00e5ff", glow: true },
-    // Lampu peringatan flashing amber di kedua sudut atas papan
-    { x: -0.29, y: 12.9, z: -5.3, w: 0.1, h: 0.22, d: 0.28, color: "#ff9f1c", glow: true },
-    { x: -0.29, y: 12.9, z: 5.3, w: 0.1, h: 0.22, d: 0.28, color: "#ff9f1c", glow: true },
-    // Rangka gantungan baja penopang tinggi ke plafon
-    { x: 0, y: 14.5, z: -3.8, w: 0.2, h: 3.2, d: 0.2, color: steel },
-    { x: 0, y: 14.5, z: 3.8, w: 0.2, h: 3.2, d: 0.2, color: steel },
-
-    // Rambu EXIT hijau menyala (非常口) di dinding samping
-    { x: 0, y: 3.5, z: -W / 2 + 1.35, w: 0.6, h: 0.38, d: 0.08, color: emergencyGreen, glow: true },
-    { x: 0, y: 3.5, z: W / 2 - 1.35, w: 0.6, h: 0.38, d: 0.08, color: emergencyGreen, glow: true },
-
-    // Pipa kabel utilitas dinding
-    { x: 0, y: 1.2, z: -W / 2 + 1.36, w: 1.4, h: 0.18, d: 0.1, color: "#1e2229" },
-    { x: 0, y: 1.2, z: W / 2 - 1.36, w: 1.4, h: 0.18, d: 0.1, color: "#1e2229" },
+    // TABUNG LAMPU FLUORESCENT PLAFON: TERANG BENDERANG & TIDAK GELAP
+    // Deret lampu rapi di plafon menyinari terowongan secara merata
+    { x: 0, y: H - 0.35, z: -5.0, w: 0.22, h: 0.1, d: 3.6, color: fluoLight, glow: true },
+    { x: 0, y: H - 0.35, z: 0.0, w: 0.22, h: 0.1, d: 3.6, color: fluoLight, glow: true },
+    { x: 0, y: H - 0.35, z: 5.0, w: 0.22, h: 0.1, d: 3.6, color: fluoLight, glow: true },
+    // Casing lampu
+    { x: 0, y: H - 0.28, z: -5.0, w: 0.26, h: 0.06, d: 3.7, color: "#1f232a" },
+    { x: 0, y: H - 0.28, z: 0.0, w: 0.26, h: 0.06, d: 3.7, color: "#1f232a" },
+    { x: 0, y: H - 0.28, z: 5.0, w: 0.26, h: 0.06, d: 3.7, color: "#1f232a" },
   ];
 
   return parts;
 }
 
 /**
- * Dinding Keramik Samping Terowongan (Subway Wall):
- * Tinggi H = 17.2m (mengikuti tinggi plafon terowongan), keramik putih bersih megah,
- * pita garis aksen jalur metro bercahaya, dan papan pengumuman stasiun dinaikkan tinggi (y = 9.8m).
+ * Dinding Terowongan Bersih & Minimalis (Clean Subway Wall):
+ * Desain bersih, elegan, dan tidak ribet — dinding mulus terang dengan dasar kokoh,
+ * satu garis aksen horizontal ramping yang rapi, tanpa papan pengumuman/iklan berjejal
+ * dan tanpa kabel/pipa yang membingungkan pandangan.
  */
 export function subwayWallParts(len = 6.0, line = 0): Part[] {
-  const whiteTile = "#f4f6fa";
-  const groutTile = "#e4e8ee";
-  const darkBase = "#373c46";
+  const wallSurface = "#eaeff5";
+  const darkBase = "#282d37";
   const lineColors = ["#f39200", "#00a7e1", "#00b060", "#e60012"];
   const stripe = lineColors[line % 4];
 
-  const H = 17.2; // tinggi dinding mengikuti plafon megah (y)
+  const H = 17.2; // tinggi dinding mengikuti plafon lapang (y)
   const parts: Part[] = [
-    // Pondasi bawah
-    { x: 0, y: 0.3, z: 0, w: len, h: 0.6, d: 0.45, color: darkBase },
-    // Dinding utama keramik putih bersih
-    { x: 0, y: H / 2, z: 0, w: len, h: H, d: 0.3, color: whiteTile },
-    // Variasi panel keramik
-    { x: 0, y: H / 2, z: 0.01, w: len - 0.4, h: H - 1.6, d: 0.28, color: groutTile },
-
-    // Pita warna jalur metro menyala bersih (di ketinggian 2.2m dan 8.5m)
-    { x: 0, y: 2.2, z: 0.02, w: len, h: 0.4, d: 0.29, color: stripe, glow: true },
-    { x: 0, y: 2.5, z: 0.02, w: len, h: 0.06, d: 0.29, color: "#ffffff", glow: true },
-    { x: 0, y: 8.5, z: 0.02, w: len, h: 0.35, d: 0.29, color: stripe, glow: true },
-    { x: 0, y: 14.5, z: 0.02, w: len, h: 0.3, d: 0.29, color: stripe, glow: true },
-
-    // PAPAN PENGUMUMAN DINDING DINAIKKAN TINGGI (y = 9.8m): "渋谷 方面 (For Shibuya)"
-    { x: 0, y: 9.8, z: 0.03, w: 3.6, h: 0.95, d: 0.26, color: "#002b66", glow: true },
-    { x: 0, y: 9.8, z: 0.04, w: 3.3, h: 0.78, d: 0.25, color: "#ffffff", glow: true },
-    { x: 0, y: 9.94, z: 0.05, w: 2.8, h: 0.36, d: 0.24, color: "#111827" },
-    { x: 0, y: 9.58, z: 0.05, w: 2.6, h: 0.22, d: 0.24, color: stripe },
-
-    // Pipa kabel utilitas di bawah
-    { x: 0, y: 0.95, z: 0.04, w: len, h: 0.14, d: 0.18, color: "#22262d" },
+    // Dasar fondasi dinding bawah yang kokoh & rapi
+    { x: 0, y: 0.25, z: 0, w: len, h: 0.5, d: 0.4, color: darkBase },
+    // Dinding utama yang mulus, bersih, dan terang
+    { x: 0, y: H / 2, z: 0, w: len, h: H, d: 0.25, color: wallSurface },
+    // Satu garis aksen horizontal yang ramping dan rapi di ketinggian mata (y = 2.2m)
+    { x: 0, y: 2.2, z: 0.01, w: len, h: 0.22, d: 0.26, color: stripe },
   ];
 
   return parts;
 }
 
 /**
- * Landasan Tepi Terowongan (Sidewalk & Guardrail Terowongan):
- * Seluruh permukaan aspal jalur berkendara dibiarkan 100% mulus rata mengikuti ground geometry utama
- * tanpa ada undakan / anak tangga / garis tumpang tindih.
- * Hanya meletakkan guardrail pembatas di trotoar samping (z = +/-8.2m) di dekat dinding.
+ * Landasan Tepi Terowongan (Sidewalk Tepi Terowongan):
+ * Trotoar tepi yang rapi dan mulus di samping terowongan (jauh di luar lajur berkendara).
+ * Sederhana, bersih, tanpa pagar atau reflektor berlebih yang membuat pusing.
  */
 export function subwayTrackParts(len = 6.0): Part[] {
   const curbConcrete = "#78808d";
-  const guardrailSteel = "#dbe2ea";
+  const curbDark = "#3a404c";
 
   const parts: Part[] = [
-    // Trotoar beton samping terowongan di dekat dinding (jauh di luar lajur jalan raya, |z| = 8.5m)
-    { x: 0, y: 0.14, z: -8.5, w: len, h: 0.28, d: 2.0, color: curbConcrete },
-    { x: 0, y: 0.14, z: 8.5, w: len, h: 0.28, d: 2.0, color: curbConcrete },
-
-    // Pagar pembatas guardrail baja di sepanjang trotoar samping
-    { x: 0, y: 0.52, z: -7.8, w: len, h: 0.14, d: 0.18, color: guardrailSteel },
-    { x: 0, y: 0.52, z: 7.8, w: len, h: 0.14, d: 0.18, color: guardrailSteel },
-    // Tiang penopang guardrail
-    { x: -len * 0.3, y: 0.32, z: -7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
-    { x: len * 0.3, y: 0.32, z: -7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
-    { x: -len * 0.3, y: 0.32, z: 7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
-    { x: len * 0.3, y: 0.32, z: 7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
-    // Strip reflektor kuning di pembatas samping
-    { x: 0, y: 0.52, z: -7.68, w: len, h: 0.05, d: 0.05, color: "#ffd21f", glow: true },
-    { x: 0, y: 0.52, z: 7.68, w: len, h: 0.05, d: 0.05, color: "#ffd21f", glow: true },
+    // Trotoar beton samping terowongan (di luar lajur jalan raya, |z| = 8.5m)
+    { x: 0, y: 0.12, z: -8.5, w: len, h: 0.24, d: 2.0, color: curbConcrete },
+    { x: 0, y: 0.12, z: 8.5, w: len, h: 0.24, d: 2.0, color: curbConcrete },
+    // List pembatas tepi jalan yang rapi
+    { x: 0, y: 0.13, z: -7.5, w: len, h: 0.26, d: 0.16, color: curbDark },
+    { x: 0, y: 0.13, z: 7.5, w: len, h: 0.26, d: 0.16, color: curbDark },
   ];
 
   return parts;
@@ -3827,8 +3775,8 @@ export function subwayTrainCarParts(
     parts.push({ x: fx - 0.14, y: 0.78, z: 0, w: 0.04, h: 0.12, d: 0.35, color: "#cbd5e1" });
 
     // Kaca spion samping bus (Side rearview mirrors)
-    parts.push({ x: fx - 0.2, y: 1.85, z: -W / 2 - 0.18, w: 0.15, h: 0.42, d: 0.12, color: "#111827" });
-    parts.push({ x: fx - 0.2, y: 1.85, z: W / 2 + 0.18, w: 0.15, h: 0.42, d: 0.12, color: "#111827" });
+    parts.push({ x: fx - 0.2, y: 1.85, z: -W / 2 - 0.08, w: 0.14, h: 0.38, d: 0.10, color: "#111827" });
+    parts.push({ x: fx - 0.2, y: 1.85, z: W / 2 + 0.08, w: 0.14, h: 0.38, d: 0.10, color: "#111827" });
   }
 
   // BAGIAN BELAKANG BUS (BILA EKOR / REAR BUS)

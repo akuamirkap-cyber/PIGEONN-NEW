@@ -15,6 +15,14 @@ import {
   type BuildingSpec,
   type ShibuyaBuildingId,
 } from "./models";
+import {
+  SHIBUYA_ANIMALS,
+  SHIBUYA_CHARACTERS,
+  SHIBUYA_MOTORCYCLES,
+  type ShibuyaAnimalId,
+  type ShibuyaCharacterId,
+  type ShibuyaMotorcycleId,
+} from "./shibuyaPacks";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
 import { sfx } from "./audio";
@@ -289,6 +297,7 @@ export interface SubwayTrain {
   s: number; // front nose coordinate (moves toward lower s when oncoming)
   lane: number;
   speed: number;
+  baseSpeed?: number;
   nCars: number;
   line: number;
   isShinkansen?: boolean;
@@ -328,7 +337,7 @@ export interface Chunk {
   kind: "street" | "park" | "haruna" | "shibuya";
   decor: Decor[];
 }
-export type MoverKind = "car" | "motorcycle" | "chicken" | "pedestrian" | "cat" | "dog";
+export type MoverKind = "car" | "motorcycle" | "chicken" | "pedestrian" | "cat" | "dog" | "shibuya_animal";
 export type MoverPhase = "drive" | "wait" | "hop" | "pause" | "hit";
 export interface Mover {
   id: number;
@@ -367,6 +376,12 @@ export interface Mover {
   signalSpeedK?: number;
   /** ban selip / lean visual motor */
   leanT?: number;
+  /** Little Japan Friends (shiba, tanuki, kitsune, deer, monkey, capybara, crane, neko) */
+  shibuyaAnimal?: ShibuyaAnimalId;
+  /** Japan Vehicle Pack motorcycle (cub, custom, sport, delivery, retro, cafe, trail, police) */
+  shibuyaMoto?: ShibuyaMotorcycleId;
+  /** Shibuya Blocks character (salaryman / pekerja kantor, student, chef, yakuza) */
+  shibuyaChar?: ShibuyaCharacterId;
 }
 
 export type CrossingState = "idle" | "warning" | "clearing" | "done";
@@ -2238,11 +2253,15 @@ class Engine {
         this.crash("pedestrian", { hardness: 0.75, side: m.lat >= p.lat ? -1 : 1 });
         return;
       }
-      if (m.kind === "cat") {
+      if (m.kind === "cat" || m.kind === "shibuya_animal") {
         if (Math.abs(m.s - d) > 0.45 + PLAYER_HALF) continue;
         if (Math.abs(m.lat - p.lat) > 0.85) continue;
-        if (p.h >= CAT_CLEAR_H) continue; // clean jump over cat
-        this.hitCat(m);
+        if (p.h >= CAT_CLEAR_H) continue; // clean jump over animal
+        if (m.kind === "shibuya_animal") {
+          this.hitShibuyaAnimal(m);
+        } else {
+          this.hitCat(m);
+        }
         continue;
       }
       if (m.kind === "chicken") {
@@ -2348,7 +2367,7 @@ class Engine {
     const p = this.player;
     const v = Math.max(this.speed, 5);
     const side = m.lat >= p.lat ? 1 : -1;
-    const isAnimal = m.kind === "cat" || m.kind === "chicken";
+    const isAnimal = m.kind === "cat" || m.kind === "chicken" || m.kind === "shibuya_animal";
     // Animals that got the size boost also get a bigger body sphere, so the bigger
     // model still rests/bounces ON the road instead of sinking into it.
     const animalBoost = m.kind === "cat" ? CAT_SIZE_BOOST : m.kind === "chicken" ? CHICKEN_SIZE_BOOST : 1;
@@ -2410,6 +2429,30 @@ class Engine {
     this.player.squash = 0.35;
     this.trickScore += 75;
     useUI.getState().addPopup("CAT +75", "#f59e0b");
+  }
+
+  private hitShibuyaAnimal(m: Mover) {
+    if (m.phase === "hit") return;
+    this.launchVictim(m, 0.45);
+    track.frame(m.s, m.lat, m.h + 0.4, tmpV);
+    const floor = tmpV.y - m.h - 0.4;
+    this.animalImpactFx(tmpV.x, tmpV.y, tmpV.z, floor, [0.4, 0.9, 0.7]);
+    this.emitWorld("dust", tmpV.x, tmpV.y, tmpV.z, floor, 14, 0, 0);
+    sfx.thwack();
+    sfx.bonk();
+    if (m.shibuyaAnimal === "shiba") {
+      sfx.bark();
+    } else if (m.shibuyaAnimal === "neko") {
+      sfx.meow();
+    } else if (m.shibuyaAnimal === "crane") {
+      sfx.squawk();
+    } else {
+      sfx.squawk();
+    }
+    this.player.squash = 0.35;
+    this.trickScore += 75;
+    const name = m.shibuyaAnimal ? m.shibuyaAnimal.toUpperCase() : "FRIEND";
+    useUI.getState().addPopup(`${name} +75`, "#2ec4b6");
   }
 
   private launchCatFromCar(o: Obstacle) {
@@ -2626,7 +2669,7 @@ class Engine {
       let remove = false;
       if (m.phase === "hit" && m.rag) {
         m.hitT += dt;
-        const isAnimal = m.kind === "cat" || m.kind === "chicken";
+        const isAnimal = m.kind === "cat" || m.kind === "chicken" || m.kind === "shibuya_animal";
         const bounceDamping = isAnimal ? 3.4 : 3.0; // hewan: gesekan lebih kecil -> makin mental
         const bBefore = m.rag.bounces;
         stepRagdoll(m.rag, dt, m.rag.radius, bounceDamping, 0.45);
@@ -2641,7 +2684,7 @@ class Engine {
         m.lat = clamp(m.rag.lat, -7, 7);
         m.h = m.rag.h - m.rag.radius;
         if (m.hitT > 5 || m.s < d - 16) remove = true;
-      } else if (m.kind === "cat") {
+      } else if (m.kind === "cat" || m.kind === "shibuya_animal") {
         if (m.phase === "wait") {
           m.delay -= dt;
           if (m.delay <= 0) m.phase = "hop"; // walking across street
@@ -2651,7 +2694,13 @@ class Engine {
           m.h = Math.abs(Math.sin(m.hopT * 12)) * 0.035;
           if (!m.warned && Math.abs(m.s - d) < 18) {
             m.warned = true;
-            sfx.meow();
+            if (m.kind === "shibuya_animal") {
+              if (m.shibuyaAnimal === "shiba") sfx.bark();
+              else if (m.shibuyaAnimal === "neko") sfx.meow();
+              else sfx.squawk();
+            } else {
+              sfx.meow();
+            }
           }
           if (Math.abs(m.lat) > 6.8) remove = true;
         }
@@ -3029,10 +3078,17 @@ class Engine {
       const inter = this.intersections.find((it) => it.id === cc.intersectionId);
       const mainRoadGreen = inter ? inter.lightState !== "red" : false;
       const waitingForLight = mainRoadGreen && Math.abs(cc.lat) > 12 && ((cc.dir > 0 && cc.lat < 0) || (cc.dir < 0 && cc.lat > 0));
+      const mainRoadVehicleInJunction = this.movers.some(
+        (m) =>
+          (m.kind === "car" || m.kind === "motorcycle") &&
+          Math.abs(m.s - cc.s) < 8.5 &&
+          Math.abs(m.lat) < 4.0,
+      );
       const carAhead = this.crossCars.some(
         (o) => o !== cc && o.dir === cc.dir && Math.abs(o.s - cc.s) < 1.4 && (o.lat - cc.lat) * cc.dir > 0 && (o.lat - cc.lat) * cc.dir < 5.0
       );
-      const yielding = carAhead || waitingForLight;
+      const approachingJunction = (cc.dir > 0 && cc.lat < -4.0) || (cc.dir < 0 && cc.lat > 4.0);
+      const yielding = carAhead || waitingForLight || (mainRoadVehicleInJunction && approachingJunction);
       cc.waiting = yielding;
 
       // rem / gas halus
@@ -3071,9 +3127,57 @@ class Engine {
     const p = this.player;
     let changed = false;
 
+    // 1. Headway & Anti-Penetrasi Antar-Bus (Satu Lajur):
+    // Bus melaju ke arah -s. Pada lajur yang sama, bus dengan s lebih kecil berada di depan (downstream).
+    // Bus di belakang (s lebih besar) wajib menjaga jarak aman dan DILARANG KERAS menembus bus di depannya.
+    const MIN_BUS_GAP = 4.2;
+
+    for (const lane of [0, 1, 2]) {
+      const laneBuses = this.subwayTrains.filter((st) => st.lane === lane).sort((a, b) => a.s - b.s);
+      for (let k = 1; k < laneBuses.length; k++) {
+        const leader = laneBuses[k - 1];
+        const follower = laneBuses[k];
+        if (follower.baseSpeed === undefined) follower.baseSpeed = follower.speed;
+
+        const leaderRear = leader.s + leader.length;
+        const headway = follower.s - leaderRear;
+
+        // Deteksi jarak 26m: perlambat laju mendekati kecepatan bus di depan
+        if (headway < 26) {
+          const target = Math.min(follower.baseSpeed, leader.speed);
+          follower.speed = lerp(follower.speed, target, dt * 4.5);
+          if (target === 0 && follower.speed < 0.05) {
+            follower.speed = 0;
+            follower.isStopped = true;
+          }
+        }
+
+        // Jika bus depan berhenti/parkir dan jarak < 12m: rem kuat agar berhenti di belakangnya
+        if (headway < 12 && (leader.isStopped || leader.speed === 0)) {
+          follower.speed = Math.max(0, follower.speed - 22 * dt);
+          if (follower.speed < 0.05) {
+            follower.speed = 0;
+            follower.isStopped = true;
+          }
+        }
+
+        // Jarak batas aman minimum: samakan kecepatan atau berhenti total tepat di belakang bus depan
+        if (headway <= MIN_BUS_GAP) {
+          follower.s = leaderRear + MIN_BUS_GAP;
+          if (leader.isStopped || leader.speed === 0) {
+            follower.speed = 0;
+            follower.isStopped = true;
+          } else {
+            follower.speed = Math.min(follower.speed, leader.speed);
+          }
+        }
+      }
+    }
+
+    // 2. Gerakkan semua bus sesuai kecepatannya
     for (let i = this.subwayTrains.length - 1; i >= 0; i--) {
       const st = this.subwayTrains[i];
-      // Kereta subway / shinkansen melaju berlawanan arah (+s -> -s)
+      // Kereta subway / bus ekspres melaju berlawanan arah (+s -> -s)
       st.s -= st.speed * dt;
       const dist = st.s - d;
 
@@ -3144,6 +3248,25 @@ class Engine {
       }
     }
 
+    // 3. Second-Pass Hard Clamp: Jaminan Fisik Mutlak Tidak Ada Bus Menembus Bus Lain
+    for (const lane of [0, 1, 2]) {
+      const laneBuses = this.subwayTrains.filter((st) => st.lane === lane).sort((a, b) => a.s - b.s);
+      for (let k = 1; k < laneBuses.length; k++) {
+        const leader = laneBuses[k - 1];
+        const follower = laneBuses[k];
+        const leaderRear = leader.s + leader.length;
+        if (follower.s < leaderRear + MIN_BUS_GAP) {
+          follower.s = leaderRear + MIN_BUS_GAP;
+          if (leader.isStopped || leader.speed === 0) {
+            follower.speed = 0;
+            follower.isStopped = true;
+          } else {
+            follower.speed = Math.min(follower.speed, leader.speed);
+          }
+        }
+      }
+    }
+
     if (changed) this.moverVersion++;
 
     // Munculkan gelombang bus dinamis lebih rapat di sepanjang terowongan (720m)
@@ -3158,26 +3281,51 @@ class Engine {
 
       if (
         tun.nextEncounterS &&
-        this.distance >= tun.nextEncounterS - 95 &&
+        this.distance >= tun.nextEncounterS - 90 &&
         tun.nextEncounterS < tun.endS - 45
       ) {
         // Bergantian antara Landasan Bus Berhenti (Subway Surfers), Formasi Bertingkat, dan Bus Ekspres
         const encounterRoll = Math.random();
-        if (encounterRoll < 0.45) {
+        if (encounterRoll < 0.40) {
           // Landasan Bus Berhenti (Subway Surfers Style Runway)
           this.spawnStationaryBusRunway(tun, tun.nextEncounterS, pick([0, 1, 2]));
-          tun.nextEncounterS += rand(48, 64);
-        } else if (encounterRoll < 0.75) {
+          tun.nextEncounterS += rand(52, 68);
+        } else if (encounterRoll < 0.70) {
           // Formasi multi-bus bertingkat (Ramp -> Bus A -> Bus B -> Bus C)
           this.spawnStaggeredBusChain(tun, tun.nextEncounterS);
-          tun.nextEncounterS += rand(54, 70);
+          tun.nextEncounterS += rand(58, 74);
         } else {
           // Bus ekspres jalan raya
           this.spawnSubwaySegment(tun, tun.nextEncounterS);
-          tun.nextEncounterS += rand(44, 58);
+          tun.nextEncounterS += rand(48, 62);
         }
       }
     }
+  }
+
+  /**
+   * Cek apakah rentang lajur terowongan [fromS, toS] bebas dari bus lain
+   * agar bus baru TIDAK spawn menumpuk / menembus bus yang sudah ada.
+   */
+  private isSubwayLaneClear(lane: number, fromS: number, toS: number, buffer = 14): boolean {
+    const minS = Math.min(fromS, toS) - buffer;
+    const maxS = Math.max(fromS, toS) + buffer;
+    return !this.subwayTrains.some((st) => {
+      if (st.lane !== lane) return false;
+      const stMin = st.s - buffer;
+      const stMax = st.s + st.length + buffer;
+      return !(maxS < stMin || minS > stMax);
+    });
+  }
+
+  /**
+   * Cek apakah ada bus berhenti di depan jalur lajur ini (dalam arah gerak ke -s)
+   * agar bus yang melaju cepat tidak diarahkan ke jalur yang tersumbat bus parkir.
+   */
+  private hasStoppedBusAhead(lane: number, fromS: number, maxDistance = 90): boolean {
+    return this.subwayTrains.some(
+      (st) => st.lane === lane && (st.isStopped || st.speed === 0) && st.s < fromS && st.s > fromS - maxDistance,
+    );
   }
 
   /**
@@ -3193,7 +3341,9 @@ class Engine {
 
     if (pattern === 0) {
       // Pola 1: Bus Parkir Panjang (1 atau 2 gerbong, ~23m) dengan Ramp langsung
-      const lane = pick([0, 1, 2]);
+      const freeLanes = [0, 1, 2].filter((l) => this.isSubwayLaneClear(l, startS - 14, startS + 35, 14));
+      if (freeLanes.length === 0) return;
+      const lane = pick(freeLanes);
       const nCars = pick([1, 2, 2]);
       const trainLen = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
       const bus: SubwayTrain = {
@@ -3201,6 +3351,7 @@ class Engine {
         s: startS,
         lane,
         speed: 0, // BERHENTI / PARKIR
+        baseSpeed: 0,
         nCars,
         line: tun.line % 4,
         isShinkansen: false,
@@ -3227,8 +3378,11 @@ class Engine {
 
     } else if (pattern === 1) {
       // Pola 2: Dua Bus Berhenti Berdampingan (Staggered Transfer A -> B di atap bus)
-      const laneA = pick([0, 2]);
+      const freeLanesA = [0, 2].filter((l) => this.isSubwayLaneClear(l, startS - 14, startS + 35, 14));
+      if (freeLanesA.length === 0) return;
+      const laneA = pick(freeLanesA);
       const laneB = 1; // lajur tengah
+      if (!this.isSubwayLaneClear(laneB, startS + 6, startS + 45, 14)) return;
       const nCarsA = 2;
       const lenA = nCarsA * SUBWAY_CAR_LEN + (nCarsA - 1) * SUBWAY_GAP;
       const busA: SubwayTrain = {
@@ -3236,6 +3390,7 @@ class Engine {
         s: startS,
         lane: laneA,
         speed: 0,
+        baseSpeed: 0,
         nCars: nCarsA,
         line: tun.line % 4,
         isShinkansen: false,
@@ -3264,6 +3419,7 @@ class Engine {
         s: startB,
         lane: laneB,
         speed: 0,
+        baseSpeed: 0,
         nCars: nCarsB,
         line: (tun.line + 1) % 4,
         isShinkansen: false,
@@ -3285,8 +3441,14 @@ class Engine {
 
     } else {
       // Pola 3: Bus Berhenti Sebagai Landasan + Bus Melaju di Jalur Sebelah
-      const parkedLane = pick([0, 2]);
-      const oncomingLane = parkedLane === 0 ? 2 : 0;
+      const freeParked = [0, 2].filter((l) => this.isSubwayLaneClear(l, startS - 14, startS + 35, 14));
+      if (freeParked.length === 0) return;
+      const parkedLane = pick(freeParked);
+      const candidateOncoming = [0, 1, 2].filter(
+        (l) => l !== parkedLane && this.isSubwayLaneClear(l, startS - 8, startS + 55, 14) && !this.hasStoppedBusAhead(l, startS + 55),
+      );
+      if (candidateOncoming.length === 0) return;
+      const oncomingLane = pick(candidateOncoming);
       const nCars = 2;
       const len = nCars * SUBWAY_CAR_LEN + (nCars - 1) * SUBWAY_GAP;
 
@@ -3296,6 +3458,7 @@ class Engine {
         s: startS,
         lane: parkedLane,
         speed: 0,
+        baseSpeed: 0,
         nCars,
         line: tun.line % 4,
         isShinkansen: false,
@@ -3326,6 +3489,7 @@ class Engine {
         s: s0,
         lane: oncomingLane,
         speed: onSpeed,
+        baseSpeed: onSpeed,
         nCars: 1,
         line: (tun.line + 2) % 4,
         isShinkansen: true,
@@ -3353,8 +3517,22 @@ class Engine {
     const est = Math.max(this.speed, START_SPEED);
     const speed = 19;
 
+    // Pastikan lajur-lajur untuk bus A, B, C tidak menabrak bus yang sudah ada
+    const startCandidates = [0, 2].filter((l) => {
+      const other = l === 0 ? 2 : 0;
+      return (
+        this.isSubwayLaneClear(l, meetS - 18, meetS + 45, 14) &&
+        this.isSubwayLaneClear(1, meetS - 10, meetS + 55, 14) &&
+        this.isSubwayLaneClear(other, meetS, meetS + 65, 14) &&
+        !this.hasStoppedBusAhead(l, meetS + 45) &&
+        !this.hasStoppedBusAhead(1, meetS + 55) &&
+        !this.hasStoppedBusAhead(other, meetS + 65)
+      );
+    });
+    if (startCandidates.length === 0) return;
+
     // Pola tangga arah lajur: 0 -> 1 -> 2 atau 2 -> 1 -> 0
-    const startLane = Math.random() < 0.5 ? 0 : 2;
+    const startLane = pick(startCandidates);
     const midLane = 1;
     const endLane = startLane === 0 ? 2 : 0;
 
@@ -3367,6 +3545,7 @@ class Engine {
       s: s0_A,
       lane: startLane,
       speed,
+      baseSpeed: speed,
       nCars: 1,
       line: tun.line % 4,
       isShinkansen: false,
@@ -3395,6 +3574,7 @@ class Engine {
       s: s0_B,
       lane: midLane,
       speed,
+      baseSpeed: speed,
       nCars: 1,
       line: (tun.line + 1) % 4,
       isShinkansen: false,
@@ -3422,6 +3602,7 @@ class Engine {
       s: s0_C,
       lane: endLane,
       speed,
+      baseSpeed: speed,
       nCars: 1,
       line: (tun.line + 2) % 4,
       isShinkansen: true,
@@ -3449,8 +3630,18 @@ class Engine {
     const est = Math.max(this.speed, START_SPEED);
     const type = forceType ?? randInt(0, 2); // 0: Toei City Bus, 1: Highway Express Coach, 2: Articulated / Twin Buses
 
-    // Pilih 1 atau 2 lajur untuk bus berlawanan arah, tetapi SELALU sisakan minimal 1 lajur kosong untuk freestyle
-    const busLanes = forceType !== undefined ? [pick([0, 1, 2])] : (Math.random() < 0.45 ? [pick([0, 1, 2])] : pick([ [0, 1], [1, 2], [0, 2] ]));
+    // Ambil lajur yang benar-benar bersih dan tidak ada bus berhenti di depannya
+    const availableLanes = [0, 1, 2].filter((l) => {
+      return (
+        this.isSubwayLaneClear(l, meetS - 16, meetS + 55, 14) &&
+        !this.hasStoppedBusAhead(l, meetS + 55)
+      );
+    });
+    if (availableLanes.length === 0) return;
+
+    // Sisakan minimal 1 lajur kosong untuk arena freestyle pemain
+    const maxLanes = Math.min(availableLanes.length, Math.min(2, forceType !== undefined ? 1 : Math.random() < 0.45 ? 1 : 2));
+    const busLanes = availableLanes.slice(0, maxLanes);
     const freeLane = [0, 1, 2].find((l) => !busLanes.includes(l)) ?? 1;
 
     for (const lane of busLanes) {
@@ -3465,6 +3656,7 @@ class Engine {
           s: s0,
           lane,
           speed,
+          baseSpeed: speed,
           nCars,
           line: (tun.line + 1) % 4, // Keikyu / Limousine Express
           isShinkansen: true,
@@ -3494,6 +3686,7 @@ class Engine {
           s: s0,
           lane,
           speed,
+          baseSpeed: speed,
           nCars,
           line: (tun.line + 2) % 4, // Tokyo Airport Limousine
           isShinkansen: false,
@@ -3521,6 +3714,7 @@ class Engine {
           s: s0,
           lane,
           speed,
+          baseSpeed: speed,
           nCars,
           line: tun.line % 4, // Toei green
           isShinkansen: false,
@@ -3565,14 +3759,8 @@ class Engine {
   private spawnSubwayEncounter(tun: SubwayTunnel) {
     // 1. Bus Berhenti / Landasan Skate Subway Surfers di awal terowongan!
     this.spawnStationaryBusRunway(tun, tun.startS + 20, 0);
-    // 2. Formasi Bus Bertingkat (Ramp -> Bus A -> Bus B -> Bus C) di segmen berikutnya
-    this.spawnStaggeredBusChain(tun, tun.startS + 75);
-    // 3. Bus Berhenti Pola Staggered Transfer (Lompat antar atap bus berhenti)
-    this.spawnStationaryBusRunway(tun, tun.startS + 135, 1);
-    // 4. Bus Ekspres Jalan Raya di segmen berikutnya
-    this.spawnSubwaySegment(tun, tun.startS + 195, 1);
-    // Jadwalkan kemunculan berkala bus berikutnya di sepanjang 720m
-    tun.nextEncounterS = tun.startS + 245;
+    // Jadwalkan kemunculan berkala bus berikutnya di sepanjang 720m terowongan
+    tun.nextEncounterS = tun.startS + 75;
   }
 
   private addIntersection(s: number): Intersection | null {
@@ -4234,7 +4422,7 @@ class Engine {
   private spawnOncoming(meetS: number, lane: number, t: number, allowCompanion = true) {
     const d = this.distance;
     const baseSpeed = rand(3.2, 4.4) + 1.4 * t;
-    const isMotorcycle = Math.random() < 0.34;
+    const isMotorcycle = track.mode === "shibuya" ? Math.random() < 0.68 : Math.random() < 0.40;
     const motorcycleFactor = isMotorcycle
       ? rand(1.05, 1.2) * ONCOMING_MOTORCYCLE_SPEED_MULT
       : 1;
@@ -4246,14 +4434,14 @@ class Engine {
     if (this.crossings.some((c) => Math.abs(c.s - meetS) < 14 || Math.abs(c.s - s0) < 12)) {
       return;
     }
-    // One in three oncoming vehicles is a slightly quicker motorcycle.
+    // High motorcycle presence in Shibuya with companion riders
     if (isMotorcycle) {
       this.spawnMotorcycle(s0, lane, baseSpeed, motorcycleFactor);
       this.reserved.push({ lane, from: meetS - 7, until: s0 + 6 });
-      if (allowCompanion && t > 0.35 && Math.random() < 0.35) {
+      if (allowCompanion && (track.mode === "shibuya" ? Math.random() < 0.60 : (t > 0.35 && Math.random() < 0.35))) {
         const companionLane = this.otherLane([lane]);
-        const companionS = s0 + 2.4;
-        this.spawnMotorcycle(companionS, companionLane, baseSpeed * rand(0.92, 1.06));
+        const companionS = s0 + 3.0;
+        this.spawnMotorcycle(companionS, companionLane, baseSpeed * rand(0.95, 1.05));
         this.reserved.push({ lane: companionLane, from: meetS - 5, until: companionS + 6 });
       }
       return;
@@ -4289,6 +4477,11 @@ class Engine {
     const m = this.newMover("motorcycle", s0, lane, LANE_LAT[lane]);
     m.speed = v * speedFactor;
     m.variant = randInt(0, 5);
+    // Japan Vehicle Pack: motorcycles with riders (cub, sport, delivery, custom, etc.)
+    // Prominently spawned in Shibuya streets alongside regular motorcycles
+    if (track.mode === "shibuya" ? Math.random() < 0.94 : Math.random() < 0.65) {
+      m.shibuyaMoto = pick(SHIBUYA_MOTORCYCLES);
+    }
     m.smokeT = rand(0, 0.08);
     this.movers.push(m);
     this.moverVersion++;
@@ -4354,12 +4547,27 @@ class Engine {
       const elderly = i === elderIndex;
       m.elderly = elderly;
       m.speed = elderly ? rand(0.85, 1.25) : rand(1.6, 2.3);
-      // Mix casual walkers and salarymen; jittered positions and delays avoid parade-like rows.
+      // Mix casual walkers, salarymen, and Shibuya Blocks office workers.
       m.variant = elderly ? randInt(0, 2) : Math.random() < 0.35 ? randInt(5, 7) : randInt(0, 4);
+      if (!elderly && (track.mode === "shibuya" ? Math.random() < 0.72 : Math.random() < 0.40)) {
+        m.shibuyaChar = Math.random() < 0.8 ? "salaryman" : pick(SHIBUYA_CHARACTERS);
+      }
       const eta = (pedestrianS - d) / est;
       const walk = (edge - 1.2) / m.speed;
       m.delay = Math.max(0.1, eta - walk + rand(-0.9, 0.9) + i * 0.35);
       this.movers.push(m);
+
+      // Also spawn Little Japan Friends (Shiba, Tanuki, Kitsune, Neko) crossing alongside pedestrians!
+      if (i === 0 && (track.mode === "shibuya" ? Math.random() < 0.65 : Math.random() < 0.35)) {
+        const petMover = this.newMover("shibuya_animal", pedestrianS + rand(-1.2, 1.2), -1, -dir * (edge - 0.4));
+        petMover.dir = dir;
+        petMover.crossingEdge = edge;
+        petMover.speed = rand(2.0, 2.7);
+        petMover.delay = Math.max(0.1, m.delay + rand(0.05, 0.3));
+        petMover.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+        if (signal) petMover.signalIntersectionId = signal.id;
+        this.movers.push(petMover);
+      }
     }
     this.moverVersion++;
     return n * 2.8 + 3.5;
@@ -4477,18 +4685,20 @@ class Engine {
           ["single", 1.8],
         ]
       : [
-          ["single", 5],
-          ["car", 3],
-          ["double", 1 + 4 * t],
+          ["single", 3.8],
+          ["car", 2.4],
+          ["double", 1 + 3 * t],
           ["wall", 1 + 2 * t],
           ["zigzag", 0.4 + 2.5 * t],
           ["ramp", 2.2],
           ["rail", 2.2],
           ["bread", 1.6],
-          ["oncoming", track.mode === "haruna" ? 3.2 + 2.4 * t : 11 + 5 * t],
-          ["chickens", 2.6 + 1.0 * t],
-          ["cats", 2.4 + 1.0 * t],
-          ["pedestrians", (track.mode === "haruna" ? 2.2 : 5.0) + 1.2 * t], // frequent city crossings, without crowding mountain roads
+          ["oncoming", track.mode === "haruna" ? 3.2 + 2.4 * t : 10 + 4 * t],
+          ["motorcycles", (track.mode === "shibuya" ? 6.5 : 2.5) + 1.2 * t],
+          ["chickens", 2.2 + 0.8 * t],
+          ["cats", 2.2 + 0.8 * t],
+          ["shibuya_animals", (track.mode === "shibuya" ? 8.5 : 3.2) + 1.5 * t],
+          ["pedestrians", (track.mode === "haruna" ? 2.2 : 6.0) + 1.2 * t], // frequent city crossings, without crowding mountain roads
           ["puddles", 1.8],
         ];
     const cr = this.crossings.find((c) => !c.placed);
@@ -4511,13 +4721,15 @@ class Engine {
         break;
       }
     }
-    // guarantee the signature obstacles show up early in every run
+    // guarantee the signature obstacles and Japan pack models show up immediately!
     const idx = this.patternIndex++;
     if (!inTunnel) {
-      if (idx === 1) pattern = "chickens";
-      else if (idx === 2) pattern = "cats";
-      else if (idx === 4) pattern = "oncoming";
-      else if (idx === 0 && (pattern === "oncoming" || pattern === "chickens" || pattern === "cats")) pattern = "single";
+      if (idx === 0) pattern = "motorcycles"; // Japan Vehicle Pack right away!
+      else if (idx === 1) pattern = "shibuya_animals"; // Little Japan Friends right away!
+      else if (idx === 2) pattern = "pedestrians"; // Salaryman & crossing friends!
+      else if (idx === 3) pattern = "shibuya_animals"; // Another Little Japan Friend encounter!
+      else if (idx === 4) pattern = "oncoming"; // Fast oncoming with motorcycles!
+      else if (idx === 5) pattern = "motorcycles"; // Japan Vehicle Pack squad!
     }
     let len = 1;
     switch (pattern) {
@@ -4655,6 +4867,22 @@ class Engine {
         }
         break;
       }
+      case "motorcycles": {
+        const lane1 = randInt(0, 2);
+        const lane2 = this.otherLane([lane1]);
+        const baseSpeed = rand(3.4, 4.6) + 1.2 * t;
+        const est = Math.max(this.speed, 6);
+        const s1 = x + (baseSpeed * (x - d)) / est;
+        const s2 = s1 + rand(6, 12);
+        this.spawnMotorcycle(s1, lane1, baseSpeed);
+        this.spawnMotorcycle(s2, lane2, baseSpeed * rand(0.96, 1.06));
+        this.reserved.push({ lane: lane1, from: x - 6, until: s1 + 6 });
+        this.reserved.push({ lane: lane2, from: x + 2, until: s2 + 6 });
+        const safeLane = this.otherLane([lane1, lane2]);
+        if (Math.random() < 0.6) this.breadLine(x + 6, safeLane);
+        len = 16;
+        break;
+      }
       case "pedestrians": {
         len = this.spawnPedestrians(x, t);
         break;
@@ -4702,6 +4930,30 @@ class Engine {
         }
         this.moverVersion++;
         len = n * 1.4 + 3;
+        break;
+      }
+      case "shibuya_animals": {
+        const n = 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const est = Math.max(this.speed, START_SPEED);
+        const eta = Math.max(0.1, (x - d) / est);
+        for (let i = 0; i < n; i++) {
+          const animalSpeed = rand(2.2, 3.2);
+          const targetLat = LANE_LAT[(i + 1) % 3];
+          const startEdge = 3.6;
+          const distToTarget = Math.abs(targetLat - (-dir * startEdge));
+          const tWalk = distToTarget / animalSpeed;
+          const delay = Math.max(0.05, eta - tWalk + (i - (n - 1) / 2) * 0.3);
+          const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, -dir * startEdge);
+          m.dir = dir;
+          m.speed = animalSpeed;
+          m.delay = delay;
+          m.crossingEdge = 5.2;
+          m.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+          this.movers.push(m);
+        }
+        this.moverVersion++;
+        len = n * 1.8 + 3.5;
         break;
       }
     }

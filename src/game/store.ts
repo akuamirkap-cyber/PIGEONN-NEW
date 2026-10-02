@@ -167,10 +167,11 @@ export const useUI = create<UIState>((set, get) => ({
   cycleIndex: 0,
   setCycle: (cycleIndex) => set({ cycleIndex }),
   speedMode: (() => {
-    const m = load<number>("pigeon-sk8-speed", 1);
-    return (m === 2 || m === 3 ? m : 1) as 1 | 2 | 3;
+    const m = load<number>("pigeon-sk8-speed-v2", 2);
+    return (m === 1 || m === 3 ? m : 2) as 1 | 2 | 3;
   })(),
   setSpeedMode: (speedMode) => {
+    save("pigeon-sk8-speed-v2", speedMode);
     save("pigeon-sk8-speed", speedMode);
     set({ speedMode });
   },
@@ -187,10 +188,11 @@ export const useUI = create<UIState>((set, get) => ({
     return (m === "haruna" || m === "tokyo" ? m : "shibuya") as TrackMode;
   })(),
   cameraMode: (() => {
-    const m = load<string>("pigeon-sk8-camera", "crossy");
-    return m === "chase" ? "chase" : "crossy";
+    const m = load<string>("pigeon-sk8-camera-v2", "chase");
+    return m === "crossy" ? "crossy" : "chase";
   })(),
   setCameraMode: (cameraMode) => {
+    save("pigeon-sk8-camera-v2", cameraMode);
     save("pigeon-sk8-camera", cameraMode);
     set({ cameraMode });
   },
