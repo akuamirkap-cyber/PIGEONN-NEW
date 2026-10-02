@@ -4156,19 +4156,14 @@ class Engine {
       if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 12.0 : 16.2, 0.12, randInt(0, 2));
 
       // 7. Lampu jalan: di kedua trotoar
-      add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.06);
+      add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.12);
       add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 10.5 : 12.55, 0.14);
       if (!curTunnel && id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
 
-      // 8. Pagar pembatas trotoar pipa putih khas Jepang
-      for (const flx of [2.0, 6.0, 10.0]) {
-        if (!nearCrossing(flx)) {
-          add("guard_fence", flx, -4.14, 0.12);
-          add("guard_fence", flx, curTunnel ? 10.8 : 12.78, 0.12);
-        }
-      }
+      // 8. Pagar pembatas trotoar pipa putih khas Jepang kini disapu mulus & kontinu di ground.ts mengikuti kontur jalan tanpa patah/anak tangga
+
       // 9. Planter trotoar
-      if (Math.random() < 0.5) add("sidewalk_planter", rand(2.5, 9.5), -4.85, 0.12, randInt(0, 2));
+      if (Math.random() < 0.45) add("sidewalk_planter", rand(3.0, 9.0), -4.95, 0.12, randInt(0, 2));
 
       this.chunks.push({ id, s0, kind: "shibuya", decor });
       this.listVersion++;
@@ -4247,7 +4242,7 @@ class Engine {
       add("bush", rand(1, 11), rand(-7.4, -8.5), 0.05, randInt(0, 1));
       add("flowers", rand(1, 11), rand(-7.4, -9), 0.08, randInt(0, 1));
     }
-    if (id % 2 === 0) add("lamp", 6, -4.3, 0.06);
+    if (id % 2 === 0) add("lamp", 6, -4.3, 0.12);
     if (Math.random() < 0.3) add("hydrant", rand(1.5, 10.5), 4.7, 0.12);
     const nTrees = randInt(1, 2);
     for (let i = 0; i < nTrees; i++) {
@@ -4299,7 +4294,7 @@ class Engine {
     return false;
   }
 
-  private isNearBread(s: number, lane: number, bufferBefore = 10.0, bufferAfter = 24.0): boolean {
+  private isNearBread(s: number, lane: number, bufferBefore = 10.0, bufferAfter = 20.0): boolean {
     for (const b of this.breads) {
       if (b.taken) continue;
       const laneGap = Math.abs(b.lane - lane);
@@ -4315,27 +4310,27 @@ class Engine {
 
   /**
    * Cek apakah titik s di lajur lane terlalu dekat atau di belakang item collectible (huruf harian, roket langka, kaleng NOS).
-   * Menjamin area bebas hambatan: bufferBefore meter di depan item dan bufferAfter meter di belakang item.
+   * Menjamin area bebas hambatan: bufferBefore meter di depan item dan bufferAfter meter di belakang item (22m depan, 20m belakang).
    */
-  isNearCollectibleItem(s: number, lane: number, bufferBefore = 22.0, bufferAfter = 55.0): boolean {
+  isNearCollectibleItem(s: number, lane: number, bufferBefore = 22.0, bufferAfter = 20.0): boolean {
     for (const l of this.letters) {
-      if ((!l.taken || this.distance < l.s + 45) && l.lane === lane) {
+      if ((!l.taken || this.distance < l.s + 20) && l.lane === lane) {
         if (s >= l.s - bufferBefore && s <= l.s + bufferAfter) return true;
-      } else if ((!l.taken || this.distance < l.s + 45) && Math.abs(l.lane - lane) === 1) {
+      } else if ((!l.taken || this.distance < l.s + 20) && Math.abs(l.lane - lane) === 1) {
         if (Math.abs(s - l.s) < 10.0) return true;
       }
     }
     for (const r of this.rockets) {
-      if ((!r.taken || this.distance < r.s + 45) && r.lane === lane) {
+      if ((!r.taken || this.distance < r.s + 20) && r.lane === lane) {
         if (s >= r.s - bufferBefore && s <= r.s + bufferAfter) return true;
-      } else if ((!r.taken || this.distance < r.s + 45) && Math.abs(r.lane - lane) === 1) {
+      } else if ((!r.taken || this.distance < r.s + 20) && Math.abs(r.lane - lane) === 1) {
         if (Math.abs(s - r.s) < 10.0) return true;
       }
     }
     for (const c of this.nosCans) {
-      if ((!c.taken || this.distance < c.s + 40) && c.lane === lane) {
+      if ((!c.taken || this.distance < c.s + 20) && c.lane === lane) {
         if (s >= c.s - bufferBefore && s <= c.s + bufferAfter) return true;
-      } else if ((!c.taken || this.distance < c.s + 40) && Math.abs(c.lane - lane) === 1) {
+      } else if ((!c.taken || this.distance < c.s + 20) && Math.abs(c.lane - lane) === 1) {
         if (Math.abs(s - c.s) < 8.0) return true;
       }
     }
@@ -4344,7 +4339,7 @@ class Engine {
 
   /** Pickups & letters always get a clear runway; later obstacle patterns must respect this reservation too. */
   private isNearBonusItem(s: number, lane: number, buffer = 10.0): boolean {
-    return this.isNearCollectibleItem(s, lane, buffer, Math.max(buffer, 55.0));
+    return this.isNearCollectibleItem(s, lane, buffer, Math.max(buffer, 20.0));
   }
 
   private addObstacle(kind: ObstacleKind, s: number, lane: number, _force = false, half?: number, variant?: number) {
@@ -4354,10 +4349,10 @@ class Engine {
     if (this.laneReserved(lane, s)) return;
     const hLen = half ?? OBSTACLE_DEFS[kind].halfLen;
     // JANGAN PERNAH menempatkan obstacle di dekat apalagi di belakang item (huruf, roket, kaleng NOS)!
-    // Clearance 22m di depan item dan 55m di belakang item agar pemain bebas & aman mengambil item.
-    if (this.isNearCollectibleItem(s, lane, hLen + 22.0, hLen + 55.0)) return;
+    // Clearance 22m di depan item dan 20m di belakang item agar pemain bebas & aman mengambil item.
+    if (this.isNearCollectibleItem(s, lane, hLen + 22.0, hLen + 20.0)) return;
     // Bread lines must stay readable and never have obstacles in their path or immediately behind them
-    if (this.isNearBread(s, lane, hLen + 10.0, hLen + 24.0)) return;
+    if (this.isNearBread(s, lane, hLen + 10.0, hLen + 20.0)) return;
     track.frame(s, LANE_LAT[lane], 0, tmpV);
     track.quat(s, tmpQ);
     const catVariant = kind === "car" && Math.random() < 0.48 ? randInt(0, 3) : undefined;
@@ -4374,7 +4369,7 @@ class Engine {
       catVariant,
     });
     // Remove any bread that might somehow collide or be within the safety buffer of this obstacle
-    this.breads = this.breads.filter((b) => !(b.lane === lane && b.s >= s - (hLen + 24.0) && b.s <= s + (hLen + 10.0)));
+    this.breads = this.breads.filter((b) => !(b.lane === lane && b.s >= s - (hLen + 20.0) && b.s <= s + (hLen + 10.0)));
     this.listVersion++;
   }
   private addBread(s: number, lane: number, h: number) {
@@ -4444,8 +4439,8 @@ class Engine {
     if (this.crossings.some((c) => Math.abs(c.s - meetS) < 14 || Math.abs(c.s - s0) < 12)) {
       return;
     }
-    // Jangan pernah spawn kendaraan lawan arah di lajur yang memiliki item / huruf (koridor aman 22m sebelum s/d 55m sesudah)
-    if (this.laneReserved(lane, meetS) || this.isNearCollectibleItem(meetS, lane, 22, 55)) {
+    // Jangan pernah spawn kendaraan lawan arah di lajur yang memiliki item / huruf (koridor aman 22m sebelum s/d 20m sesudah)
+    if (this.laneReserved(lane, meetS) || this.isNearCollectibleItem(meetS, lane, 22, 20)) {
       return;
     }
     // High motorcycle presence in Shibuya with companion riders
@@ -4454,7 +4449,7 @@ class Engine {
       this.reserved.push({ lane, from: meetS - 7, until: s0 + 6 });
       if (allowCompanion && (track.mode === "shibuya" ? Math.random() < 0.60 : (t > 0.35 && Math.random() < 0.35))) {
         const companionLane = this.otherLane([lane]);
-        if (!this.laneReserved(companionLane, meetS) && !this.isNearCollectibleItem(meetS, companionLane, 22, 55)) {
+        if (!this.laneReserved(companionLane, meetS) && !this.isNearCollectibleItem(meetS, companionLane, 22, 20)) {
           const companionS = s0 + 3.0;
           this.spawnMotorcycle(companionS, companionLane, baseSpeed * rand(0.95, 1.05));
           this.reserved.push({ lane: companionLane, from: meetS - 5, until: companionS + 6 });
@@ -4480,7 +4475,7 @@ class Engine {
     for (let i = 0; i < lanes.length; i++) {
       const s = meetS + i * headway;
       const lane = lanes[i];
-      if (this.isNearCollectibleItem(s, lane, 22, 55) || this.laneReserved(lane, s)) continue;
+      if (this.isNearCollectibleItem(s, lane, 22, 20) || this.laneReserved(lane, s)) continue;
       this.spawnOncoming(s, lane, t, false);
     }
     return headway * (lanes.length - 1) + 8;
@@ -4535,7 +4530,7 @@ class Engine {
   }
 
   private spawnPedestrians(x: number, t: number) {
-    if ([0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55))) return 6;
+    if ([0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20))) return 6;
     const n = 2 + (Math.random() < 0.7 ? 1 : 0) + (t > 0.4 && Math.random() < 0.5 ? 1 : 0);
     const est = Math.max(this.speed, START_SPEED);
     const d = this.distance;
@@ -4598,7 +4593,7 @@ class Engine {
    * agar item benar-benar bisa diambil dengan aman dan nyaman tanpa obstacle di depan atau di belakangnya.
    * Kembalikan -1 kalau semua jalur sedang penuh.
    */
-  private clearLaneNear(s: number, bufferBefore = 22, bufferAfter = 55): number {
+  private clearLaneNear(s: number, bufferBefore = 22, bufferAfter = 20): number {
     const lanes = [1, 0, 2]; // tengah dulu (paling gampang diambil), lalu pinggir
     const inIntersection = this.intersections.some((it) => Math.abs(it.s - s) < 22);
     const atRailCrossing = this.crossings.some((cr) => Math.abs(cr.s - s) < 22);
@@ -4611,7 +4606,7 @@ class Engine {
         this.movers.some((m) => Math.abs(m.lane - lane) < 0.6 && m.s >= s - bufferBefore && m.s <= s + bufferAfter + 12) ||
         this.subwayTrains.some((st) => st.lane === lane && s >= st.s - bufferBefore && s <= st.s + st.length + bufferAfter) ||
         this.crossCars.some((cc) => Math.abs(cc.s - s) < 18) ||
-        this.letters.some((l) => (!l.taken || this.distance < l.s + 50) && l.lane === lane && Math.abs(l.s - s) < 35) ||
+        this.letters.some((l) => (!l.taken || this.distance < l.s + 20) && l.lane === lane && Math.abs(l.s - s) < 25) ||
         this.isNearCollectibleItem(s, lane, bufferBefore, bufferAfter) ||
         this.reserved.some((r) => r.lane === lane && s >= r.from - 8 && s <= r.until + 8);
       if (!blocked) return lane;
@@ -4624,17 +4619,17 @@ class Engine {
     const x = this.nextObstacleS;
     const d = this.distance;
     if (x >= this.nextNosS) {
-      const lane = this.clearLaneNear(x, 18, 48);
+      const lane = this.clearLaneNear(x, 22, 20);
       if (lane >= 0) {
         track.frame(x, LANE_LAT[lane], 0, tmpV);
         this.nosCans.push({ id: this.nextId++, s: x, lane, taken: false, wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
-        // Koridor bebas rintangan di sekeliling kaleng NOS: 18m sebelum s/d 48m sesudah
-        this.reserved.push({ lane, from: x - 18, until: x + 48 });
+        // Koridor bebas rintangan di sekeliling kaleng NOS: 22m sebelum s/d 20m sesudah
+        this.reserved.push({ lane, from: x - 22, until: x + 20 });
         this.obstacles = this.obstacles.filter(
-          (o) => !(o.lane === lane && o.s >= x - 18 && o.s <= x + 48) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 8)
+          (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 20) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 8)
         );
         this.movers = this.movers.filter(
-          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 18 && m.s <= x + 48) &&
+          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 20) &&
                  !(m.kind === "pedestrian" && Math.abs(m.s - x) < 14) &&
                  !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 14)
         );
@@ -4644,7 +4639,7 @@ class Engine {
         this.listVersion++;
         this.moverVersion++;
         this.nextNosS = x + NOS_CAN_S + rand(0, 30);
-        this.nextObstacleS = x + 48;
+        this.nextObstacleS = x + 20;
         return;
       } else {
         this.nextNosS = x + 14;
@@ -4656,19 +4651,19 @@ class Engine {
         this.crossings.some((c) => Math.abs(c.s - x) < 22) ||
         this.intersections.some((it) => Math.abs(it.s - x) < 22) ||
         this.subwayTunnels.some((st) => Math.abs(st.startS - x) < 22 || Math.abs(st.endS - x) < 22);
-      const lane = this.clearLaneNear(x, 22, 55);
+      const lane = this.clearLaneNear(x, 22, 20);
       if (tooCloseToSpecial || lane < 0) {
-        this.nextRocketS = x + 16;
+        this.nextRocketS = x + 12;
       } else {
         track.frame(x, LANE_LAT[lane], 0, tmpV);
         this.rockets.push({ id: this.nextId++, s: x, lane, taken: false, kind: pickRareKind(), wx: tmpV.x, wy: tmpV.y, wz: tmpV.z, phase: Math.random() * 6 });
-        // Koridor bebas rintangan di sekeliling roket langka: 22m sebelum s/d 55m sesudah
-        this.reserved.push({ lane, from: x - 22, until: x + 55 });
+        // Koridor bebas rintangan di sekeliling roket langka: 22m sebelum s/d 20m sesudah
+        this.reserved.push({ lane, from: x - 22, until: x + 20 });
         this.obstacles = this.obstacles.filter(
-          (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 55) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 10)
+          (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 20) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 10)
         );
         this.movers = this.movers.filter(
-          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 55) &&
+          (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 20) &&
                  !(m.kind === "pedestrian" && Math.abs(m.s - x) < 16) &&
                  !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 16) &&
                  !(m.kind === "chicken" && Math.abs(m.s - x) < 16) &&
@@ -4680,7 +4675,7 @@ class Engine {
         this.listVersion++;
         this.moverVersion++;
         this.nextRocketS = x + rand(ROCKET_GAP[0], ROCKET_GAP[1]);
-        this.nextObstacleS = x + 55;
+        this.nextObstacleS = x + 20;
         return;
       }
     }
@@ -4697,8 +4692,8 @@ class Engine {
           this.crossings.some((c) => Math.abs(c.s - x) < 24) ||
           this.intersections.some((it) => Math.abs(it.s - x) < 24) ||
           this.subwayTunnels.some((st) => Math.abs(st.startS - x) < 24 || Math.abs(st.endS - x) < 24);
-        // Pastikan koridor lajur bebas rintangan luas: 22m sebelum s/d 55m sesudah huruf
-        const lane = this.clearLaneNear(x, 22, 55);
+        // Pastikan koridor lajur bebas rintangan luas: 22m sebelum s/d 20m sesudah huruf
+        const lane = this.clearLaneNear(x, 22, 20);
         if (tooCloseToSpecial || lane < 0) {
           this.nextLetterS = x + 16;
         } else {
@@ -4715,16 +4710,16 @@ class Engine {
             wz: tmpV.z,
             phase: Math.random() * 6,
           });
-          // KUNCI: Reserve lajur ini sepanjang 22m sebelum hingga 55m sesudah huruf
+          // KUNCI: Reserve lajur ini sepanjang 22m sebelum hingga 20m sesudah huruf
           // Ini menjamin TIDAK ADA obstacle, mobil, motor, atau bus yang bisa muncul di belakang huruf!
-          this.reserved.push({ lane, from: x - 22, until: x + 55 });
+          this.reserved.push({ lane, from: x - 22, until: x + 20 });
           // Bersihkan obstacle apa pun yang berpotensi overlap di lajur ini dan lajur samping
           this.obstacles = this.obstacles.filter(
-            (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 55) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 12)
+            (o) => !(o.lane === lane && o.s >= x - 22 && o.s <= x + 20) && !(Math.abs(o.lane - lane) === 1 && Math.abs(o.s - x) < 12)
           );
           // Bersihkan kendaraan/hewan yang melintas di sekitar huruf
           this.movers = this.movers.filter(
-            (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 55) &&
+            (m) => !(Math.abs(m.lane - lane) < 0.6 && m.s >= x - 22 && m.s <= x + 20) &&
                    !(m.kind === "pedestrian" && Math.abs(m.s - x) < 18) &&
                    !(m.kind === "shibuya_animal" && Math.abs(m.s - x) < 18) &&
                    !(m.kind === "chicken" && Math.abs(m.s - x) < 18) &&
@@ -4738,7 +4733,7 @@ class Engine {
           this.moverVersion++;
           this.nextLetterS = x + rand(150, 240);
           // Selesai spawn huruf: beri jalan lapang tanpa rintangan di belakangnya
-          this.nextObstacleS = x + 55;
+          this.nextObstacleS = x + 20;
           return;
         }
       } else {
@@ -4751,7 +4746,7 @@ class Engine {
       this.nextRoadworkS = x + 60;
     }
     if (!inTunnel && x >= this.nextRoadworkS && !this.crossings.some((c) => Math.abs(c.s - x) < 40)) {
-      const itemAroundRoadwork = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55));
+      const itemAroundRoadwork = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20));
       if (!itemAroundRoadwork) {
         const len = this.spawnRoadworks(x, t);
         this.nextRoadworkS = x + rand(160, 260);
@@ -4816,7 +4811,7 @@ class Engine {
       else if (idx === 5) pattern = "motorcycles"; // Japan Vehicle Pack squad!
     }
 
-    const itemNearby = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 55));
+    const itemNearby = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20));
     if (itemNearby) {
       if (pattern === "wall" || pattern === "zigzag" || pattern === "oncoming" || pattern === "motorcycles") {
         pattern = "single";
@@ -4826,7 +4821,7 @@ class Engine {
     let len = 1;
     switch (pattern) {
       case "single": {
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
         if (lane >= 0) {
           const kind = pick(JUMPABLES);
@@ -4840,7 +4835,7 @@ class Engine {
         break;
       }
       case "car": {
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
         if (lane >= 0) {
           this.addObstacle("car", x, lane);
@@ -4848,7 +4843,7 @@ class Engine {
           const freeLane = pick(freeCandidate);
           if (t > 0.35 && Math.random() < 0.5) {
             const l2 = freeLane;
-            if (!this.isNearCollectibleItem(x + 4, l2, 22, 55)) {
+            if (!this.isNearCollectibleItem(x + 4, l2, 22, 20)) {
               this.addObstacle(pick(SMALL_JUMPABLES), x + 4, l2);
               const safeCandidates = [0, 1, 2].filter((l) => l !== lane && l !== l2);
               const safeLane = safeCandidates.length > 0 ? pick(safeCandidates) : 1;
@@ -4865,9 +4860,9 @@ class Engine {
         break;
       }
       case "double": {
-        const itemLane = [0, 1, 2].find((l) => this.isNearCollectibleItem(x, l, 22, 55));
+        const itemLane = [0, 1, 2].find((l) => this.isNearCollectibleItem(x, l, 22, 20));
         const free = itemLane !== undefined ? itemLane : randInt(0, 2);
-        const lanes = [0, 1, 2].filter((l) => l !== free && !this.isNearCollectibleItem(x, l, 22, 55));
+        const lanes = [0, 1, 2].filter((l) => l !== free && !this.isNearCollectibleItem(x, l, 22, 20));
         const twoCars = t > 0.4 && Math.random() < 0.4;
         for (const l of lanes) {
           const kind = twoCars ? "car" : Math.random() < 0.45 ? "car" : pick(JUMPABLES);
@@ -4880,7 +4875,7 @@ class Engine {
       case "wall": {
         const kind = pick(["cone", "barrier", "planter"] as ObstacleKind[]);
         for (let l = 0; l < 3; l++) {
-          if (!this.isNearCollectibleItem(x, l, 22, 55)) {
+          if (!this.isNearCollectibleItem(x, l, 22, 20)) {
             this.addObstacle(kind, x, l);
           }
         }
@@ -4895,7 +4890,7 @@ class Engine {
           const rx = x + i * step;
           let carUsed = false;
           for (const l of [0, 1, 2]) {
-            if (l === free || this.isNearCollectibleItem(rx, l, 22, 55)) continue;
+            if (l === free || this.isNearCollectibleItem(rx, l, 22, 20)) continue;
             const useCar = !carUsed && t > 0.35 && Math.random() < 0.45;
             if (useCar) carUsed = true;
             this.addObstacle(useCar ? "car" : pick(SMALL_JUMPABLES), rx, l);
@@ -4907,7 +4902,7 @@ class Engine {
         break;
       }
       case "ramp": {
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
         if (lane >= 0) {
           this.addObstacle("ramp", x, lane);
@@ -4924,7 +4919,7 @@ class Engine {
         break;
       }
       case "rail": {
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
         if (lane >= 0) {
           const weights = [3, 2 + 2 * t, 1 + 3 * t, 0.5 + 3 * t];
@@ -4941,7 +4936,7 @@ class Engine {
           this.addObstacle("rail", cx, lane, false, half, variant);
           if (L >= 12 && t > 0.3 && Math.random() < 0.6) {
             const l2 = this.otherLane([lane]);
-            if (!this.isNearCollectibleItem(cx, l2, 22, 55)) {
+            if (!this.isNearCollectibleItem(cx, l2, 22, 20)) {
               const L2 = pick([7, 12]);
               this.addObstacle("rail", cx + rand(-2, 2), l2, false, L2 / 2, 0);
             }
@@ -4968,12 +4963,12 @@ class Engine {
           len = this.spawnShibuyaTrafficWave(x, t);
           break;
         }
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         const lane = candidateLanes.length > 0 ? pick(candidateLanes) : -1;
         if (lane >= 0) {
           this.spawnOncoming(x, lane, t);
           if (t > 0.5 && Math.random() < 0.4) {
-            const otherCandidates = [0, 1, 2].filter((l) => l !== lane && !this.isNearCollectibleItem(x + 10, l, 22, 55));
+            const otherCandidates = [0, 1, 2].filter((l) => l !== lane && !this.isNearCollectibleItem(x + 10, l, 22, 20));
             if (otherCandidates.length > 0) {
               const l2 = pick(otherCandidates);
               this.spawnOncoming(x + 10, l2, t);
@@ -4994,7 +4989,7 @@ class Engine {
         break;
       }
       case "motorcycles": {
-        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 55));
+        const candidateLanes = [0, 1, 2].filter((l) => !this.isNearCollectibleItem(x, l, 22, 20));
         if (candidateLanes.length === 0) break;
         const lane1 = pick(candidateLanes);
         const remLanes = candidateLanes.filter((l) => l !== lane1);
@@ -5094,9 +5089,9 @@ class Engine {
       }
     }
     // Denser than the old 10–13 m opening gap, but keep a readable landing/reset window.
-    const itemAtX = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 15, 55));
+    const itemAtX = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 15, 20));
     const gap = lerp(8.5, 5.5, t) + rand(0, 2.5);
-    const minNext = itemAtX ? x + 55 : x + len + gap;
+    const minNext = itemAtX ? x + 20 : x + len + gap;
     this.nextObstacleS = Math.max(x + len + gap, minNext);
   }
 

@@ -273,7 +273,14 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
 });
 
 const ChunkView = memo(function ChunkView({ chunk }: { chunk: Chunk }) {
-  const geo = useMemo(() => buildGroundGeometry(track, chunk.s0, CHUNK_LEN, chunk.kind), [chunk]);
+  const geo = useMemo(() => {
+    return buildGroundGeometry(track, chunk.s0, CHUNK_LEN, chunk.kind, (sc) => {
+      const atInter = engine.intersections.some((it) => Math.abs(it.s - sc) < (it.scramble ? 11.5 : it.wide ? 10.5 : 8.5));
+      const atCross = engine.crossings.some((cr) => Math.abs(cr.s - sc) < 8.5);
+      const inTun = engine.subwayTunnels.some((st) => sc >= st.startS - 2 && sc <= st.endS + 2);
+      return atInter || atCross || inTun;
+    });
+  }, [chunk]);
   useEffect(() => () => geo.dispose(), [geo]);
   return (
     <group>

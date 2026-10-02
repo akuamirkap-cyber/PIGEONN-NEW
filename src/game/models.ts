@@ -582,8 +582,8 @@ export function buildingParts(s: BuildingSpec): Part[] {
   const parts: Part[] = [
     { x: 0, y: h / 2, z: -depth / 2, w: s.w, h, d: depth, color: s.color },
     { x: 0, y: h + 0.15, z: -depth / 2, w: s.w + 0.3, h: 0.3, d: depth + 0.3, color: s.roof },
-    // deep foundation so buildings never float on sloped ground (clean light granite)
-    { x: 0, y: -1.2, z: -depth / 2, w: s.w + 0.2, h: 2.8, d: depth + 0.2, color: "#a2acb8" },
+    // deep foundation so buildings never float on sloped ground (stays below sidewalk and behind facade, never protrudes)
+    { x: 0, y: -1.6, z: -depth / 2 - 0.2, w: s.w, h: 2.8, d: depth, color: "#454b62" },
   ];
   const winW = 0.85;
   const spacing = s.w / s.cols;
@@ -1470,30 +1470,33 @@ export function sidewalkPlanterParts(variant: number): Part[] {
   const v = Math.abs(variant) % 3;
   const parts: Part[] = [];
   if (v === 2) {
-    // hedge panjang di bak beton rendah
-    parts.push({ x: 0, y: 0.14, z: 0, w: 2.6, h: 0.28, d: 0.5, color: "#9aa0a8" });
-    parts.push({ x: 0, y: 0.5, z: 0, w: 2.4, h: 0.5, d: 0.4, color: "#3f7a45" });
-    parts.push({ x: -0.7, y: 0.78, z: 0, w: 0.8, h: 0.16, d: 0.36, color: "#4c8a4f" });
-    parts.push({ x: 0.6, y: 0.76, z: 0, w: 0.9, h: 0.14, d: 0.36, color: "#5e9b57" });
+    // hedge rapi di bak beton rendah (panjang proporsional 1.35m agar tidak patah/menggantung di tanjakan)
+    parts.push({ x: 0, y: -0.06, z: 0, w: 1.35, h: 0.36, d: 0.5, color: "#8a9099" });
+    parts.push({ x: 0, y: 0.16, z: 0, w: 1.32, h: 0.22, d: 0.48, color: "#9aa0a8" });
+    parts.push({ x: 0, y: 0.48, z: 0, w: 1.25, h: 0.44, d: 0.42, color: "#3f7a45" });
+    parts.push({ x: -0.35, y: 0.72, z: 0, w: 0.5, h: 0.14, d: 0.36, color: "#4c8a4f" });
+    parts.push({ x: 0.32, y: 0.70, z: 0, w: 0.52, h: 0.12, d: 0.36, color: "#5e9b57" });
     return parts;
   }
   const box = v === 0 ? "#9c5a3c" : "#a8adb5"; // bak bata merah / beton
   const rim = v === 0 ? "#7d452e" : "#8d939c";
-  parts.push({ x: 0, y: 0.2, z: 0, w: 1.5, h: 0.4, d: 0.55, color: box });
-  parts.push({ x: 0, y: 0.42, z: 0, w: 1.58, h: 0.08, d: 0.63, color: rim });
-  parts.push({ x: 0, y: 0.45, z: 0, w: 1.38, h: 0.06, d: 0.44, color: "#4a3a28" });
+  // fondasi dasar tertanam ke trotoar
+  parts.push({ x: 0, y: -0.06, z: 0, w: 1.22, h: 0.28, d: 0.52, color: "#525871" });
+  parts.push({ x: 0, y: 0.18, z: 0, w: 1.25, h: 0.36, d: 0.54, color: box });
+  parts.push({ x: 0, y: 0.38, z: 0, w: 1.32, h: 0.08, d: 0.60, color: rim });
+  parts.push({ x: 0, y: 0.41, z: 0, w: 1.15, h: 0.06, d: 0.44, color: "#4a3a28" });
   // semak hijau
-  parts.push({ x: -0.35, y: 0.58, z: 0, w: 0.5, h: 0.28, d: 0.36, color: "#4c8a4f" });
-  parts.push({ x: 0.3, y: 0.56, z: 0.02, w: 0.46, h: 0.24, d: 0.34, color: "#5e9b57" });
+  parts.push({ x: -0.28, y: 0.54, z: 0, w: 0.46, h: 0.26, d: 0.36, color: "#4c8a4f" });
+  parts.push({ x: 0.26, y: 0.52, z: 0.02, w: 0.44, h: 0.24, d: 0.34, color: "#5e9b57" });
   // rumpun rumput
-  for (const gx of [-0.6, 0.05, 0.55]) {
-    parts.push({ x: gx, y: 0.62, z: -0.1, w: 0.07, h: 0.3, d: 0.07, color: "#6fae5c" });
-    parts.push({ x: gx + 0.08, y: 0.58, z: 0.08, w: 0.06, h: 0.24, d: 0.06, color: "#87c46a" });
+  for (const gx of [-0.45, 0.02, 0.42]) {
+    parts.push({ x: gx, y: 0.58, z: -0.1, w: 0.07, h: 0.26, d: 0.07, color: "#6fae5c" });
+    parts.push({ x: gx + 0.07, y: 0.54, z: 0.08, w: 0.06, h: 0.22, d: 0.06, color: "#87c46a" });
   }
   // bunga warna-warni
   const fl = v === 0 ? ["#e84855", "#ffd166", "#ff8fa3"] : ["#ffffff", "#b48ce0", "#ffd166"];
-  [-0.45, -0.1, 0.25, 0.55].forEach((fx, i) => {
-    parts.push({ x: fx, y: 0.72 + (i % 2) * 0.05, z: i % 2 ? 0.12 : -0.08, w: 0.11, h: 0.11, d: 0.11, color: fl[i % fl.length] });
+  [-0.35, 0.0, 0.35].forEach((fx, i) => {
+    parts.push({ x: fx, y: 0.68 + (i % 2) * 0.04, z: i % 2 ? 0.10 : -0.08, w: 0.11, h: 0.11, d: 0.11, color: fl[i % fl.length] });
   });
   return parts;
 }
@@ -2745,8 +2748,8 @@ export function vendingParts(variant: number): Part[] {
   const dark = "#1e293b";
 
   return [
-    // Base plinth
-    { x: 0, y: 0.06, z: 0, w: 0.96, h: 0.12, d: 0.7, color: dark },
+    // Base plinth tertanam kuat ke trotoar
+    { x: 0, y: -0.04, z: 0, w: 0.96, h: 0.32, d: 0.7, color: dark },
     // Main metal cabinet
     { x: 0, y: 0.98, z: 0, w: 0.94, h: 1.72, d: 0.68, color: t.main },
     // Top glowing brand header

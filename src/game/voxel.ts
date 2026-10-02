@@ -107,7 +107,7 @@ export function setGlowBoost(v: number) {
 /** Aspal malam Shibuya yang bersih & elegan: Phong dengan specular neutral slate supaya jalan
  *  memantulkan kilau cahaya jalan kota tanpa warna ungu cyberpunk. */
 export const glossyGroundMaterial = applyCurve(
-  new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: new THREE.Color("#444d5c") }),
+  new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 45, specular: new THREE.Color("#444d5c"), side: THREE.DoubleSide }),
 );
 
 export function rand(min: number, max: number) {

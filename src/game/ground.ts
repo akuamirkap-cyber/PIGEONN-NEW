@@ -80,7 +80,13 @@ const tmp: TrackSample = { x: 0, y: 0, z: 0, th: 0, g: 0, kappa: 0 };
 const color = new THREE.Color();
 
 /** Builds one chunk of road + sidewalks + grass as a ribbon swept along the track. */
-export function buildGroundGeometry(track: Track, s0: number, len: number, kind: "street" | "park" | "haruna" | "shibuya"): THREE.BufferGeometry {
+export function buildGroundGeometry(
+  track: Track,
+  s0: number,
+  len: number,
+  kind: "street" | "park" | "haruna" | "shibuya",
+  skipRailing?: (s: number) => boolean,
+): THREE.BufferGeometry {
   const pos: number[] = [];
   const nrm: number[] = [];
   const col: number[] = [];
@@ -279,6 +285,121 @@ export function buildGroundGeometry(track: Track, s0: number, len: number, kind:
       quad(a, b, kind === "shibuya" ? -8.2 : -7, -4, 0.126, n, seam);
       if (kind === "shibuya") quad(a, b, 12.6, 16.1, 0.126, n, seam);
       else quad(a, b, 4, 6.3, 0.126, n, seam);
+    }
+
+    // Pagar pembatas trotoar pipa putih khas Jepang (横断防止柵)
+    // Tersambung rapi, mulus, dan kontinu 3D volumetrik mengikuti tanjakan/turunan dan kelokan jalan tanpa patah atau anak tangga
+    const whitePipe = shade("#f8fafd", 1.2);
+    const whiteLower = shade("#e2e8f2", 1.08);
+    const whiteTop = shade("#ffffff", 1.25);
+    const whiteBack = shade("#cbd5e1", 0.95);
+    const whiteBottom = shade("#b0bac8", 0.85);
+    const whitePost = shade("#f1f5f9", 1.15);
+    const amberRef = shade("#ff9f1c", 1.4);
+
+    const isShibuya = kind === "shibuya";
+    const farCurbLat = isShibuya ? 12.45 : 4.12;
+    const railSides = [-4.12, farCurbLat];
+
+    const sweptBox = (
+      sa: S,
+      sb: S,
+      lat0: number,
+      lat1: number,
+      y0: number,
+      y1: number,
+      colRoad: P,
+      colTopFace: P,
+      colSide: P,
+      colBot: P,
+    ) => {
+      const l0 = Math.min(lat0, lat1);
+      const l1 = Math.max(lat0, lat1);
+      const p000 = pt(sa, l0, y0);
+      const p001 = pt(sa, l0, y1);
+      const p010 = pt(sa, l1, y0);
+      const p011 = pt(sa, l1, y1);
+
+      const p100 = pt(sb, l0, y0);
+      const p101 = pt(sb, l0, y1);
+      const p110 = pt(sb, l1, y0);
+      const p111 = pt(sb, l1, y1);
+
+      // 1. Sisi menghadap arah jalan (+lat): normal pointing in +lat
+      const nRoad: P = [-(sa.sn + sb.sn) / 2, 0, (sa.cs + sb.cs) / 2];
+      tri(p010, p110, p111, nRoad, colRoad);
+      tri(p010, p111, p011, nRoad, colRoad);
+
+      // 2. Sisi menghadap trotoar (-lat): normal pointing in -lat
+      const nSide: P = [-nRoad[0], 0, -nRoad[2]];
+      tri(p000, p001, p101, nSide, colSide);
+      tri(p000, p101, p100, nSide, colSide);
+
+      // 3. Puncak pipa / tiang (menghadap ATAS +Y): normal = [0, 1, 0]
+      const nUp: P = [0, 1, 0];
+      tri(p001, p011, p111, nUp, colTopFace);
+      tri(p001, p111, p101, nUp, colTopFace);
+
+      // 4. Bawah pipa / tiang (menghadap BAWAH -Y): normal = [0, -1, 0]
+      const nDown: P = [0, -1, 0];
+      tri(p000, p100, p110, nDown, colBot);
+      tri(p000, p110, p010, nDown, colBot);
+    };
+
+    for (const lat of railSides) {
+      // 1. Rel Pipa Horizontal: pipa atas (y=0.67 s/d 0.74) & pipa bawah (y=0.38 s/d 0.44)
+      for (let i = 0; i < steps; i++) {
+        const sc = s0 + i;
+        if (skipRailing && (skipRailing(sc + 0.2) || skipRailing(sc + 0.8))) continue;
+        const a = smp[i];
+        const b = smp[i + 1];
+
+        // Pipa atas (top rail, 7cm x 7cm 3D box)
+        sweptBox(a, b, lat - 0.035, lat + 0.035, 0.67, 0.74, whitePipe, whiteTop, whiteBack, whiteBottom);
+        // Pipa bawah (lower rail, 6cm x 6cm 3D box)
+        sweptBox(a, b, lat - 0.03, lat + 0.03, 0.38, 0.44, whiteLower, whiteTop, whiteBack, whiteBottom);
+      }
+
+      // 2. Tiang Pipa Tegak 3D setiap 2 meter (sc = s0 + 0, 2, 4, 6, 8, 10, 12)
+      for (let offset = 0; offset <= steps; offset += 2) {
+        const sc = s0 + offset;
+        if (skipRailing && skipRailing(sc)) continue;
+        const pa = sampleAt(sc - 0.045);
+        const pb = sampleAt(sc + 0.045);
+        const l0 = lat - 0.045;
+        const l1 = lat + 0.045;
+        const y0 = 0.12; // menancap rapi di trotoar
+        const y1 = 0.77; // puncak tiang sedikit di atas rel atas
+
+        // 4 sisi tegak + cap atas tiang
+        sweptBox(pa, pb, l0, l1, y0, y1, whitePost, whiteTop, whitePost, whiteBottom);
+
+        // Cap depan tiang (menghadap arus datang / -s):
+        const nA: P = [-pa.cs, 0, -pa.sn];
+        const pA00 = pt(pa, l0, y0);
+        const pA10 = pt(pa, l1, y0);
+        const pA11 = pt(pa, l1, y1);
+        const pA01 = pt(pa, l0, y1);
+        tri(pA00, pA10, pA11, nA, whitePost);
+        tri(pA00, pA11, pA01, nA, whitePost);
+
+        // Reflektor bulat oranye khas pagar trotoar Jepang di muka tiang
+        const pR00 = pt(pa, l0 + 0.012, 0.54);
+        const pR10 = pt(pa, l1 - 0.012, 0.54);
+        const pR11 = pt(pa, l1 - 0.012, 0.62);
+        const pR01 = pt(pa, l0 + 0.012, 0.62);
+        tri(pR00, pR10, pR11, nA, amberRef);
+        tri(pR00, pR11, pR01, nA, amberRef);
+
+        // Cap belakang tiang (menghadap +s):
+        const nB: P = [pb.cs, 0, pb.sn];
+        const pB00 = pt(pb, l0, y0);
+        const pB10 = pt(pb, l1, y0);
+        const pB11 = pt(pb, l1, y1);
+        const pB01 = pt(pb, l0, y1);
+        tri(pB00, pB01, pB11, nB, whitePost);
+        tri(pB00, pB11, pB10, nB, whitePost);
+      }
     }
   }
 
