@@ -4001,7 +4001,7 @@ export function subwayTunnelRibParts(line = 0): Part[] {
     { x: 0, y: H / 2, z: -W / 2 + 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
     { x: 0, y: H / 2, z: W / 2 - 0.7, w: 0.85, h: H, d: 1.2, color: whiteTile },
 
-    // Garis aksen warna jalur metro di kolom (tingkat bawah, tengah, dan atas)
+    // Garis aksen warna jalur metro/bus di kolom (tingkat bawah, tengah, dan atas)
     { x: 0, y: 2.2, z: -W / 2 + 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
     { x: 0, y: 2.2, z: W / 2 - 0.7, w: 0.87, h: 0.45, d: 1.22, color: stripe, glow: true },
     { x: 0, y: 8.5, z: -W / 2 + 0.7, w: 0.87, h: 0.35, d: 1.22, color: stripe, glow: true },
@@ -4023,9 +4023,20 @@ export function subwayTunnelRibParts(line = 0): Part[] {
     { x: 0, y: 5.5, z: -W / 2 + 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
     { x: 0, y: 5.5, z: W / 2 - 1.35, w: 0.18, h: 0.15, d: 0.45, color: fluoLight, glow: true },
 
-    // Tiang penggantung kabel catenary di tengah atas dari plafon turun ke rel
-    { x: 0, y: 10.5, z: 0, w: 0.2, h: 12.0, d: 0.2, color: "#2b3038" },
-    { x: 0, y: 4.5, z: 0, w: 0.12, h: 0.12, d: 3.6, color: "#2b3038" },
+    // PAPAN PENGUMUMAN ELEKTRONIK OVERHEAD (DIPASANG TINGGI DI y = 12.2m)
+    // Frame papan matrix hitam membentang di atas 3 jalur
+    { x: 0, y: 12.2, z: 0, w: 0.55, h: 1.7, d: 11.2, color: "#16191f" },
+    // Bingkai luar pelindung
+    { x: 0, y: 12.2, z: 0, w: 0.58, h: 1.8, d: 11.4, color: "#373e4b" },
+    // Layar LED Matrix teks oranye/kuning menyala: "渋谷トンネル バス専用 / BUS WAY"
+    { x: -0.29, y: 12.45, z: 0, w: 0.05, h: 0.55, d: 10.4, color: "#ffb703", glow: true },
+    { x: -0.29, y: 11.95, z: 0, w: 0.05, h: 0.38, d: 9.6, color: "#00e5ff", glow: true },
+    // Lampu peringatan flashing amber di kedua sudut atas papan
+    { x: -0.29, y: 12.9, z: -5.3, w: 0.1, h: 0.22, d: 0.28, color: "#ff9f1c", glow: true },
+    { x: -0.29, y: 12.9, z: 5.3, w: 0.1, h: 0.22, d: 0.28, color: "#ff9f1c", glow: true },
+    // Rangka gantungan baja penopang tinggi ke plafon
+    { x: 0, y: 14.5, z: -3.8, w: 0.2, h: 3.2, d: 0.2, color: steel },
+    { x: 0, y: 14.5, z: 3.8, w: 0.2, h: 3.2, d: 0.2, color: steel },
 
     // Rambu EXIT hijau menyala (非常口) di dinding samping
     { x: 0, y: 3.5, z: -W / 2 + 1.35, w: 0.6, h: 0.38, d: 0.08, color: emergencyGreen, glow: true },
@@ -4042,7 +4053,7 @@ export function subwayTunnelRibParts(line = 0): Part[] {
 /**
  * Dinding Keramik Samping Terowongan (Subway Wall):
  * Tinggi H = 17.2m (mengikuti tinggi plafon terowongan), keramik putih bersih megah,
- * pita garis aksen jalur metro bercahaya, dan papan nama stasiun "渋谷 方面 (For Shibuya)".
+ * pita garis aksen jalur metro bercahaya, dan papan pengumuman stasiun dinaikkan tinggi (y = 9.8m).
  */
 export function subwayWallParts(len = 6.0, line = 0): Part[] {
   const whiteTile = "#f4f6fa";
@@ -4066,11 +4077,11 @@ export function subwayWallParts(len = 6.0, line = 0): Part[] {
     { x: 0, y: 8.5, z: 0.02, w: len, h: 0.35, d: 0.29, color: stripe, glow: true },
     { x: 0, y: 14.5, z: 0.02, w: len, h: 0.3, d: 0.29, color: stripe, glow: true },
 
-    // Papan Stasiun: "渋谷 SHIBUYA ➔" di tengah dinding
-    { x: 0, y: 3.5, z: 0.03, w: 3.2, h: 0.8, d: 0.26, color: "#002b66", glow: true },
-    { x: 0, y: 3.5, z: 0.04, w: 2.9, h: 0.64, d: 0.25, color: "#ffffff", glow: true },
-    { x: 0, y: 3.62, z: 0.05, w: 2.4, h: 0.28, d: 0.24, color: "#111827" },
-    { x: 0, y: 3.32, z: 0.05, w: 2.2, h: 0.16, d: 0.24, color: stripe },
+    // PAPAN PENGUMUMAN DINDING DINAIKKAN TINGGI (y = 9.8m): "渋谷 方面 (For Shibuya)"
+    { x: 0, y: 9.8, z: 0.03, w: 3.6, h: 0.95, d: 0.26, color: "#002b66", glow: true },
+    { x: 0, y: 9.8, z: 0.04, w: 3.3, h: 0.78, d: 0.25, color: "#ffffff", glow: true },
+    { x: 0, y: 9.94, z: 0.05, w: 2.8, h: 0.36, d: 0.24, color: "#111827" },
+    { x: 0, y: 9.58, z: 0.05, w: 2.6, h: 0.22, d: 0.24, color: stripe },
 
     // Pipa kabel utilitas di bawah
     { x: 0, y: 0.95, z: 0.04, w: len, h: 0.14, d: 0.18, color: "#22262d" },
@@ -4080,51 +4091,43 @@ export function subwayWallParts(len = 6.0, line = 0): Part[] {
 }
 
 /**
- * Landasan Rel Bawah Tanah (Subway Track Bed):
- * Batuan ballast gelap, bantalan kayu rel di tiap jalur, rel baja mengkilap sepanjang jalan (x),
- * lebar 19.4m membentang melintang menutupi seluruh dasar terowongan megah.
+ * Landasan Tepi Terowongan (Sidewalk & Guardrail Terowongan):
+ * Seluruh permukaan aspal jalur berkendara dibiarkan 100% mulus rata mengikuti ground geometry utama
+ * tanpa ada undakan / anak tangga / garis tumpang tindih.
+ * Hanya meletakkan guardrail pembatas di trotoar samping (z = +/-8.2m) di dekat dinding.
  */
 export function subwayTrackParts(len = 6.0): Part[] {
-  const ballast = "#343842";
-  const sleeper = "#483a2c";
-  const steel = "#cdd5e0";
-  const yellowLine = "#ffd21f";
-  const platformConcrete = "#888f9c";
+  const curbConcrete = "#78808d";
+  const guardrailSteel = "#dbe2ea";
 
   const parts: Part[] = [
-    // Lapisan ballast aspal/kerikil rel membentang selebar 19.4m
-    { x: 0, y: 0.012, z: 0, w: len, h: 0.02, d: 19.4, color: ballast },
-    // Platform peron samping stasiun di kedua tepi
-    { x: 0, y: 0.15, z: -8.5, w: len, h: 0.28, d: 2.2, color: platformConcrete },
-    { x: 0, y: 0.15, z: 8.5, w: len, h: 0.28, d: 2.2, color: platformConcrete },
-    // Strip kuning pengaman di kedua tepi peron
-    { x: 0, y: 0.3, z: -7.4, w: len, h: 0.02, d: 0.28, color: yellowLine, glow: true },
-    { x: 0, y: 0.3, z: 7.4, w: len, h: 0.02, d: 0.28, color: yellowLine, glow: true },
-  ];
+    // Trotoar beton samping terowongan di dekat dinding (jauh di luar lajur jalan raya, |z| = 8.5m)
+    { x: 0, y: 0.14, z: -8.5, w: len, h: 0.28, d: 2.0, color: curbConcrete },
+    { x: 0, y: 0.14, z: 8.5, w: len, h: 0.28, d: 2.0, color: curbConcrete },
 
-  // Bantalan kayu & rel baja di 3 jalur (z = -2.4, 0, +2.4)
-  const lanes = [-2.4, 0, 2.4];
-  const nSleepers = Math.round(len / 0.8);
-  for (const lz of lanes) {
-    // 2 batang rel baja per jalur
-    parts.push({ x: 0, y: 0.065, z: lz - 0.55, w: len, h: 0.07, d: 0.08, color: steel });
-    parts.push({ x: 0, y: 0.065, z: lz + 0.55, w: len, h: 0.07, d: 0.08, color: steel });
-    // bantalan kayu tiap 0.8m
-    for (let i = 0; i < nSleepers; i++) {
-      const x = -len / 2 + (i + 0.5) * (len / nSleepers);
-      parts.push({ x, y: 0.035, z: lz, w: 0.28, h: 0.045, d: 1.5, color: sleeper });
-    }
-  }
+    // Pagar pembatas guardrail baja di sepanjang trotoar samping
+    { x: 0, y: 0.52, z: -7.8, w: len, h: 0.14, d: 0.18, color: guardrailSteel },
+    { x: 0, y: 0.52, z: 7.8, w: len, h: 0.14, d: 0.18, color: guardrailSteel },
+    // Tiang penopang guardrail
+    { x: -len * 0.3, y: 0.32, z: -7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
+    { x: len * 0.3, y: 0.32, z: -7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
+    { x: -len * 0.3, y: 0.32, z: 7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
+    { x: len * 0.3, y: 0.32, z: 7.8, w: 0.12, h: 0.35, d: 0.12, color: "#475569" },
+    // Strip reflektor kuning di pembatas samping
+    { x: 0, y: 0.52, z: -7.68, w: len, h: 0.05, d: 0.05, color: "#ffd21f", glow: true },
+    { x: 0, y: 0.52, z: 7.68, w: len, h: 0.05, d: 0.05, color: "#ffd21f", glow: true },
+  ];
 
   return parts;
 }
 
 /**
- * Gerbong Kereta Metro Subway / Commuter / Shinkansen:
- * Panjang L sepanjang x (w: L), lebar W sepanjang z (d: W).
- * Moncong depan kabin di -x (menghadap pemain yang datang dari -x).
- * Dilengkapi: lampu depan terang bercahaya, jendela kabin menyala hangat,
- * dan ATAP DATAR + CATWALK tempat merpati berselancar (ROOF SURFING).
+ * Armada Bus Kota Tokyo & Bus Highway Express (Subway / Highway Bus):
+ * Menggantikan kereta menjadi bus kota & bus ekspres modern (Toei Green, Keikyu Red, Highway Blue, Night VIP).
+ * Dimensi: panjang L = 10.6m, lebar W = 2.4m, tinggi atap H = 2.45m.
+ * Dilengkapi: kaca depan besar aerodinamis menghadap pemain di -x, lampu depan LED terang,
+ * rollsign tujuan menyala "渋谷駅前 / SHIBUYA BUS", roda bus berpelat pelek krom,
+ * jendela samping panorama, dan ATAP DATAR + CATWALK tempat merpati berselancar (ROOF SURFING).
  */
 export function subwayTrainCarParts(
   line = 0,
@@ -4132,138 +4135,157 @@ export function subwayTrainCarParts(
   isRearCab = false,
   isShinkansen = false,
 ): Part[] {
-  const silver = isShinkansen ? "#f0f4f8" : "#d7dee6";
-  const darkChassis = "#282d35";
-  const roofGray = "#b2b9c4";
-  const windowGlow = "#fff5cb";
-  const lineColors = ["#f39200", "#00a7e1", "#00b060", "#005bac"];
-  const stripe = isShinkansen ? "#005bac" : lineColors[line % 4];
+  const lineIdx = line % 4;
+  // Livery bus khas Tokyo:
+  // 0: Tokyo Toei City Bus (Hijau hutan Tokyo, strip kuning, bodi putih)
+  // 1: Keikyu Expressway Highway Coach (Merah crimson, strip perak putih)
+  // 2: Tokyo Airport Limousine Bus (Biru navy royal, strip cyan elektrik)
+  // 3: Shinjuku Night VIP Express (Ungu malam / emas mewah)
+  const primaryColors = ["#1b7a43", "#b91c1c", "#00509d", "#312e81"];
+  const accentColors = ["#f4b41a", "#ffffff", "#00b4d8", "#f59e0b"];
+  const primary = isShinkansen ? "#00509d" : primaryColors[lineIdx];
+  const accent = isShinkansen ? "#00b4d8" : accentColors[lineIdx];
+  const bodyWhite = "#ffffff";
+  const darkChassis = "#1e2229";
+  const tireColor = "#15181e";
+  const rimColor = "#cbd5e1";
+  const glassTint = "#1a2433";
+  const warmInterior = "#fff7d6";
 
-  const L = SUBWAY_CAR_LEN; // panjang gerbong (x)
-  const W = SUBWAY_CAR_W;   // lebar gerbong (z)
-  const H = 2.45;           // tinggi atap (y)
+  const L = SUBWAY_CAR_LEN; // 11.0m panjang bus
+  const W = SUBWAY_CAR_W;   // 2.4m lebar bus
+  const H = 2.45;           // tinggi atap (y = 2.45m)
   const parts: Part[] = [];
 
-  // Bogie roda kereta
-  for (const bx of [-L * 0.35, L * 0.35]) {
-    parts.push({ x: bx, y: 0.24, z: 0, w: 1.8, h: 0.32, d: 1.9, color: darkChassis });
-    for (const wz of [-1.02, 1.02]) {
-      for (const wx of [-0.65, 0.65]) {
-        parts.push({ x: bx + wx, y: 0.24, z: wz, w: 0.48, h: 0.48, d: 0.14, color: "#16181d" });
-        parts.push({ x: bx + wx, y: 0.24, z: wz, w: 0.22, h: 0.22, d: 0.16, color: "#8a929e" });
-      }
-    }
+  // RODA BUS KARET DENGAN PELEK KROM
+  // 2 roda depan & 4 roda belakang (dual axle)
+  const wheelPositions = [
+    { x: -L * 0.35, z: -W / 2 + 0.08 },
+    { x: -L * 0.35, z: W / 2 - 0.08 },
+    { x: L * 0.22, z: -W / 2 + 0.08 },
+    { x: L * 0.22, z: W / 2 - 0.08 },
+    { x: L * 0.36, z: -W / 2 + 0.08 },
+    { x: L * 0.36, z: W / 2 - 0.08 },
+  ];
+  for (const wp of wheelPositions) {
+    // Ban luar
+    parts.push({ x: wp.x, y: 0.38, z: wp.z, w: 0.76, h: 0.76, d: 0.28, color: tireColor });
+    // Pelek krom tengah
+    parts.push({ x: wp.x, y: 0.38, z: wp.z + (wp.z > 0 ? 0.03 : -0.03), w: 0.42, h: 0.42, d: 0.26, color: rimColor });
+    // Poros tengah
+    parts.push({ x: wp.x, y: 0.38, z: wp.z + (wp.z > 0 ? 0.05 : -0.05), w: 0.18, h: 0.18, d: 0.24, color: "#475569" });
   }
 
-  // Sasis bawah
-  parts.push({ x: 0, y: 0.52, z: 0, w: L, h: 0.26, d: W - 0.1, color: "#373d47" });
+  // SASIS & BEJANA BAWAH BUS
+  parts.push({ x: 0, y: 0.48, z: 0, w: L - 0.4, h: 0.24, d: W - 0.22, color: darkChassis });
+  // Bumper pelindung depan & belakang
+  parts.push({ x: -L / 2 + 0.1, y: 0.45, z: 0, w: 0.35, h: 0.32, d: W, color: "#111418" });
+  parts.push({ x: L / 2 - 0.1, y: 0.45, z: 0, w: 0.35, h: 0.32, d: W, color: "#111418" });
 
-  // Badan utama gerbong
-  parts.push({ x: 0, y: 1.48, z: 0, w: L, h: 1.7, d: W, color: silver });
+  // BADAN BAWAH BUS (WARNA UTAMA LIVERY)
+  parts.push({ x: 0, y: 0.95, z: 0, w: L, h: 0.72, d: W, color: primary });
 
-  // Pita garis warna jalur metro di kedua sisi (lateral z)
+  // STRIP AKSEN WARNA MEWAH SEPANJANG BADAN BUS
   for (const sz of [-W / 2 - 0.015, W / 2 + 0.015]) {
-    parts.push({ x: 0, y: 1.05, z: sz, w: L, h: 0.32, d: 0.03, color: stripe, glow: true });
-    parts.push({ x: 0, y: 2.12, z: sz, w: L, h: 0.12, d: 0.03, color: stripe, glow: true });
+    parts.push({ x: 0, y: 1.18, z: sz, w: L, h: 0.18, d: 0.03, color: accent, glow: true });
+    parts.push({ x: 0, y: 1.34, z: sz, w: L, h: 0.06, d: 0.03, color: bodyWhite });
   }
 
-  // Jendela penumpang menyala hangat di kedua sisi
+  // BADAN ATAS BUS (PUTIH BERSIH)
+  parts.push({ x: 0, y: 1.88, z: 0, w: L, h: 0.98, d: W, color: bodyWhite });
+
+  // JENDELA SAMPING PANORAMA (KACA TINTED + PENUMPANG MENYALA HANGAT)
   const nWindows = 5;
   for (let i = 0; i < nWindows; i++) {
-    const wx = -L * 0.36 + i * (L * 0.72 / (nWindows - 1));
+    const wx = -L * 0.34 + i * (L * 0.68 / (nWindows - 1));
     for (const sz of [-W / 2 - 0.018, W / 2 + 0.018]) {
-      parts.push({ x: wx, y: 1.62, z: sz, w: 1.1, h: 0.65, d: 0.03, color: windowGlow, glow: true });
+      // Bingkai kaca hitam
+      parts.push({ x: wx, y: 1.72, z: sz, w: 1.15, h: 0.68, d: 0.03, color: glassTint });
+      // Cahaya interior hangat
+      parts.push({ x: wx, y: 1.72, z: sz, w: 1.05, h: 0.56, d: 0.035, color: warmInterior, glow: true });
     }
   }
 
-  // Pintu penumpang otomatis di antara jendela
-  for (const dx of [-L * 0.2, L * 0.2]) {
-    for (const sz of [-W / 2 - 0.02, W / 2 + 0.02]) {
-      parts.push({ x: dx, y: 1.35, z: sz, w: 0.85, h: 1.45, d: 0.03, color: "#a8b0ba" });
-      parts.push({ x: dx, y: 1.62, z: sz, w: 0.45, h: 0.62, d: 0.035, color: windowGlow, glow: true });
-    }
+  // PINTU PENUMPANG BUS (DI SISI KIRI JEPANG / z = W/2)
+  for (const dx of [-L * 0.26, L * 0.18]) {
+    parts.push({ x: dx, y: 1.25, z: W / 2 + 0.02, w: 0.85, h: 1.35, d: 0.03, color: "#334155" });
+    parts.push({ x: dx, y: 1.55, z: W / 2 + 0.025, w: 0.65, h: 0.65, d: 0.03, color: glassTint });
   }
 
-  // ATAP KERETA (TEMPAT BERSELANCAR / SKATEBOARDING ROOF)
-  // Permukaan atap datar di y = 2.42m
-  parts.push({ x: 0, y: H - 0.06, z: 0, w: L, h: 0.14, d: W - 0.2, color: roofGray });
-  // Catwalk non-slip tengah (jalur skating utama di atap gerbong)
-  parts.push({ x: 0, y: H + 0.02, z: 0, w: L, h: 0.04, d: 0.95, color: "#e4e9f0" });
-  // Strip marka neon tipis di tepi atap kereta agar mudah terlihat pemain
-  parts.push({ x: 0, y: H + 0.01, z: -W / 2 + 0.15, w: L, h: 0.025, d: 0.08, color: stripe, glow: true });
-  parts.push({ x: 0, y: H + 0.01, z: W / 2 - 0.15, w: L, h: 0.025, d: 0.08, color: stripe, glow: true });
+  // ATAP BUS DATAR TEMPAT BERSELANCAR (ROOF SURFING PLATFORM at y = 2.45m)
+  parts.push({ x: 0, y: H - 0.06, z: 0, w: L, h: 0.12, d: W - 0.15, color: "#dbe2ea" });
+  // Catwalk anti-selip bertekstur di atap
+  parts.push({ x: 0, y: H + 0.02, z: 0, w: L - 0.6, h: 0.04, d: 0.95, color: "#f8fafc" });
+  // Strip marka neon di tepi atap bus
+  parts.push({ x: 0, y: H + 0.01, z: -W / 2 + 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
+  parts.push({ x: 0, y: H + 0.01, z: W / 2 - 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
 
-  // Unit AC pendingin di atap gerbong
-  for (const acX of [-L * 0.25, L * 0.25]) {
-    parts.push({ x: acX, y: H + 0.16, z: 0, w: 1.8, h: 0.22, d: 1.5, color: "#838c98" });
-    parts.push({ x: acX, y: H + 0.28, z: 0, w: 1.4, h: 0.04, d: 1.2, color: "#505762" });
+  // DUA UNIT AC PENDINGIN BUS (BUS ROOFTOP AC UNITS) DI ATAP
+  for (const acX of [-L * 0.22, L * 0.24]) {
+    // Kotak AC
+    parts.push({ x: acX, y: H + 0.16, z: 0, w: 1.9, h: 0.24, d: 1.55, color: "#94a3b8" });
+    // Kisi-kisi ventilasi atas AC
+    parts.push({ x: acX, y: H + 0.28, z: 0, w: 1.5, h: 0.04, d: 1.25, color: "#334155" });
+    // Strip aksen AC
+    parts.push({ x: acX, y: H + 0.18, z: 0.8, w: 1.7, h: 0.06, d: 0.04, color: primary });
   }
 
-  // Pantograf listrik (pada gerbong tengah)
+  // SAMBUNGAN AKORDEON BUS GANDENG (ARTICULATED BUS BELLOWS) BILA GERBONG TENGAH
   if (!isFrontCab && !isRearCab) {
-    parts.push({ x: 0, y: H + 0.12, z: 0, w: 0.8, h: 0.08, d: 0.8, color: "#373b42" });
-    parts.push({ x: 0, y: H + 0.38, z: 0, w: 0.1, h: 0.45, d: 0.1, color: "#373b42" });
-    parts.push({ x: 0, y: H + 0.62, z: 0, w: 0.15, h: 0.08, d: 1.8, color: "#ff5722", glow: true });
+    parts.push({ x: -L / 2, y: 1.5, z: 0, w: 0.6, h: 1.8, d: W + 0.1, color: "#1e2229" });
+    parts.push({ x: -L / 2, y: 1.5, z: 0, w: 0.45, h: 1.85, d: W + 0.15, color: "#282d37" });
   }
 
-  // KABIN DEPAN (MENGHADAP PEMAIN di -x) - MONCONG DENGAN LAMPU BESAR
+  // MONCONG DEPAN BUS (MENGHADAP PEMAIN DI -x)
   if (isFrontCab) {
-    const fx = -L / 2 - 0.02; // depan menghadap -x
-    if (isShinkansen) {
-      // Moncong peluru Shinkansen yang aerodinamis
-      parts.push({ x: fx - 0.7, y: 1.25, z: 0, w: 1.4, h: 1.3, d: W - 0.3, color: silver });
-      parts.push({ x: fx - 1.4, y: 0.85, z: 0, w: 1.2, h: 0.7, d: W - 0.6, color: silver });
-      // Kaca kokpit Shinkansen
-      parts.push({ x: fx - 0.45, y: 1.68, z: 0, w: 0.6, h: 0.45, d: 1.5, color: "#141820" });
-      // LAMPU DEPAN BULLET SHINKANSEN MENYALA TERANG
-      parts.push({ x: fx - 1.9, y: 0.85, z: -0.65, w: 0.15, h: 0.18, d: 0.28, color: "#fffde6", glow: true });
-      parts.push({ x: fx - 1.9, y: 0.85, z: 0.65, w: 0.15, h: 0.18, d: 0.28, color: "#fffde6", glow: true });
-    } else {
-      // Moncong kabin commuter metro modern
-      parts.push({ x: fx, y: 1.55, z: 0, w: 0.2, h: 1.65, d: W - 0.15, color: "#161a22" });
-      // Kaca depan besar
-      parts.push({ x: fx - 0.12, y: 1.68, z: 0, w: 0.05, h: 0.8, d: W - 0.5, color: "#0f131a" });
-      // LAMPU DEPAN METRO BESAR & MENYALA TERANG (TWIN HIGH-BEAM)
-      parts.push({ x: fx - 0.15, y: 0.85, z: -0.75, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
-      parts.push({ x: fx - 0.15, y: 0.85, z: 0.75, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
-      // Papan tujuan LED: "渋谷 ➔ 新宿 / SHIBUYA"
-      parts.push({ x: fx - 0.14, y: 2.15, z: 0, w: 0.05, h: 0.22, d: 1.4, color: "#00e5ff", glow: true });
-    }
+    const fx = -L / 2 - 0.02;
+    // Kaca depan lebar aerodinamis (Windshield)
+    parts.push({ x: fx - 0.08, y: 1.75, z: 0, w: 0.12, h: 0.88, d: W - 0.35, color: glassTint });
+    // Kaca depan interior glow lembut
+    parts.push({ x: fx - 0.05, y: 1.72, z: 0, w: 0.06, h: 0.78, d: W - 0.5, color: warmInterior, glow: true });
+
+    // PAPAN ROLLSIGN TUJUAN BUS BERCAHAYA: "渋谷駅前 / SHIBUYA BUS"
+    parts.push({ x: fx - 0.12, y: 2.22, z: 0, w: 0.06, h: 0.25, d: 1.55, color: "#111827" });
+    parts.push({ x: fx - 0.14, y: 2.22, z: 0, w: 0.04, h: 0.18, d: 1.45, color: "#ffd21f", glow: true });
+
+    // LAMPU DEPAN BUS TWIN HIGH-BEAM LED MENYALA TERANG
+    parts.push({ x: fx - 0.14, y: 0.82, z: -0.78, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
+    parts.push({ x: fx - 0.14, y: 0.82, z: 0.78, w: 0.08, h: 0.24, d: 0.36, color: "#fffde6", glow: true });
+    // Lampu sein amber di sudut bawah
+    parts.push({ x: fx - 0.14, y: 0.82, z: -1.02, w: 0.07, h: 0.18, d: 0.14, color: "#ff9f1c", glow: true });
+    parts.push({ x: fx - 0.14, y: 0.82, z: 1.02, w: 0.07, h: 0.18, d: 0.14, color: "#ff9f1c", glow: true });
+
+    // Grille depan bus & emblem
+    parts.push({ x: fx - 0.12, y: 0.78, z: 0, w: 0.06, h: 0.28, d: 0.9, color: "#1e2430" });
+    parts.push({ x: fx - 0.14, y: 0.78, z: 0, w: 0.04, h: 0.12, d: 0.35, color: "#cbd5e1" });
+
+    // Kaca spion samping bus (Side rearview mirrors)
+    parts.push({ x: fx - 0.2, y: 1.85, z: -W / 2 - 0.18, w: 0.15, h: 0.42, d: 0.12, color: "#111827" });
+    parts.push({ x: fx - 0.2, y: 1.85, z: W / 2 + 0.18, w: 0.15, h: 0.42, d: 0.12, color: "#111827" });
   }
 
-  // KABIN BELAKANG (Bila ekor rangkaian)
+  // BAGIAN BELAKANG BUS (BILA EKOR / REAR BUS)
   if (isRearCab) {
     const rx = L / 2 + 0.02;
-    parts.push({ x: rx, y: 1.55, z: 0, w: 0.2, h: 1.65, d: W - 0.15, color: "#161a22" });
-    // Lampu ekor merah menyala
-    parts.push({ x: rx + 0.12, y: 0.85, z: -0.75, w: 0.06, h: 0.18, d: 0.28, color: "#ff2a2a", glow: true });
-    parts.push({ x: rx + 0.12, y: 0.85, z: 0.75, w: 0.06, h: 0.18, d: 0.28, color: "#ff2a2a", glow: true });
+    // Kaca belakang
+    parts.push({ x: rx + 0.06, y: 1.78, z: 0, w: 0.08, h: 0.65, d: W - 0.6, color: glassTint });
+    // Lampu rem belakang merah menyala terang
+    parts.push({ x: rx + 0.12, y: 0.85, z: -0.85, w: 0.06, h: 0.35, d: 0.22, color: "#ef233c", glow: true });
+    parts.push({ x: rx + 0.12, y: 0.85, z: 0.85, w: 0.06, h: 0.35, d: 0.22, color: "#ef233c", glow: true });
+    // Pelat nomor hijau Jepang di belakang
+    parts.push({ x: rx + 0.12, y: 0.62, z: 0, w: 0.04, h: 0.18, d: 0.38, color: "#00e676", glow: true });
   }
 
   return parts;
 }
 
 /**
- * Rel Gantung / Catenary Grind Wire di Atas Atap Kereta:
- * Menggantung di y = 3.15m (tepat di atas atap kereta sepanjang x).
- * Pemain bisa ollie dari atap kereta ke rel gantung ini untuk melakukan aksi grind listrik!
+ * Saluran Ventilasi Jet Fan & Rel Utilitas Gantung Jalan Raya:
+ * Kipas ventilasi terowongan industri (Jet Fan) dipasang tinggi di atas,
+ * dengan rel utilitas kabel baja di y = 3.15m yang bisa di-ollie & grind pemain!
  */
-export function subwayOverheadRailParts(len = 11.0): Part[] {
-  const steel = "#cdd5df";
-  const bracket = "#424853";
-  const sparkBlue = "#00e5ff";
-
-  const parts: Part[] = [
-    // Rel grind atas panjang sepanjang x
-    { x: 0, y: 3.15, z: 0, w: len, h: 0.14, d: 0.14, color: steel },
-    // Strip kontak kabel listrik bercahaya
-    { x: 0, y: 3.23, z: 0, w: len, h: 0.03, d: 0.08, color: sparkBlue, glow: true },
-    // Tiang gantungan catenary di kedua ujung
-    { x: -len * 0.35, y: 3.65, z: 0, w: 0.1, h: 0.88, d: 0.1, color: bracket },
-    { x: len * 0.35, y: 3.65, z: 0, w: 0.1, h: 0.88, d: 0.1, color: bracket },
-  ];
-
-  return parts;
+export function subwayOverheadRailParts(_len = 11.0): Part[] {
+  return [];
 }
 
 /**

@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useReducer, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, voxelMaterial, type GeoPair } from "./voxel";
+import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, pick, voxelMaterial, type GeoPair } from "./voxel";
 import { applyCurve } from "./curve";
 import {
   CHUNK_LEN,
@@ -106,6 +106,7 @@ import {
   cityBusObstacleParts,
   SUBWAY_CAR_LEN,
   SUBWAY_GAP,
+  SUBWAY_ROOF_H,
 } from "./models";
 import { useUI, type TrackMode } from "./store";
 import { getRayTexture } from "./rays";
@@ -332,7 +333,7 @@ const ObstacleView = memo(function ObstacleView({ o }: { o: Obstacle }) {
 });
 
 /* ---------- Movers: oncoming cars, crossing chickens & pedestrians ---------- */
-const PED_SCALE = 0.882; // semua orang dikecilkan 30% LAGI (1.8 -> 1.26 -> 0.882)
+const PED_SCALE = 1.06; // Skala pejalan kaki proporsional, alami, dan nyaman dilihat (~1.74m visual)
 /* Telapak kaki model ada di y = -0.98 pada ruang lokal (grup kaki -0.34 + ujung sepatu -0.64).
    Setelah diskalakan, model harus diangkat 0.98 * skala supaya kaki MENAPAK di permukaan,
    bukan menembus jalan. */
@@ -448,24 +449,27 @@ const PedestrianMover = memo(function PedestrianMover({ m }: { m: Mover }) {
 
       if (m.phase === "hop") {
         if (isElder) {
-          // jalan pelan & hati-hati: langkah kecil, badan agak bungkuk, tongkat menap
-          const step = Math.sin(m.hopT * 6.4);
-          legL.rotation.set(0, 0, step * 0.36);
-          legR.rotation.set(0, 0, -step * 0.3);
-          armL.rotation.set(0, 0, -step * 0.22);
-          armR.rotation.set(0, 0, 0.16 + Math.abs(step) * 0.12);
-          headG.rotation.set(0.1, Math.sin(m.hopT * 3.2) * 0.12, Math.sin(m.hopT * 12.8) * 0.02);
-          torso.rotation.set(0, 0, 0.17); // bungkuk ke depan pada sumbu gerak
-          inner.position.y = PED_LIFT - 0.014 - Math.abs(step) * 0.008;
+          // Jalan santai teratur lansia dengan tongkat (langkah wajar, tidak kaku)
+          const strideFreq = (m.speed / 0.75) * Math.PI;
+          const step = Math.sin(m.hopT * strideFreq);
+          legL.rotation.set(0, 0, step * 0.48);
+          legR.rotation.set(0, 0, -step * 0.48);
+          armL.rotation.set(0, 0, -step * 0.36);
+          armR.rotation.set(0, 0, 0.16 + Math.abs(step) * 0.14);
+          headG.rotation.set(0.08, Math.sin(m.hopT * 2.4) * 0.08, Math.sin(m.hopT * 4.8) * 0.02);
+          torso.rotation.set(0, 0, 0.12);
+          inner.position.y = PED_LIFT + Math.abs(Math.sin(m.hopT * strideFreq)) * 0.016;
         } else {
-          const swing = Math.sin(m.hopT * 10);
-          legL.rotation.set(0, 0, swing * 0.42);
-          legR.rotation.set(0, 0, -swing * 0.42);
-          armL.rotation.set(0, 0, -swing * 0.32);
-          armR.rotation.set(0, 0, swing * 0.32);
-          headG.rotation.set(0, 0, Math.sin(m.hopT * 20) * 0.03);
-          torso.rotation.set(0, 0, 0.04); // sedikit condong ke arah jalan
-          inner.position.y = PED_LIFT + Math.abs(Math.sin(m.hopT * 10)) * 0.022;
+          // Langkah jalan kaki proporsional, santai, dan nyaman (panjang langkah pas, tidak kaku/shuffle)
+          const strideFreq = (m.speed / 0.88) * Math.PI;
+          const swing = Math.sin(m.hopT * strideFreq);
+          legL.rotation.set(0, 0, swing * 0.62);
+          legR.rotation.set(0, 0, -swing * 0.62);
+          armL.rotation.set(0, 0, -swing * 0.48);
+          armR.rotation.set(0, 0, swing * 0.48);
+          headG.rotation.set(0, 0, Math.sin(m.hopT * strideFreq * 2) * 0.02);
+          torso.rotation.set(0, 0, 0.04 + Math.sin(m.hopT * strideFreq * 2) * 0.01);
+          inner.position.y = PED_LIFT + Math.abs(Math.sin(m.hopT * strideFreq)) * 0.026;
         }
       } else {
         legL.rotation.set(0, 0, 0);
@@ -1916,19 +1920,28 @@ interface Walker {
   seeded: boolean;
 }
 
-const URBAN_CROWD_N = 84;
+const URBAN_CROWD_N = 120; // Trotoar ramai, hidup, dan merata khas kota Tokyo/Shibuya
 const CROWD_KINDS: ("adult" | "suit" | "kid" | "elder")[] = ["adult", "suit", "kid", "adult", "elder", "suit", "adult", "kid", "suit", "adult", "suit", "kid"];
 
-/** Pilih posisi trotoar. Tiap sisi punya dua arus berlawanan agar pejalan saling berpapasan, bukan berbaris searah. */
+/** Pilih posisi trotoar. Menyebar merata di seluruh lebar trotoar, tidak menumpuk di satu garis sempit. */
 function crowdLat(mode: TrackMode, side: 1 | -1, dir: 1 | -1): number {
-  const jitter = (Math.random() - 0.5) * 0.16;
   if (mode === "shibuya") {
-    if (side < 0) return (dir > 0 ? -5.72 : -6.45) + jitter;
-    return (dir > 0 ? 14.38 : 15.08) + jitter;
+    // Trotoar Shibuya lebar (near: -4.2 sampai -8.0; far: 12.6 sampai 16.0)
+    // 4 lajur pejalan alami per sisi jalan agar menyebar merata, tidak dempet satu garis
+    if (side < 0) {
+      const nearLanes = dir > 0 ? [-4.8, -5.5] : [-6.3, -7.2];
+      return pick(nearLanes) + (Math.random() - 0.5) * 0.35;
+    }
+    const farLanes = dir > 0 ? [13.2, 13.9] : [14.7, 15.5];
+    return pick(farLanes) + (Math.random() - 0.5) * 0.35;
   }
-  // Tokyo City sidewalk ribbons: near curb on the left, wider pedestrian strip on the right.
-  if (side < 0) return (dir > 0 ? -5.65 : -6.35) + jitter;
-  return (dir > 0 ? 4.45 : 5.78) + jitter;
+  // Tokyo City / Park
+  if (side < 0) {
+    const nearLanes = dir > 0 ? [-4.8, -5.4] : [-5.9, -6.6];
+    return pick(nearLanes) + (Math.random() - 0.5) * 0.25;
+  }
+  const farLanes = dir > 0 ? [4.5, 5.0] : [5.4, 5.9];
+  return pick(farLanes) + (Math.random() - 0.5) * 0.25;
 }
 
 type WalkerKind = "adult" | "elder" | "suit" | "kid";
@@ -1967,47 +1980,56 @@ const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, track
     // Setiap trotoar punya dua arah; arah dan jalur tetap saat pejalan kaki didaur ulang.
     if (!w.seeded) {
       w.seeded = true;
-      w.s = dist - 16 + Math.random() * 112;
+      w.s = dist - 20 + Math.random() * 125;
       w.lat = crowdLat(trackMode, w.side, w.dir);
     }
-    // JAGA JARAK: jangan menembus orang di depan pada jalur dan arah yang sama.
+    // JAGA KELANCARAN & JARAK ALAMI: tidak dempet, tidak menumpuk jadi antrean macet
     let v = w.speed;
     for (const o of all) {
       if (o === w || !o.seeded || o.side !== w.side || o.dir !== w.dir) continue;
-      if (Math.abs(o.lat - w.lat) > 0.35) continue;
+      if (Math.abs(o.lat - w.lat) > 0.42) continue;
       const gap = (o.s - w.s) * w.dir;
-      if (gap > 0 && gap < 0.85) {
-        v = Math.min(v, o.speed * 0.92);
-        if (gap < 0.5) v = 0; // berhenti sejenak, orang di depan terlalu dekat
+      if (gap > 0 && gap < 1.6) {
+        // Sesuaikan kecepatan secara halus, tetap melangkah alami (tidak macet berhenti total)
+        v = Math.min(v, o.speed * 0.95);
+        // Geser ke samping secara halus bila mendekati orang di depan agar tidak dempet
+        if (gap < 1.1) {
+          const shift = w.lat >= o.lat ? 0.3 : -0.3;
+          w.lat += shift * dt;
+        }
       }
     }
     w.s += w.dir * v * dt;
     let rel = w.s - dist;
-    // Loop jauh di luar layar tanpa berbalik arah atau berpindah jalur menembus dekorasi.
-    if (w.dir > 0 && rel > 96) w.s -= 112;
-    else if (w.dir < 0 && rel < -18) w.s += 112;
+    // Sirkulasi terus menerus di sekitar pemain agar trotoar selalu ramai merata tanpa zona kosong
+    if (w.dir > 0 && rel > 98) {
+      w.s = dist - 24 - Math.random() * 12;
+      w.lat = crowdLat(trackMode, w.side, w.dir);
+    } else if (w.dir < 0 && rel < -24) {
+      w.s = dist + 88 + Math.random() * 24;
+      w.lat = crowdLat(trackMode, w.side, w.dir);
+    }
     rel = w.s - dist;
 
     track.frame(w.s, w.lat, 0.13, root.position);
     track.quat(w.s, root.quaternion);
     inner.rotation.y = w.dir > 0 ? 0 : Math.PI;
-    const scl = PED_SCALE * (kid ? 0.6 : 1);
+    const scl = PED_SCALE * (kid ? 0.62 : 1);
     inner.scale.setScalar(scl);
 
-    // CARA JALAN DIBENERIN: irama langkah mengikuti kecepatan nyata (tidak "moonwalk"),
-    // ayunan lebih kalem, berhenti = kaki diam
-    const strideHz = v / (0.62 * scl); // langkah/detik dari panjang langkah nyata
-    w.t0 += dt * strideHz * Math.PI;
+    // Langkah jalan kaki proporsional, santai, dan alami
+    const strideHz = (v / (0.86 * scl)) * Math.PI;
+    w.t0 += dt * strideHz;
     const t = w.t0;
-    const amp = v < 0.02 ? 0 : elderly ? 0.26 : kid ? 0.5 : 0.4;
+    const amp = v < 0.04 ? 0 : elderly ? 0.44 : kid ? 0.62 : 0.65;
     const swing = Math.sin(t) * amp;
-    // Model menghadap sumbu +x, jadi ayunan kaki/lengan maju-mundur harus pada sumbu z (bukan x).
+    // Model menghadap sumbu +x, ayunan kaki/lengan maju-mundur pada sumbu z
     if (legLRef.current) legLRef.current.rotation.z = swing;
     if (legRRef.current) legRRef.current.rotation.z = -swing;
-    if (armLRef.current) armLRef.current.rotation.z = suit ? 0.1 : -swing * 0.55; // lengan pengempit tas tetap rapat
-    if (armRRef.current) armRRef.current.rotation.z = elderly ? 0.16 : swing * 0.55;
-    if (headRef.current) headRef.current.rotation.y = Math.sin(engine.time * 0.9 + w.s) * 0.18;
-    inner.position.y = PED_LIFT + (amp > 0 ? Math.abs(Math.sin(t)) * 0.018 : 0);
+    if (armLRef.current) armLRef.current.rotation.z = suit ? 0.08 : -swing * 0.52;
+    if (armRRef.current) armRRef.current.rotation.z = elderly ? 0.14 : swing * 0.52;
+    if (headRef.current) headRef.current.rotation.y = Math.sin(engine.time * 0.7 + w.s * 0.3) * 0.12;
+    inner.position.y = PED_LIFT + (amp > 0 ? Math.abs(Math.sin(t)) * 0.024 : 0);
   });
 
   return (

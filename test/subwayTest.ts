@@ -37,6 +37,17 @@ check("Subway tunnel is generated in Shibuya mode", spawnedTunnel, `Tunnels: ${e
 if (engine.subwayTunnels.length > 0) {
   const tun = engine.subwayTunnels[0];
   check("Subway tunnel has valid start and end bounds", tun.endS > tun.startS, `${tun.startS}m -> ${tun.endS}m`);
+  check("Subway tunnel is 10x longer (1440m)", tun.endS - tun.startS >= 1440, `Length: ${(tun.endS - tun.startS).toFixed(0)}m`);
+
+  // Verify no crossings or intersections inside subway tunnel
+  const crossingsInTunnel = engine.crossings.filter((cr) => cr.s >= tun.startS && cr.s <= tun.endS);
+  check("No railroad crossings inside subway tunnel (no cross trains)", crossingsInTunnel.length === 0, `Found: ${crossingsInTunnel.length}`);
+
+  const intersInTunnel = engine.intersections.filter((it) => it.s >= tun.startS && it.s <= tun.endS);
+  check("No crossroads / intersections inside subway tunnel", intersInTunnel.length === 0, `Found: ${intersInTunnel.length}`);
+
+  const animalsInTunnel = engine.movers.filter((m) => (m.kind === "chicken" || m.kind === "cat") && m.s >= tun.startS && m.s <= tun.endS);
+  check("No chickens or stray cats inside subway tunnel", animalsInTunnel.length === 0, `Found: ${animalsInTunnel.length}`);
 
   // Verify entry and exit portals in decor
   const chunksInTunnel = engine.chunks.filter((c) => c.s0 >= tun.startS && c.s0 < tun.endS);
@@ -67,6 +78,8 @@ if (engine.subwayTunnels.length > 0) {
 }
 
 // 3. Test Roof Surfing mechanics: place train directly under player (player is within train length)
+engine.phase = "playing";
+engine.crashT = 0;
 const mockTrain: SubwayTrain = {
   id: 8888,
   s: engine.distance - 4, // front cab is at distance - 4, player is at distance (4m into body)
@@ -80,19 +93,30 @@ const mockTrain: SubwayTrain = {
   length: 34,
 };
 engine.subwayTrains.push(mockTrain);
+// Test airborne player above bus is NOT prematurely snapped to roof
 engine.player.targetLane = 1;
 engine.player.lane = 1;
 engine.player.lat = 0;
-engine.player.h = SUBWAY_ROOF_H; // Player lands on roof
+engine.player.h = 4.2; // High in the air performing freestyle
+engine.player.vh = 5.0; // Still rising/in air
+engine.player.grounded = false;
+engine.player.grinding = false;
+engine.player.subwayMover = null;
+engine.update(0.02);
+check("Airborne player above bus is not force-snapped to roof", !engine.player.subwayMover && engine.player.h > SUBWAY_ROOF_H + 0.5, `Height: ${engine.player.h.toFixed(2)}m, Mover: ${engine.player.subwayMover}`);
+
+// Now test player landing on roof as they descend
+engine.player.h = SUBWAY_ROOF_H; // Player touches down on roof
+engine.player.vh = 0; // Descended/touchdown
 engine.player.grounded = false;
 
-// Update engine - player should start train surfing
+// Update engine - player should start bus surfing upon landing
 engine.update(0.02);
-check("Player on subway roof engages roof surfing", engine.player.grinding && engine.player.subwayMover === mockTrain, `Grinding: ${engine.player.grinding}`);
+check("Player descending onto bus roof engages roof surfing", engine.player.grinding && engine.player.subwayMover === mockTrain, `Grinding: ${engine.player.grinding}`);
 
 // Test jump dismount from roof
 engine.jump();
-check("Jumping off subway roof performs clean dismount with combo", !engine.player.subwayMover, `Grind cleared: ${!engine.player.subwayMover}`);
+check("Jumping off bus roof performs clean dismount with combo", !engine.player.subwayMover, `Grind cleared: ${!engine.player.subwayMover}`);
 
 // Summary
 console.log("\nResults:");

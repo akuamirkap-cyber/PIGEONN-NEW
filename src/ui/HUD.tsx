@@ -1,7 +1,6 @@
 import { useUI } from "../game/store";
 import { BreadIcon } from "./BreadIcon";
 import { engine, NOS_MAX } from "../game/engine";
-import { TRICKS } from "../game/tricks";
 import { unlockAudio } from "../game/audio";
 
 function SpeakerIcon({ muted }: { muted: boolean }) {
@@ -29,16 +28,12 @@ export function HUD() {
   const toggleMute = useUI((s) => s.toggleMute);
   const nos = useUI((s) => s.nos);
   const nosActive = useUI((s) => s.nosActive);
-  const cycleIndex = useUI((s) => s.cycleIndex);
-  const tricksOn = useUI((s) => s.tricksOn);
   const speedMode = useUI((s) => s.speedMode);
   const trackMode = useUI((s) => s.trackMode);
   const shibuyaTime = useUI((s) => s.shibuyaTime);
   const wordHunt = useUI((s) => s.wordHunt);
   const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
   const inRun = phase === "playing" || phase === "crashed";
-  const enabled = TRICKS.filter((t) => tricksOn[t.kind]);
-  const nextTrick = enabled.length ? enabled[cycleIndex % enabled.length] : null;
   const nosReady = nos >= NOS_MAX * 0.99 && !nosActive;
   const sprint = useUI((s) => s.sprint);
   const sprintLevel = useUI((s) => s.sprintLevel);
@@ -52,17 +47,24 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 select-none">
-      {/* bread counter (top-left) in vibrant royal blue pill */}
+      {/* bread counter (top-left) in vibrant royal blue pill + optional small speed indicator */}
       {inRun && (
-        <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/20 bg-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]">
-          <BreadIcon size={24} />
-          <span className="font-display text-[4.8cqw] leading-none text-white txt-outline-sm">{bread}</span>
+        <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex items-center gap-2">
+          <div className="flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/20 bg-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]">
+            <BreadIcon size={24} />
+            <span className="font-display text-[4.8cqw] leading-none text-white txt-outline-sm">{bread}</span>
+          </div>
+          {speedMode > 1 && (
+            <div className="flex h-[8cqw] min-h-[32px] items-center rounded-full border-2 border-[#1f2430] bg-[#ffd23f] px-2.5 font-display text-[3.6cqw] font-bold text-[#1f2430] shadow-[0_2px_0_#c99a00]">
+              {speedMode}×
+            </div>
+          )}
         </div>
       )}
 
-      {/* score + location banner (top-center) */}
+      {/* score + location banner + Daily Word Hunt "SKATE" berhadiah (top-center, completely unblocked) */}
       {inRun && (
-        <div className="absolute left-0 right-0 top-[2.2%] flex flex-col items-center gap-1.5">
+        <div className="absolute left-0 right-0 top-[2.2%] flex flex-col items-center gap-1.5 z-30">
           <div className="font-display txt-outline text-[13.5cqw] leading-none text-white drop-shadow-md">{score}</div>
           <div className="flex items-center gap-1.5 rounded-full border border-white/30 bg-[#0b66e4] px-3.5 py-1 shadow-[0_3px_0_#0748a3]">
             <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" className="text-white" aria-hidden="true">
@@ -71,14 +73,14 @@ export function HUD() {
             <span className="font-display text-[2.8cqw] tracking-wider text-white">{locationLabel}</span>
           </div>
 
-          {/* Daily Word Hunt letter bar (Subway Surfers-style) */}
+          {/* Daily Word Hunt letter bar (SKATE berhadiah) — selalu jelas terlihat tanpa tertutup */}
           <button
             type="button"
             onClick={() => {
               unlockAudio();
               setShowMysteryBox(true);
             }}
-            className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 backdrop-blur-[3px] shadow-sm transition-transform active:scale-95"
+            className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 backdrop-blur-[4px] shadow-md transition-transform active:scale-95"
             aria-label="Daily Word Hunt progress"
           >
             {wordHunt.word.split("").map((ch, idx) => {
@@ -86,10 +88,10 @@ export function HUD() {
               return (
                 <div
                   key={idx}
-                  className={`flex h-[5.2cqw] w-[5.2cqw] min-h-[20px] min-w-[20px] items-center justify-center rounded-lg border text-[2.7cqw] font-display leading-none transition-all ${
+                  className={`flex h-[5.6cqw] w-[5.6cqw] min-h-[22px] min-w-[22px] items-center justify-center rounded-lg border text-[3.0cqw] font-display leading-none transition-all ${
                     isDone
                       ? "border-[#ffd21f] bg-gradient-to-b from-[#ffd60a] to-[#ff9f1c] text-[#1c1400] shadow-[0_0_8px_rgba(255,214,10,0.8)] scale-105 font-bold"
-                      : "border-white/20 bg-white/10 text-white/40"
+                      : "border-white/20 bg-white/10 text-white/50"
                   }`}
                 >
                   {ch}
@@ -97,10 +99,10 @@ export function HUD() {
               );
             })}
             <span
-              className={`ml-1 flex items-center text-[3.8cqw] leading-none ${
+              className={`ml-1 flex items-center text-[4cqw] leading-none ${
                 wordHunt.pendingBox || (wordHunt.collected.every(Boolean) && !wordHunt.claimed)
-                  ? "animate-bounce filter drop-shadow-[0_0_6px_#ffd21f]"
-                  : "opacity-60"
+                  ? "animate-bounce filter drop-shadow-[0_0_8px_#ffd21f]"
+                  : "opacity-75"
               }`}
             >
               🎁
@@ -109,7 +111,7 @@ export function HUD() {
         </div>
       )}
 
-      {/* top-right control: ONLY MUTE button (SIANG & CHASE are hidden as requested) */}
+      {/* top-right control: ONLY MUTE button */}
       {inRun && (
         <div className="pointer-events-auto absolute right-[3.5%] top-[3%] flex flex-col items-end">
           <button
@@ -123,8 +125,8 @@ export function HUD() {
         </div>
       )}
 
-      {/* trick / info popups (NEVER cropped or truncated, scaled smoothly) + centered 2x SKATE badge */}
-      <div className="pointer-events-none absolute left-0 right-0 top-[16%] flex flex-col items-center gap-1">
+      {/* trick / info popups (ditempatkan di bawah tulisan SKATE berhadiah agar tidak pernah menutupi) */}
+      <div className="pointer-events-none absolute left-0 right-0 top-[23%] flex flex-col items-center gap-1 z-10">
         {popups.slice(-1).map((p) => {
           const len = p.text.length;
           const fontClass = len > 20 ? "text-[3.3cqw]" : len > 15 ? "text-[3.8cqw]" : len > 11 ? "text-[4.3cqw]" : "text-[4.8cqw]";
@@ -144,16 +146,9 @@ export function HUD() {
             </div>
           );
         })}
-
-        {/* 2x SKATE speed multiplier badge */}
-        {inRun && speedMode > 1 && (
-          <div className="mt-1 flex items-center justify-center rounded-2xl border-[3px] border-[#1f2430] bg-[#ffd23f] px-4 py-1.5 font-display text-[4.2cqw] leading-none text-[#1f2430] shadow-[0_4px_0_#c99a00] active:translate-y-[1px]">
-            {speedMode}× SKATE
-          </div>
-        )}
       </div>
 
-      {/* NOS meter + boost button (bottom-right thumb reach) */}
+      {/* NOS meter + boost button (bottom-right) — SATU-SATUNYA TOMBOL DI BAWAH SEPERTI PERMINTAAN */}
       {phase === "playing" && (
         <div className="pointer-events-auto absolute bottom-[4.5%] right-[4%] flex flex-col items-center gap-2">
           {/* NOS vertical capsule */}
@@ -211,27 +206,6 @@ export function HUD() {
                 <span className="mt-[0.6cqw] hidden font-body text-[1.9cqw] font-extrabold tracking-wider opacity-80 [@media(hover:hover)]:block">SHIFT</span>
               </>
             )}
-          </button>
-        </div>
-      )}
-
-      {/* S = sequential freestyle button (bottom-left) */}
-      {phase === "playing" && nextTrick && (
-        <div className="pointer-events-auto absolute bottom-[4.5%] left-[4%] flex flex-col items-center gap-1.5">
-          <div className="max-w-[34cqw] truncate rounded-full border border-white/20 bg-[#0b66e4]/90 px-2.5 py-1 font-body text-[2.6cqw] font-extrabold text-white shadow-md">
-            next: {nextTrick.short}
-          </div>
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              unlockAudio();
-              engine.input("cycle");
-            }}
-            className="flex h-[15cqw] w-[15cqw] items-center justify-center rounded-full border-2 border-white/30 bg-[#c77dff] font-display text-[7cqw] leading-none text-white shadow-[0_4px_0_#8f4fcf] active:translate-y-[2px] active:shadow-none"
-            aria-label="Next freestyle trick"
-          >
-            S
           </button>
         </div>
       )}
