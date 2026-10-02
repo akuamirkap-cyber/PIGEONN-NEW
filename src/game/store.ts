@@ -79,6 +79,12 @@ interface UIState {
   setWheelColor: (c: WheelColor) => void;
   worldCurve: "subway" | "flat";
   setWorldCurve: (c: "subway" | "flat") => void;
+  /** Freestyle balance pada bibir/atap bis (bar penyeimbang khas) */
+  busBalancing: boolean;
+  busBalance: number; // -1 (miring kiri) .. 0 (tengah seimbang) .. +1 (miring kanan)
+  busBalanceCombo: number; // pengali combo balance
+  busBalanceScore: number;
+  setBusBalance: (busBalancing: boolean, busBalance: number, busBalanceCombo: number, busBalanceScore: number) => void;
   setHud: (score: number, bread: number, combo: number, dist: number, nos: number, nosActive: boolean) => void;
   addPopup: (text: string, color: string, sub?: string) => void;
   crashCause: string;
@@ -249,6 +255,12 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-worldcurve", worldCurve);
     set({ worldCurve });
   },
+  busBalancing: false,
+  busBalance: 0,
+  busBalanceCombo: 1,
+  busBalanceScore: 0,
+  setBusBalance: (busBalancing, busBalance, busBalanceCombo, busBalanceScore) =>
+    set({ busBalancing, busBalance, busBalanceCombo, busBalanceScore }),
   tricksOn: initialTricks,
   toggleTrick: (k) => {
     const tricksOn = { ...get().tricksOn, [k]: !get().tricksOn[k] };

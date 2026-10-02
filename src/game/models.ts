@@ -3615,21 +3615,22 @@ export function subwayWallParts(len = 6.0, line = 0): Part[] {
 }
 
 /**
- * Landasan Tepi Terowongan (Sidewalk Tepi Terowongan):
- * Trotoar tepi yang rapi dan mulus di samping terowongan (jauh di luar lajur berkendara).
- * Sederhana, bersih, tanpa pagar atau reflektor berlebih yang membuat pusing.
+ * Landasan Jalan Khusus Terowongan / Busway Shibuya:
+ * Permukaan jalan 100% mulus mengikuti mesh jalan tanpa anak tangga.
+ * Hanya meletakkan list trotoar tepi yang rapi di luar jalur berkendara (|z| = 8.5m).
  */
 export function subwayTrackParts(len = 6.0): Part[] {
-  const curbConcrete = "#78808d";
+  const curbConcrete = "#7e8898";
   const curbDark = "#3a404c";
 
   const parts: Part[] = [
-    // Trotoar beton samping terowongan (di luar lajur jalan raya, |z| = 8.5m)
-    { x: 0, y: 0.12, z: -8.5, w: len, h: 0.24, d: 2.0, color: curbConcrete },
-    { x: 0, y: 0.12, z: 8.5, w: len, h: 0.24, d: 2.0, color: curbConcrete },
+    // Trotoar samping jalan busway jauh di luar jalur jalan (|z| = 8.5m)
+    // Tanpa ada slab datar di atas aspal agar jalanan tidak patah / bertingkat
+    { x: 0, y: 0.12, z: -8.5, w: len, h: 0.24, d: 2.2, color: curbConcrete },
+    { x: 0, y: 0.12, z: 8.5, w: len, h: 0.24, d: 2.2, color: curbConcrete },
     // List pembatas tepi jalan yang rapi
-    { x: 0, y: 0.13, z: -7.5, w: len, h: 0.26, d: 0.16, color: curbDark },
-    { x: 0, y: 0.13, z: 7.5, w: len, h: 0.26, d: 0.16, color: curbDark },
+    { x: 0, y: 0.13, z: -7.4, w: len, h: 0.26, d: 0.16, color: curbDark },
+    { x: 0, y: 0.13, z: 7.4, w: len, h: 0.26, d: 0.16, color: curbDark },
   ];
 
   return parts;
@@ -3734,6 +3735,9 @@ export function subwayTrainCarParts(
   // Strip marka neon di tepi atap bus
   parts.push({ x: 0, y: H + 0.01, z: -W / 2 + 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
   parts.push({ x: 0, y: H + 0.01, z: W / 2 - 0.15, w: L, h: 0.025, d: 0.08, color: accent, glow: true });
+  // Rel coping logam perak di pinggiran atap bus untuk freestyle menyeimbangkan skate (50-50 / Edge Grind)
+  parts.push({ x: 0, y: H + 0.045, z: -W / 2 + 0.1, w: L, h: 0.05, d: 0.09, color: "#f1f5f9" });
+  parts.push({ x: 0, y: H + 0.045, z: W / 2 - 0.1, w: L, h: 0.05, d: 0.09, color: "#f1f5f9" });
 
   // DUA UNIT AC PENDINGIN BUS (BUS ROOFTOP AC UNITS) DI ATAP
   for (const acX of [-L * 0.22, L * 0.24]) {

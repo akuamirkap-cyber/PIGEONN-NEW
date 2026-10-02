@@ -14,42 +14,42 @@ import { clamp } from "./voxel";
  * The renderer converts to three.js signs (yaw = -heading, front truck yaw = -sF, roll = +lean * ROLL).
  */
 export const TURN = {
-  /** distance between the trucks (board units) and the "effective" factor: tuned for fast, agile response */
+  /** distance between the trucks (board units) and the "effective" factor: tuned for smooth, natural carving */
   WHEELBASE: 0.5,
-  EFFECTIVE: 1.25,
+  EFFECTIVE: 3.5,
   REAR_RATIO: 0.85,
-  STEER_MAX_GROUND: 0.65, // rad (~37° agile carve)
-  STEER_MAX_AIR: 0.48,
+  STEER_MAX_GROUND: 0.42, // rad (~24° natural carve)
+  STEER_MAX_AIR: 0.28,
   GRIP_GROUND: 1,
-  GRIP_AIR: 0.85, // responsive air drift
-  HEADING_MAX: 1.18,
-  DESIRED_MAX: 1.10,
-  REF_OMEGA: 32.0, // fast, critically damped reference toward the lane centre (no overshoot)
-  POS_GAIN: 22.0, // pulls the board crisply onto the reference
-  HEADING_GAIN: 60, // 1/s: fast heading response
-  LEAN_RATE_GROUND: 65, // lean units / s: immediate rider carve reaction
-  LEAN_RATE_AIR: 60,
-  TRUCK_DAMP_GROUND: 65, // 1/s: trucks turn quickly with rider lean
-  TRUCK_DAMP_AIR: 45,
-  YAW_DAMP: 32,
-  LEAN_VIS_DAMP: 32,
+  GRIP_AIR: 0.55, // roda tidak mencengkeram kaku di udara
+  HEADING_MAX: 0.80,
+  DESIRED_MAX: 0.75,
+  REF_OMEGA: 11.0, // pegas critically-damped halus menuju pusat jalur (tanpa snap)
+  POS_GAIN: 5.0, // tarikan halus ke referensi
+  HEADING_GAIN: 18, // 1/s: respons heading yang wajar dan mulus
+  LEAN_RATE_GROUND: 14, // lean units / s: badan condong alami, tidak menghentak
+  LEAN_RATE_AIR: 17,
+  TRUCK_DAMP_GROUND: 18, // 1/s: trucks berputar selaras dengan badan merpati
+  TRUCK_DAMP_AIR: 10,
+  YAW_DAMP: 18,
+  LEAN_VIS_DAMP: 18,
   ROLL_GROUND: 0.5, // rad of bank at lean = 1
   ROLL_AIR: 0.62,
   MIN_FWD: 4.5,
   SUBSTEP: 1 / 120,
   /** how much of the truck/lean lag we compensate when planning the stop (s); trucks hang looser in the air */
-  LAG: 0.034,
-  LAG_AIR: 0.08,
+  LAG: 0.09,
+  LAG_AIR: 0.20,
   /** 0..1: critically damped stopping capability prevents overshoot ("PAS" tepat di tengah jalur) */
-  BRAKE_MARGIN: 0.94,
-  BRAKE_MARGIN_AIR: 0.68,
+  BRAKE_MARGIN: 1.0,
+  BRAKE_MARGIN_AIR: 0.40,
   /** the trucks lag the lean command, so we compare the desired heading with where the heading WILL be (s) */
-  PREDICT: 0.014,
-  PREDICT_AIR: 0.035,
-  /** "arrived at the lane" thresholds: crisp lock-on without dragging or creeping */
-  ARRIVE_POS: 0.05,
-  ARRIVE_HEADING: 0.05,
-  ARRIVE_LEAN: 0.08,
+  PREDICT: 0.04,
+  PREDICT_AIR: 0.12,
+  /** "arrived at the lane" thresholds: smooth lock-on without dragging or creeping */
+  ARRIVE_POS: 0.04,
+  ARRIVE_HEADING: 0.04,
+  ARRIVE_LEAN: 0.06,
 };
 const effWb = () => TURN.WHEELBASE * TURN.EFFECTIVE;
 

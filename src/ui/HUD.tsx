@@ -28,6 +28,10 @@ export function HUD() {
   const toggleMute = useUI((s) => s.toggleMute);
   const nos = useUI((s) => s.nos);
   const nosActive = useUI((s) => s.nosActive);
+  const busBalancing = useUI((s) => s.busBalancing);
+  const busBalance = useUI((s) => s.busBalance);
+  const busBalanceCombo = useUI((s) => s.busBalanceCombo);
+  const busBalanceScore = useUI((s) => s.busBalanceScore);
   const speedMode = useUI((s) => s.speedMode);
   const trackMode = useUI((s) => s.trackMode);
   const shibuyaTime = useUI((s) => s.shibuyaTime);
@@ -122,6 +126,88 @@ export function HUD() {
           >
             <SpeakerIcon muted={muted} />
           </button>
+        </div>
+      )}
+
+      {/* ── BAR KHAS: Freestyle Balance Pinggiran Bis (Edge Grind Balance Bar) ── */}
+      {inRun && busBalancing && (
+        <div className="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-[15.5%] flex flex-col items-center gap-1.5 z-40 w-[92%] max-w-[360px]">
+          {/* Header Title with animated sparks and combo badge */}
+          <div className="flex items-center gap-2 rounded-full border-2 border-white/30 bg-[#151823]/95 px-3 py-1 shadow-[0_4px_16px_rgba(0,0,0,0.6)] backdrop-blur-md">
+            <span className="text-[3.6cqw] text-[#ffd21f] animate-pulse">⚡</span>
+            <span className="font-display text-[2.7cqw] tracking-wider text-white txt-outline-sm">
+              50-50 BUS EDGE BALANCE
+            </span>
+            <span className="rounded-full bg-gradient-to-r from-[#ffd21f] to-[#ff9f1c] px-2 py-0.5 font-display text-[2.6cqw] font-black text-[#151823] shadow-sm">
+              {busBalanceCombo}×
+            </span>
+          </div>
+
+          {/* Dedicated Balance Gauge Bar (Bar Khas) */}
+          <div className="relative w-full h-[36px] rounded-full border-[3px] border-white/40 bg-gradient-to-r from-[#ef233c] via-[#06d6a0] to-[#ef233c] p-[3px] shadow-[0_0_20px_rgba(6,214,160,0.4)]">
+            {/* Center Sweet Spot Target Zone */}
+            <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[34%] rounded-full bg-white/20 border-x-2 border-white/60 pointer-events-none flex items-center justify-center">
+              <span className="text-[9px] font-display font-black text-white drop-shadow tracking-tight">PERFECT</span>
+            </div>
+
+            {/* Sliding Skateboard Indicator Cursor */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-[left] duration-75 ease-out"
+              style={{
+                left: `${50 + Math.max(-1, Math.min(1, busBalance)) * 43}%`,
+              }}
+            >
+              <div
+                className={`flex items-center justify-center h-[42px] w-[42px] rounded-full border-2 shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-all ${
+                  Math.abs(busBalance) < 0.35
+                    ? "bg-[#ffd21f] border-white scale-110 shadow-[0_0_16px_#ffd21f]"
+                    : "bg-[#ef233c] border-white animate-pulse"
+                }`}
+              >
+                <span className="text-[20px] select-none">🛹</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Balance Buttons for Touch/Click & Status */}
+          <div className="flex w-full items-center justify-between px-2 pt-0.5">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                engine.adjustBusBalance(-1);
+              }}
+              className="flex items-center gap-1 rounded-full border-2 border-white/25 bg-black/70 px-3 py-1 font-display text-[2.6cqw] text-white active:scale-90 active:bg-[#ef233c] shadow-md cursor-pointer"
+              aria-label="Imbangkan ke kiri"
+            >
+              <span>◀</span>
+              <span>KIRI</span>
+            </button>
+
+            <div className="flex flex-col items-center">
+              <span className={`font-display text-[2.4cqw] tracking-wide txt-outline-sm ${
+                Math.abs(busBalance) < 0.35 ? "text-[#06d6a0]" : "text-[#ffd21f] animate-pulse"
+              }`}>
+                {Math.abs(busBalance) < 0.35 ? "✦ SEIMBANG ✦" : busBalance < 0 ? "MIRING KIRI!" : "MIRING KANAN!"}
+              </span>
+              <span className="font-display text-[2.2cqw] text-white/80">
+                +{busBalanceScore} PTS
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                engine.adjustBusBalance(1);
+              }}
+              className="flex items-center gap-1 rounded-full border-2 border-white/25 bg-black/70 px-3 py-1 font-display text-[2.6cqw] text-white active:scale-90 active:bg-[#06d6a0] shadow-md cursor-pointer"
+              aria-label="Imbangkan ke kanan"
+            >
+              <span>KANAN</span>
+              <span>▶</span>
+            </button>
+          </div>
         </div>
       )}
 

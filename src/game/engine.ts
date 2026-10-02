@@ -783,6 +783,13 @@ class Engine {
     railGrace: 0,
     subwayGrace: 0,
     subwayLastId: null as number | null,
+    /** Freestyle menyeimbangkan skate di pinggiran atap bis */
+    busBalance: 0,
+    busBalanceVel: 0,
+    busBalanceCombo: 1,
+    busBalancePts: 0,
+    busBalanceTime: 0,
+    busBalanceActive: false,
     onRamp: false,
     trick: null as Trick | null,
     tricksThisAir: 0,
@@ -921,6 +928,12 @@ class Engine {
     p.railGrace = 0;
     p.subwayGrace = 0;
     p.subwayLastId = null;
+    p.busBalance = 0;
+    p.busBalanceVel = 0;
+    p.busBalanceCombo = 1;
+    p.busBalancePts = 0;
+    p.busBalanceTime = 0;
+    p.busBalanceActive = false;
     p.onRamp = false;
     p.trick = null;
     p.tricksThisAir = 0;
@@ -985,6 +998,12 @@ class Engine {
     p.carGrace = 0;
     p.subwayGrace = 0;
     p.subwayLastId = null;
+    p.busBalance = 0;
+    p.busBalanceVel = 0;
+    p.busBalanceCombo = 1;
+    p.busBalancePts = 0;
+    p.busBalanceTime = 0;
+    p.busBalanceActive = false;
     p.onRamp = false;
     p.grounded = false;
     p.h = Math.max(p.h, PODIUM_H);
@@ -1031,6 +1050,16 @@ class Engine {
     useUI.getState().setMenuView("main");
   }
 
+  /** Kontrol menyeimbangkan papan skate ke kiri / kanan saat berada di pinggiran atap bis */
+  adjustBusBalance(dir: number) {
+    const p = this.player;
+    if (!p.grinding || !p.subwayMover || !p.busBalanceActive) return;
+    p.busBalanceVel += dir * 4.6;
+    p.busBalance += dir * 0.18;
+    p.busBalance = clamp(p.busBalance, -1.0, 1.0);
+    sfx.swish();
+  }
+
   /* ---------- Input ---------- */
   input(a: InputAction) {
     if (this.phase === "menu") return;
@@ -1046,12 +1075,19 @@ class Engine {
     switch (a) {
       case "left":
       case "right": {
+        const dir = a === "left" ? -1 : 1;
+        // Bila sedang melakukan aksi freestyle menyeimbangkan skate di pinggiran atap bis:
+        // Pencet Kiri / Kanan akan langsung mengarahkan dan menyeimbangkan papan!
+        if (p.grinding && p.subwayMover && p.busBalanceActive) {
+          this.adjustBusBalance(dir);
+          break;
+        }
+
         // Swipe ↔ = lane change (also in the air: a smooth carve/drift). The 360 spin is a deliberate move:
         // a second swipe in the same direction within 0.3 s, or a swipe toward the edge when no lane is left.
         // NEW turn mode: while grinding a rail the board is locked to the rail lane (no diagonal moves on a rail);
         // jump off first, then steer. On cars, player can steer/dismount to adjacent lanes.
         if (this.newTurn && p.grinding && p.rail) break;
-        const dir = a === "left" ? -1 : 1;
         const now = this.time;
         const repeat = this.lastSwipeDir === dir && now - this.lastSwipeT < 0.3;
         this.lastSwipeDir = dir;
@@ -1418,39 +1454,65 @@ class Engine {
       p.trick.t = p.trick.dur;
       this.completeTrick();
     }
+
+    // Inisialisasi aksi freestyle menyeimbangkan skate di pinggiran atap bis
+    p.busBalanceActive = true;
+    p.busBalance = Math.random() < 0.5 ? -0.15 : 0.15;
+    p.busBalanceVel = Math.sign(p.busBalance) * 0.45;
+    p.busBalanceCombo = 1;
+    p.busBalancePts = 0;
+    p.busBalanceTime = 0;
+    useUI.getState().setBusBalance(true, p.busBalance, 1, 0);
+
     if (isTransfer) {
       useUI.getState().addPopup("ROOF TRANSFER! 🛹💨", "#ffd21f", "ROOF TO ROOF!");
       this.trickScore += 200;
       this.addNos(NOS_PER_TRICK * 1.5);
       sfx.trick();
     } else if (st.speed === 0 || st.isStopped) {
-      useUI.getState().addPopup("BUS RUNWAY! 🛹", "#00f5d4", "SUBWAYSURF ROOF!");
+      useUI.getState().addPopup("50-50 BUS EDGE GRIND! 🛹⚡", "#00f5d4", "SEIMBANGKAN KANAN-KIRI!");
       this.trickScore += 120;
       sfx.land();
       sfx.swish();
     } else {
-      useUI.getState().addPopup("BUS SURF! 🚌", "#00e5ff", st.isShinkansen ? "EXPRESS BUS ROOF! ⚡" : "BUS ROOF SURF!");
+      useUI.getState().addPopup("BUS COPING BALANCE! 🚌⚡", "#00e5ff", "SEIMBANGKAN KANAN-KIRI!");
       sfx.land();
       sfx.swish();
     }
   }
 
-  private endSubwayGrind() {
+  private endSubwayGrind(lostBalance = false) {
     const p = this.player;
     if (!p.grinding && !p.subwayMover) return;
     if (p.subwayMover) {
       p.subwayLastId = p.subwayMover.id;
     }
+    const finalCombo = p.busBalanceCombo;
+    const finalBalPts = p.busBalancePts;
+
     p.grinding = false;
     p.subwayMover = null;
+    p.busBalanceActive = false;
+    p.busBalance = 0;
+    p.busBalanceVel = 0;
+    useUI.getState().setBusBalance(false, 0, 1, 0);
     p.subwayGrace = 0.1; // Cepat siap mendarat kembali bila hanya lompat kecil di atap bus
-    const base = Math.max(50, Math.round(p.grindPts / 10) * 10);
-    p.tricksThisAir++;
-    const pts = base * p.tricksThisAir;
-    this.trickScore += pts;
-    this.addNos(NOS_PER_TRICK * p.tricksThisAir);
-    useUI.getState().addPopup(`BUS SURF +${pts}`, "#00e5ff", p.tricksThisAir > 1 ? `COMBO x${p.tricksThisAir}` : "CLEAN DISMOUNT! ✨");
-    sfx.trick();
+
+    if (lostBalance) {
+      const base = Math.max(30, Math.round(p.grindPts / 10) * 10);
+      this.trickScore += base;
+      sfx.impact();
+    } else {
+      const base = Math.max(50, Math.round((p.grindPts + finalBalPts) / 10) * 10);
+      p.tricksThisAir++;
+      const multiplier = p.tricksThisAir * finalCombo;
+      const pts = base * multiplier;
+      this.trickScore += pts;
+      this.addNos(NOS_PER_TRICK * multiplier);
+      const subMsg = finalCombo > 1 ? `PERFECT BALANCE x${finalCombo} COMBO! ✨` : "CLEAN DISMOUNT! ✨";
+      useUI.getState().addPopup(`BUS EDGE GRIND +${pts}`, "#00e5ff", subMsg);
+      sfx.trick();
+    }
   }
 
   private land() {
@@ -1856,24 +1918,71 @@ class Engine {
         }
       }
 
-      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.35;
+      const inLane = Math.abs(LANE_LAT[st.lane] - p.lat) < 1.45;
       const inLength = rel >= -0.8 && rel <= st.length + 0.8;
 
       if (!inLength || !inLane) {
-        this.endSubwayGrind();
+        this.endSubwayGrind(false);
         p.grounded = false;
         // Jika meluncur turun ke samping ke jalan kosong, beri sedikit lengkungan lompat samping yang luwes
         p.vh = inLane ? 0 : 0.8;
         p.airT = 0;
       } else {
         p.h = SUBWAY_ROOF_H;
-        p.grindPts += dt * 180;
-        this.sparkT += dt;
-        if (this.sparkT > 0.08) {
-          this.sparkT = 0;
-          if (Math.abs(p.lean) > 0.35 || Math.abs(p.carve) > 0.35) {
-            this.emit("spark", -0.4, SUBWAY_ROOF_H - 0.02, p.lat, 2);
+
+        // ---- FREESTYLE MENYEIMBANGKAN SKATE DI PINGGIRAN BIS (50-50 EDGE BALANCE) ----
+        if (p.busBalanceActive) {
+          p.busBalanceTime += dt;
+          // Gravitasi / inersia perlahan menarik skate miring ke samping
+          const difficulty = 1.0 + Math.min(1.2, p.busBalanceTime * 0.22);
+          const tiltDrift = (p.busBalance * 2.5 + Math.sin(p.busBalanceTime * 7.5) * 0.4) * difficulty;
+          p.busBalanceVel += tiltDrift * dt;
+          p.busBalanceVel *= Math.exp(-dt * 2.8);
+          p.busBalance += p.busBalanceVel * dt;
+
+          // Animasi miring skateboard & badan mengikuti keseimbangan
+          p.roll = p.busBalance * 0.52;
+          p.carve = -p.busBalance * 0.52;
+          p.lean = p.busBalance;
+
+          // Cek Sweet-spot tengah: |busBalance| < 0.35 (zona hijau seimbang)
+          const inSweetSpot = Math.abs(p.busBalance) < 0.35;
+          if (inSweetSpot) {
+            const gain = dt * 320 * p.busBalanceCombo;
+            p.busBalancePts += gain;
+            p.grindPts += gain;
+            // Combo bertambah seiring bertahan di zona tengah
+            if (p.busBalanceTime > p.busBalanceCombo * 0.85 && p.busBalanceCombo < 10) {
+              p.busBalanceCombo++;
+              sfx.coin();
+              useUI.getState().addPopup(`PERFECT BALANCE x${p.busBalanceCombo}! ⚡`, "#00f5d4", "TAHANKAN DI TENGAH!");
+            }
+            // Percikan api metalik grinding di pinggiran atap bis
+            this.sparkT += dt;
+            if (this.sparkT > 0.04) {
+              this.sparkT = 0;
+              const edgeOffset = p.busBalance >= 0 ? 1.05 : -1.05;
+              this.emit("spark", -0.4, SUBWAY_ROOF_H - 0.02, LANE_LAT[st.lane] + edgeOffset, 3);
+            }
+          } else {
+            p.grindPts += dt * 100;
           }
+
+          // Sinkronisasi ke HUD
+          useUI.getState().setBusBalance(true, p.busBalance, p.busBalanceCombo, Math.round(p.busBalancePts));
+
+          // Cek bila miring kebablasan / hilang keseimbangan (|busBalance| >= 1.0)
+          if (Math.abs(p.busBalance) >= 1.0) {
+            useUI.getState().addPopup("HILANG KESEIMBANGAN! 💥", "#ff5964", "TERGELINCIR DARI ATAP!");
+            const slipDir = Math.sign(p.busBalance);
+            this.endSubwayGrind(true);
+            p.grounded = false;
+            p.vh = -1.2;
+            p.latVel = slipDir * 2.8;
+            p.airT = 0;
+          }
+        } else {
+          p.grindPts += dt * 180;
         }
       }
     }
@@ -4052,57 +4161,12 @@ class Engine {
 
     if (isShibuya) {
       if (curTunnel) {
-        // ---- TEROWONGAN METRO SUBWAY SHIBUYA (TAPI TIDAK GELAP!) ----
-        // Pintu masuk di awal terowongan
-        if (s0 === curTunnel.startS) {
-          add("subway_portal", 0, 0, 0, 0);
-        }
-        // Pintu keluar di akhir terowongan (keluar kembali ke jalan Shibuya & perempatan)
-        if (s0 + CHUNK_LEN === curTunnel.endS) {
-          add("subway_portal", CHUNK_LEN, 0, 0, 1);
-        }
-
-        // Landasan rel & ballast di atas jalan
+        // ---- JALAN KHUSUS BUSWAY / TRANSIT SHIBUYA ----
+        // Tetap ada jalan khusus terowongan (subway_track) dan armada bus (oncoming & stationary bus surfing),
+        // TANPA tembok samping (subway_wall) dan TANPA portal/rusuk/lampu di atasnya (subway_portal, subway_tunnel_rib).
+        // Sisi kanan dan kiri tetap terbuka penuh dan diisi oleh gedung-gedung, toko-toko, dan rumah-rumah!
         add("subway_track", 3, 0, 0);
         add("subway_track", 9, 0, 0);
-
-        // Dinding samping berkeramik putih bersih dengan papan nama stasiun (sangat lapang di lat +/-9.4)
-        add("subway_wall", 3, -9.4, 0, curTunnel.line);
-        add("subway_wall", 9, -9.4, 0, curTunnel.line);
-        add("subway_wall", 3, 9.4, 0, curTunnel.line);
-        add("subway_wall", 9, 9.4, 0, curTunnel.line);
-
-        // Rusuk terowongan megah & sangat tinggi (H=17.2m) dengan deretan lampu fluorescent terang di plafon (TIDAK GELAP!)
-        add("subway_tunnel_rib", 0, 0, 0, curTunnel.line);
-        add("subway_tunnel_rib", 6, 0, 0, curTunnel.line);
-
-        // Skyline gedung megah Shibuya tetap terlihat di latar belakang jauh (kombinasi indah)
-        const skylineBuildings: ShibuyaBuildingId[] = [
-          "tokyotower",
-          "skyscraper",
-          "pagoda",
-          "shibuya109",
-          "neon",
-          "qfront",
-          "station",
-          "ramen",
-          "konbini",
-          "izakaya",
-          "machiya",
-          "townhouse",
-        ];
-        if (id % 2 === 0) {
-          const skyBld = skylineBuildings[Math.abs(Math.floor(id / 2)) % skylineBuildings.length];
-          add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-        }
-        if (id % 2 === 1) {
-          const skyBld = skylineBuildings[Math.abs(Math.floor((id + 3) / 2)) % skylineBuildings.length];
-          add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-        }
-
-        this.chunks.push({ id, s0, kind: "shibuya", decor });
-        this.listVersion++;
-        return;
       }
 
       // ---- SHIBUYA: Semua gedung, rumah ramen & gedung ikonik dari Shibuya Blocks (tanpa terkecuali) ----
@@ -4149,14 +4213,25 @@ class Engine {
         "townhouse",    // Tokyo Townhouse
       ];
 
-      // 1. Near frontage:
-      const nearBld = nearShibuyaBuildings[Math.abs(id) % nearShibuyaBuildings.length];
-      add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
+      // 1. Near frontage (sisi kiri jalan): deretan toko, rumah, dan gedung
+      if (Math.random() < 0.22) {
+        if (Math.random() < 0.5) add("house", 6, -10.2, 0.1, randInt(0, 1));
+        else add("village_house", 6, -10.2, 0.1, randInt(0, 2));
+      } else {
+        const nearBld = nearShibuyaBuildings[Math.abs(id) % nearShibuyaBuildings.length];
+        add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
+      }
 
-      // 2. Far frontage across all 6 lanes:
-      if (Math.random() < 0.92) {
-        const farBld = farShibuyaBuildings[Math.abs(id + 4) % farShibuyaBuildings.length];
-        add("building", 6, 23.8, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+      // 2. Far frontage across all 6 lanes (sisi kanan jalan): deretan gedung, toko, dan rumah
+      if (Math.random() < 0.95) {
+        const farLat = curTunnel ? 16.2 : 23.8;
+        if (Math.random() < 0.22) {
+          if (Math.random() < 0.5) add("house", 6, farLat, -0.14, randInt(0, 1));
+          else add("village_house", 6, farLat, -0.14, randInt(0, 2));
+        } else {
+          const farBld = farShibuyaBuildings[Math.abs(id + 4) % farShibuyaBuildings.length];
+          add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+        }
       }
 
       // 3. Second skyline row: towering background skyscrapers & landmarks (placed every 2 chunks so no clutter)
@@ -4178,29 +4253,31 @@ class Engine {
         return this.crossings.some((cr) => Math.abs(cr.s - sAbs) < 9) || Math.abs(sAbs - this.nextCrossingS) < 9;
       };
 
-      // 5. Tree-lined centre median: zelkova street trees + lamps down the avenue
-      for (const lx of [3, 9]) {
-        if (!nearCrossing(lx)) add("tree", lx, 4.35, 0.16, randInt(0, 2));
+      // 5. Tree-lined centre median: hanya saat bukan di jalur bus khusus agar lajur bus tetap bersih
+      if (!curTunnel) {
+        for (const lx of [3, 9]) {
+          if (!nearCrossing(lx)) add("tree", lx, 4.35, 0.16, randInt(0, 2));
+        }
+        if (id % 2 === 1 && !nearCrossing(6)) add("lamp", 6, 4.35, 0.16);
       }
-      if (id % 2 === 1 && !nearCrossing(6)) add("lamp", 6, 4.35, 0.16);
 
       // 6. Sidewalk atmosphere: pleasantly spaced out (not packed edge-to-edge)
       if (Math.random() < 0.45) add("vending", rand(2.5, 9.5), -5.2, 0.12, randInt(0, 3));
       if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.8, 0.12, randInt(0, 2));
       if (Math.random() < 0.3) add("mamachari", rand(2.5, 9.5), -4.9, 0.12, randInt(0, 3));
       if (Math.random() < 0.4) add("tree", rand(2.5, 9.5), -6.6, 0.12, randInt(0, 2));
-      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), 16.2, 0.12, randInt(0, 2));
+      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 12.0 : 16.2, 0.12, randInt(0, 2));
 
-      // 7. Lampu jalan: di kedua trotoar + median
+      // 7. Lampu jalan: di kedua trotoar
       add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.06);
-      add("lamp", id % 2 === 0 ? 9 : 3, 12.55, 0.14);
-      if (id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
+      add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 10.5 : 12.55, 0.14);
+      if (!curTunnel && id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
 
       // 8. Pagar pembatas trotoar pipa putih khas Jepang
       for (const flx of [2.0, 6.0, 10.0]) {
         if (!nearCrossing(flx)) {
           add("guard_fence", flx, -4.14, 0.12);
-          add("guard_fence", flx, 12.78, 0.12);
+          add("guard_fence", flx, curTunnel ? 10.8 : 12.78, 0.12);
         }
       }
       // 9. Planter trotoar

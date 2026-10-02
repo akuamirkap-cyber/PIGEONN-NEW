@@ -66,13 +66,7 @@ function CameraRig() {
     const ui = useUI.getState();
     const view = ui.menuView;
     const crossy = ui.cameraMode === "crossy";
-    const inTunnel =
-      phase === "playing" &&
-      engine.subwayTunnels.some(
-        (t) => engine.distance >= t.startS - 6 && engine.distance <= t.endS + 2,
-      );
-
-    let des =
+    const des =
       phase === "menu"
         ? view === "skins"
           ? SKINS
@@ -88,17 +82,6 @@ function CameraRig() {
               ? NOS_F
               : PLAY
           : CRASH;
-
-    if (inTunnel) {
-      // Saat di terowongan bawah tanah: kamera otomatis masuk leluasa & mulus mengikuti pemain ke dalam
-      des = {
-        ...des,
-        up: crossy ? 6.5 : Math.min(des.up, 5.0),
-        back: Math.min(des.back, 7.0),
-        lookAhead: Math.max(des.lookAhead, 14),
-        fov: crossy ? 56 : des.fov,
-      };
-    }
     // Faster action sweep during crash or intro
     const k = 1 - Math.exp(-step * (phase === "menu" ? 4.5 : engine.runTime < 1.0 ? 5.2 : phase === "crashed" || phase === "gameover" ? 6.5 : 3.2));
     const c = cur.current;
@@ -196,7 +179,7 @@ function CameraRig() {
           : 0
       : 0;
     // Subtle downward curvature that gives horizon depth without dropping the track off a cliff
-    const targetCurveDown = isSubway ? (inTunnel ? c.curveDown * 0.35 : isHaruna ? c.curveDown * 0.75 : c.curveDown) : 0;
+    const targetCurveDown = isSubway ? (isHaruna ? c.curveDown * 0.75 : c.curveDown) : 0;
     c.curveSide += (targetCurveSide - c.curveSide) * (1 - Math.exp(-step * 2.8));
 
     // world curve: bends everything ahead of the player; haze only touches the far end of the world

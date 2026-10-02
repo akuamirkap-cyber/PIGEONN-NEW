@@ -49,19 +49,21 @@ if (engine.subwayTunnels.length > 0) {
   const animalsInTunnel = engine.movers.filter((m) => (m.kind === "chicken" || m.kind === "cat") && m.s >= tun.startS && m.s <= tun.endS);
   check("No chickens or stray cats inside subway tunnel", animalsInTunnel.length === 0, `Found: ${animalsInTunnel.length}`);
 
-  // Verify entry and exit portals in decor
+  // Verify portals, walls, and ribs are removed (open skyway bus corridor)
   const chunksInTunnel = engine.chunks.filter((c) => c.s0 >= tun.startS && c.s0 < tun.endS);
   const portals = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_portal"));
-  check("Subway portals are placed for entry/exit", portals.length >= 1, `Found ${portals.length} portals`);
+  check("No tunnel portals are placed (open skyway)", portals.length === 0, `Found ${portals.length} portals`);
 
-  // Verify tunnel ribs with bright fluorescent lights ("TIDAK GELAP")
   const ribs = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_tunnel_rib"));
-  check("Subway tunnel ribs with ceiling lights are placed", ribs.length >= 4, `Found ${ribs.length} ribs`);
+  check("No tunnel ribs or ceiling decorations (open to the sky)", ribs.length === 0, `Found ${ribs.length} ribs`);
 
-  // Verify subway track bed & tiled side walls
-  const tracks = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_track"));
   const walls = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_wall"));
-  check("Subway track bed and ceramic walls are present", tracks.length >= 4 && walls.length >= 8, `Tracks: ${tracks.length}, Walls: ${walls.length}`);
+  check("No side tunnel walls blocking buildings", walls.length === 0, `Walls: ${walls.length}`);
+
+  // Verify special subway track bed & side buildings are present
+  const tracks = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "subway_track"));
+  const buildings = chunksInTunnel.flatMap((c) => c.decor.filter((d) => d.kind === "building" || d.kind === "house" || d.kind === "village_house"));
+  check("Special busway track bed and side buildings/shops/houses are present", tracks.length >= 4 && buildings.length >= 4, `Tracks: ${tracks.length}, Buildings: ${buildings.length}`);
 
   // Verify subway trains/buses in tunnel
   check("Subway trains/buses are spawned", engine.subwayTrains.length > 0, `Trains: ${engine.subwayTrains.length}`);
