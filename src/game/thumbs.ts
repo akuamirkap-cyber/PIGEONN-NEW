@@ -4,17 +4,17 @@ import { useUI } from "./store";
 import { buildPigeonGroup } from "./pigeonRig";
 import { curveUniforms } from "./curve";
 
-const THUMB_FRAME_COUNT = 8;
-const cache = new Map<string, string[]>();
+export const THUMB_FRAME_COUNT = 8;
+const cache = new Map<string, { first: string; sprite: string }>();
 let failed = false;
 let listeners: (() => void)[] = [];
 
 export function getThumb(id: string): string | undefined {
-  return cache.get(id)?.[0];
+  return cache.get(id)?.first;
 }
 
-export function getThumbFrames(id: string): string[] | undefined {
-  return cache.get(id);
+export function getThumbSprite(id: string): string | undefined {
+  return cache.get(id)?.sprite;
 }
 
 export function onThumbsReady(fn: () => void) {
@@ -25,8 +25,9 @@ export function onThumbsReady(fn: () => void) {
 }
 
 /**
- * Renders every skin from eight low-angle showcase views. The picker can then
- * cycle real 3D poses instead of flipping one flat icon with CSS.
+ * Renders every skin into one eight-frame sprite strip. CSS steps through the
+ * strip in sync for every card, avoiding React re-renders and the stutter that
+ * comes from replacing many large data URLs on every frame.
  */
 export function ensureThumbs(size = 208): boolean {
   if (cache.size === SKINS.length) return true;
@@ -35,6 +36,12 @@ export function ensureThumbs(size = 208): boolean {
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
+    const spriteCanvas = document.createElement("canvas");
+    spriteCanvas.width = size * THUMB_FRAME_COUNT;
+    spriteCanvas.height = size;
+    const spriteContext = spriteCanvas.getContext("2d");
+    if (!spriteContext) return false;
+
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: "low-power" });
     renderer.setPixelRatio(1);
     renderer.setSize(size, size, false);
@@ -60,14 +67,17 @@ export function ensureThumbs(size = 208): boolean {
       const { group, dispose } = buildPigeonGroup(skin, "default", useUI.getState().wheelColor);
       group.scale.setScalar(1.1);
       scene.add(group);
-      const frames: string[] = [];
       for (let frame = 0; frame < THUMB_FRAME_COUNT; frame += 1) {
-        // Keep the first frame compatible with the old 3/4 showcase view, then orbit around the rider.
+        // The first frame is the 3/4 showcase view, then the rider orbits in true 3D.
         group.rotation.y = 4.35 + (frame / THUMB_FRAME_COUNT) * Math.PI * 2;
         renderer.render(scene, cam);
-        frames.push(canvas.toDataURL("image/png"));
+        spriteContext.drawImage(canvas, frame * size, 0, size, size);
       }
-      cache.set(skin.id, frames);
+      cache.set(skin.id, {
+        first: canvas.toDataURL("image/png"),
+        sprite: spriteCanvas.toDataURL("image/png"),
+      });
+      spriteContext.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
       scene.remove(group);
       dispose();
     }
