@@ -29,7 +29,11 @@ import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
 import { Track, type TrackSample } from "./track";
 import { TURN, makeTurnState, resetTurnState, stepTurn, rearOf } from "./turnModel";
-import { ALL_SHIBUYA_BUILDING_IDS } from "./shibuyaBuildingModels";
+import {
+  ALL_SHIBUYA_BUILDING_IDS,
+  getShibuyaAssetFootprint,
+  type ShibuyaAssetFootprint,
+} from "./shibuyaBuildingModels";
 
 export const track = new Track();
 
@@ -664,6 +668,38 @@ const tmpS: TrackSample = { x: 0, y: 0, z: 0, th: 0, g: 0, kappa: 0 };
 const tmpV = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
 
+const SHIBUYA_ROAD_CLEARANCE = 6.8;
+const SHIBUYA_FOOTPRINT_GAP = 0.9;
+const SHIBUYA_MIN_ASSET_SCALE = 0.52;
+
+type ShibuyaFootprintBounds = { sMin: number; sMax: number; latMin: number; latMax: number };
+type ShibuyaPlacedFootprint = ShibuyaFootprintBounds & { asset: ShibuyaBuildingId; scale: number };
+type ShibuyaPlacement = { s: number; lat: number; scale: number; bounds: ShibuyaFootprintBounds };
+
+/**
+ * Convert source-local bounds into track coordinates. Shibuya source models have
+ * their road-facing facade at local z ~= 0; the positive-latitude row is turned
+ * around in World.tsx, so both axes are mirrored there.
+ */
+function shibuyaFootprintAt(
+  source: ShibuyaAssetFootprint,
+  s: number,
+  lat: number,
+  scale: number,
+): ShibuyaFootprintBounds {
+  const frontSide = lat > 0;
+  const sMin = s + (frontSide ? -source.maxX : source.minX) * scale;
+  const sMax = s + (frontSide ? -source.minX : source.maxX) * scale;
+  const latMin = lat + (frontSide ? -source.maxZ : source.minZ) * scale;
+  const latMax = lat + (frontSide ? -source.minZ : source.maxZ) * scale;
+  return { sMin, sMax, latMin, latMax };
+}
+
+function footprintOverlaps(a: ShibuyaFootprintBounds, b: ShibuyaFootprintBounds, gap = SHIBUYA_FOOTPRINT_GAP) {
+  return a.sMin < b.sMax + gap && a.sMax + gap > b.sMin
+    && a.latMin < b.latMax + gap && a.latMax + gap > b.latMin;
+}
+
 /* ---------- Engine ---------- */
 class Engine {
   phase: Phase = "menu";
@@ -703,6 +739,8 @@ class Engine {
   obstacles: Obstacle[] = [];
   breads: Bread[] = [];
   chunks: Chunk[] = [];
+  /** Actual transformed footprints for Shibuya source buildings still in the window. */
+  private shibuyaFootprints: ShibuyaPlacedFootprint[] = [];
   movers: Mover[] = [];
   crossings: Crossing[] = [];
   trains: Train[] = [];
@@ -861,6 +899,7 @@ class Engine {
     this.obstacles = [];
     this.breads = [];
     this.chunks = [];
+    this.shibuyaFootprints = [];
     this.movers = [];
     this.crossings = [];
     this.trains = [];
@@ -3911,6 +3950,55 @@ class Engine {
     return { pos: [tmpV.x, tmpV.y, tmpV.z], rotY: -th };
   }
 
+  /**
+   * Find a safe slot for a transferred Shibuya asset.
+   *
+   * `makeShibuyaTowerSpec(w)` describes a requested lot, not the source model's
+   * bounds. This planner deliberately does not trust that lot width. It first
+   * tries the requested frontage/background row, then an outward reserve row. A
+   * source model is uniformly scaled only to fit the candidate row (never
+   * stretched); if that would make it an unreadable sliver, the duplicate is
+   * skipped rather than pushed through a neighbour. The same transformed bounds
+   * are stored for the next chunk, so consecutive source dioramas get a real
+   * spacing check instead of a decorative lot check.
+   */
+  private planShibuyaBuilding(asset: ShibuyaBuildingId, desiredS: number, desiredLat: number): ShibuyaPlacement | null {
+    const source = getShibuyaAssetFootprint(asset);
+    const isFrontage = Math.abs(desiredLat) < 15;
+    const preferredBackgroundLat = desiredLat < 0 ? -25.5 : 25.5;
+    const candidates = isFrontage
+      ? [
+        { lat: desiredLat, maxS: 10.6, maxLat: 8.5 },
+        { lat: preferredBackgroundLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: desiredLat < 0 ? 25.5 : -25.5, maxS: 18.0, maxLat: 18.0 },
+      ]
+      : [
+        { lat: desiredLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: preferredBackgroundLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: desiredLat < 0 ? 25.5 : -25.5, maxS: 18.0, maxLat: 18.0 },
+      ];
+    const longitudinalOffsets = [0, -4, 4, -8, 8, -12, 12];
+
+    for (const candidate of candidates) {
+      const scale = Math.min(1, candidate.maxS / source.width, candidate.maxLat / source.depth);
+      // Tiny landmark copies are the same visual failure as an overlap: don't
+      // force them into a slot when a clean reserve slot is unavailable.
+      if (scale < SHIBUYA_MIN_ASSET_SCALE) continue;
+      for (const offset of longitudinalOffsets) {
+        const s = desiredS + offset;
+        const bounds = shibuyaFootprintAt(source, s, candidate.lat, scale);
+        if (bounds.latMin < -42 || bounds.latMax > 42) continue;
+        if ((candidate.lat < 0 && bounds.latMax > -SHIBUYA_ROAD_CLEARANCE)
+          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE)) continue;
+        if (this.shibuyaFootprints.some(existing => footprintOverlaps(bounds, existing))) continue;
+        const placed = { asset, scale, ...bounds };
+        this.shibuyaFootprints.push(placed);
+        return { s, lat: candidate.lat, scale, bounds };
+      }
+    }
+    return null;
+  }
+
   private spawnChunk() {
     const isHaruna = track.mode === "haruna";
     const isShibuya = track.mode === "shibuya";
@@ -3976,12 +4064,24 @@ class Engine {
     }
     const kind: Chunk["kind"] = isHaruna ? "haruna" : isShibuya ? "shibuya" : crossing ? "park" : Math.random() < 0.28 ? "park" : "street";
     const decor: Decor[] = [];
-    const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec) => {
+    const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec): ShibuyaPlacement | null => {
       // Keep cross-road clear of sidewalk decor, buildings, and trees (minimum 8.2m clearance)
       const absS = s0 + lx;
-      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return;
-      const pl = this.place(absS, lat, dy);
-      decor.push({ kind: k, pos: pl.pos, rotY: pl.rotY, variant, spec, frontSide: lat > 0 });
+      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return null;
+
+      let placedS = absS;
+      let placedLat = lat;
+      let placement: ShibuyaPlacement | null = null;
+      if (k === "building" && spec?.shibuyaAssetId && isShibuya) {
+        placement = this.planShibuyaBuilding(spec.shibuyaAssetId, absS, lat);
+        if (!placement) return null;
+        placedS = placement.s;
+        placedLat = placement.lat;
+        spec.assetScale = placement.scale;
+      }
+      const pl = this.place(placedS, placedLat, dy);
+      decor.push({ kind: k, pos: pl.pos, rotY: pl.rotY, variant, spec, frontSide: placedLat > 0 });
+      return placement;
     };
 
     if (isHaruna) {
@@ -4069,12 +4169,20 @@ class Engine {
       const nearBld = transferIds[transferStart];
       const farBld = transferIds[(transferStart + 1) % transferIds.length];
       const skyBld = transferIds[(transferStart + 2) % transferIds.length];
-      const farLat = curTunnel ? 16.2 : 23.8;
+      // Both source storefront rows use the actual road-facing edge. The old
+      // +23.8 background row left shoppers, lamps and glass frontage detached
+      // in the middle of the avenue; the reserve planner handles true skyline
+      // landmarks separately when their source footprint needs it.
+      const farLat = curTunnel ? 16.2 : 10.2;
+
+      const frontageSidewalkLat = (buildingLat: number) => buildingLat < 0
+        ? buildingLat + 4.85
+        : buildingLat - 4.85;
 
       const addRamenCustomers = (buildingS: number, buildingLat: number) => {
         // The exact Shibuya Blocks Eat rig is rendered by World.tsx. Two customers
         // sit at the frontage; the second one is the streetwear sumo requested by the user.
-        const sidewalkLat = buildingLat < 0 ? -5.35 : 13.0;
+        const sidewalkLat = frontageSidewalkLat(buildingLat);
         add("ramen_customer", buildingS - 1.05, sidewalkLat, 0.14, 0);
         add("ramen_customer", buildingS + 1.05, sidewalkLat + (buildingLat < 0 ? 0.28 : -0.28), 0.14, 3);
         add("lantern", buildingS - 2.0, sidewalkLat, 0.14, 0);
@@ -4083,7 +4191,7 @@ class Engine {
       };
 
       const addKonbiniCustomers = (buildingS: number, buildingLat: number) => {
-        const sidewalkLat = buildingLat < 0 ? -5.25 : 12.85;
+        const sidewalkLat = frontageSidewalkLat(buildingLat);
         add("shopper", buildingS - 1.05, sidewalkLat, 0.14, 0);
         add("shopper", buildingS + 1.15, sidewalkLat + (buildingLat < 0 ? 0.32 : -0.32), 0.14, 2);
         add("vending", buildingS - 2.25, sidewalkLat, 0.12, 0);
@@ -4095,7 +4203,7 @@ class Engine {
         if (asset === "ramen") addRamenCustomers(buildingS, buildingLat);
         if (asset === "konbini") addKonbiniCustomers(buildingS, buildingLat);
         if (asset === "izakaya") {
-          const sidewalkLat = buildingLat < 0 ? -5.25 : 12.85;
+          const sidewalkLat = frontageSidewalkLat(buildingLat);
           add("lantern", buildingS - 1.75, sidewalkLat, 0.14, 2);
           add("lantern", buildingS + 1.75, sidewalkLat, 0.14, 0);
           add("mamachari", buildingS + 2.25, sidewalkLat, 0.12, 2);
@@ -4103,20 +4211,18 @@ class Engine {
       };
 
       // 1. Near frontage: one exact transferred Shibuya Blocks asset every chunk.
-      add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
-      addShibuyaShopFrontage(nearBld, 6, -10.2);
+      const nearPlacement = add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
+      if (nearPlacement) addShibuyaShopFrontage(nearBld, nearPlacement.s, nearPlacement.lat);
 
       // 2. Far frontage: the next exact asset, visible across the full Shibuya avenue.
-      add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
-      addShibuyaShopFrontage(farBld, 6, farLat);
+      const farPlacement = add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+      if (farPlacement) addShibuyaShopFrontage(farBld, farPlacement.s, farPlacement.lat);
 
-      // 3. Background landmark row: Tokyo Tower District brings its surrounding buildings,
-      // while the other entries preserve their original Shibuya Blocks silhouettes.
-      if (id % 2 === 0) {
-        add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-      } else {
-        add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-      }
+      // 3. A third skyline copy is optional. It is attempted in a reserve row,
+      // but the planner skips it when the source diorama cannot fit with a real
+      // gap. All thirteen assets are already guaranteed by the two frontage rows.
+      const skylineLat = id % 2 === 0 ? -25.5 : 25.5;
+      add("building", 6, skylineLat, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
 
       // Keep a recognizable standalone house in the route in addition to Machiya and Townhouse.
       // It is placed on the opposite skyline side so it never masks the exact transfer asset.
@@ -5094,6 +5200,11 @@ class Engine {
     if (this.chunks.length && this.chunks[0].s0 + CHUNK_LEN < d - 20) {
       this.chunks.shift();
       changed = true;
+    }
+    if (this.shibuyaFootprints.length) {
+      const beforeFootprints = this.shibuyaFootprints.length;
+      this.shibuyaFootprints = this.shibuyaFootprints.filter(footprint => footprint.sMax > d - 30);
+      if (this.shibuyaFootprints.length !== beforeFootprints) changed = true;
     }
     const before = this.obstacles.length;
     this.obstacles = this.obstacles.filter((o) => o.s + obstacleHalf(o) > d - 16);

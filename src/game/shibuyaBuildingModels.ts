@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { getAssetData } from "../shibuya/voxel/models";
 import { type Part, type GeoPair, getGeometryPair } from "./voxel";
 
@@ -55,6 +56,58 @@ export const ALL_SHIBUYA_BUILDING_IDS: ShibuyaBuildingId[] = [
   "townhouse",
   "pagoda",
 ];
+
+/**
+ * Bounds of the actual transferred source geometry in its local coordinate system.
+ *
+ * The old Shibuya placement code used the requested `BuildingSpec.w` as if every
+ * source asset had that width. That is not true for the transferred dioramas:
+ * the skyscraper and Tokyo Tower, for example, contain a whole block around the
+ * landmark. Keeping the local min/max values lets the route planner account for
+ * the real footprint after a uniform scale and the front-side half-turn.
+ */
+export interface ShibuyaAssetFootprint {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  width: number;
+  depth: number;
+}
+
+const footprintCache = new Map<ShibuyaBuildingId, ShibuyaAssetFootprint>();
+
+export function getShibuyaAssetFootprint(id: ShibuyaBuildingId): ShibuyaAssetFootprint {
+  const cached = footprintCache.get(id);
+  if (cached) return cached;
+
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  const half = new THREE.Vector3();
+  const corner = new THREE.Vector3();
+  const rotation = new THREE.Euler();
+  const quaternion = new THREE.Quaternion();
+  for (const part of getShibuyaBuildingParts(id)) {
+    half.set(part.w / 2, part.h / 2, part.d / 2);
+    rotation.set(part.rx ?? 0, part.ry ?? 0, part.rz ?? 0);
+    quaternion.setFromEuler(rotation);
+    for (const x of [-half.x, half.x]) for (const y of [-half.y, half.y]) for (const z of [-half.z, half.z]) {
+      corner.set(part.x + x, part.y + y, part.z + z).applyQuaternion(quaternion);
+      min.min(corner);
+      max.max(corner);
+    }
+  }
+  const footprint = {
+    minX: min.x,
+    maxX: max.x,
+    minZ: min.z,
+    maxZ: max.z,
+    width: max.x - min.x,
+    depth: max.z - min.z,
+  };
+  footprintCache.set(id, footprint);
+  return footprint;
+}
 
 /**
  * Converts a Shibuya Blocks building model into the Pigeon SK8 voxel Part[] system.

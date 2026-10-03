@@ -464,6 +464,8 @@ export interface BuildingSpec {
   tiered?: boolean;
   /** Shibuya architectural archetype: 0=Stepped Terraces, 1=Cantilever Arcade, 2=Twin Split Bay, 3=Corner Chamfer/Spire, 4=Zakkyo Balcony */
   shibuyaType?: 0 | 1 | 2 | 3 | 4;
+  /** Uniform source-asset scale chosen by the Shibuya footprint planner. */
+  assetScale?: number;
   accentColor?: string;
   spandrelColor?: string;
   shibuyaAssetId?: ShibuyaBuildingId;

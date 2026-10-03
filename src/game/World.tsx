@@ -285,7 +285,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
   return (
-    <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip}>
+    <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip} scale={d.spec?.assetScale ?? 1}>
       <mesh geometry={geo.lit} material={voxelMaterial} castShadow={d.kind !== "flowers"} receiveShadow />
       {geo.glow && <mesh geometry={geo.glow} material={glowMaterial} />}
       {geo.transparent && <mesh geometry={geo.transparent} material={transparentVoxelMaterial} renderOrder={2} />}
