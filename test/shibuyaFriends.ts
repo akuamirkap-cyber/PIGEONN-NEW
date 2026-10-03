@@ -1,6 +1,7 @@
 /* Regression coverage for the Shibuya Blocks Little Japan Friends transfer.
  * Run: npx esbuild test/shibuyaFriends.ts --bundle --platform=node --outfile=/tmp/shibuya-friends.cjs && node /tmp/shibuya-friends.cjs
  */
+import { readFileSync } from "node:fs";
 import { DISTRICTS } from "../src/shibuya/world/layout";
 import { useUI } from "../src/game/store";
 import { engine } from "../src/game/engine";
@@ -11,7 +12,6 @@ import {
   buildShibuyaAnimalRig,
   getShibuyaAnimalParts,
   getShibuyaAnimalPlayerScale,
-  getShibuyaAnimalPushFootGeo,
   getShibuyaCharacterParts,
   getShibuyaRamenCustomerParts,
 } from "../src/game/shibuyaPacks";
@@ -31,7 +31,7 @@ const friendSkins = SKINS.filter((skin) => skin.kind === "littleJapanFriend");
 check("canonical roster has exactly eight source animals", SHIBUYA_ANIMALS.length === 8 && new Set(SHIBUYA_ANIMALS).size === 8, SHIBUYA_ANIMALS.join(", "));
 check("all eight source animal geometries resolve from Shibuya Blocks", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalParts(id).length > 0));
 check("all eight playable Friends are 20 percent taller than the Pigeon reference", SHIBUYA_ANIMALS.every((id) => Math.abs(ANIMAL_HEIGHT_TARGETS[id] * getShibuyaAnimalPlayerScale(id) - SHIBUYA_PLAYABLE_HEIGHT) < 1e-9));
-check("all eight have a right-foot push contact rig", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalPushFootGeo(id).attributes.position.count > 0));
+check("Shift push uses source leg pivots instead of replacement body meshes", readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("pushPivot") && !readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("PushFootGeo"));
 const animatedRigs = SHIBUYA_ANIMALS.map((id) => buildShibuyaAnimalRig(id));
 check("all eight playable Friends keep an active source Play animation", animatedRigs.every((rig) => rig.group.children.length > 0 && rig.clips.length > 0 && rig.activeClip === "Play"));
 animatedRigs.forEach((rig) => rig.dispose());

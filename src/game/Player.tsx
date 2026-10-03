@@ -7,7 +7,7 @@ import { useUI } from "./store";
 import { charBodyParts, charHeadParts, charTailParts, charWingParts, deckParts, getSkin, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT } from "./skins";
 import { RIG, LegRig } from "./pigeonRig";
 import { nosTankParts } from "./models";
-import { buildShibuyaAnimalRig, getShibuyaAnimalPlayerScale, getShibuyaAnimalPushFootGeo } from "./shibuyaPacks";
+import { buildShibuyaAnimalRig } from "./shibuyaPacks";
 
 /** Max truck steering angle (rad) at full lean — real trucks turn ~10–20° with the deck tilted ~15–20° */
 const TRUCK_MAX = 0.42;
@@ -54,7 +54,6 @@ export function Player() {
   const board = useRef<THREE.Group>(null);
   const pigeon = useRef<THREE.Group>(null);
   const friendModel = useRef<THREE.Group>(null);
-  const friendPushFoot = useRef<THREE.Group>(null);
   const torso = useRef<THREE.Group>(null); // body+head+wings; leans about the hips while the legs stay planted
   const head = useRef<THREE.Mesh>(null);
   const wingL = useRef<THREE.Mesh>(null);
@@ -88,8 +87,6 @@ export function Player() {
   // mesh. Do not run it through the pigeon body/head rig: that would distort
   // quadrupeds, the crane, and the capybara's bath setting.
   const friendRig = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? buildShibuyaAnimalRig(skin.friend) : null), [skin.kind, skin.friend]);
-  const friendScale = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalPlayerScale(skin.friend) : 1), [skin.kind, skin.friend]);
-  const friendFootGeo = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalPushFootGeo(skin.friend) : null), [skin.kind, skin.friend]);
   const flameMats = useMemo(
     () => ({
       core: new THREE.MeshBasicMaterial({ color: "#bfe9ff", transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -248,17 +245,9 @@ export function Player() {
           1 + 0.035 * jumpPose,
         );
       }
-      if (friendPushFoot.current && friendFootGeo) {
-        const foot = friendPushFoot.current;
-        foot.visible = u >= 0;
-        if (u >= 0) {
-          // +z is the player's/right-side foot. pushTarget's DOWN phase is
-          // exactly ROAD_Y, so this detachable source-colour foot touches the
-          // asphalt while Shift is pumping instead of floating under the skin.
-          foot.position.set(kTmp[0] / friendScale, kTmp[1] / friendScale, kTmp[2] / friendScale);
-          foot.rotation.set(0, 0, 0);
-        }
-      }
+      // Shift animates the selected source leg node itself. No replacement
+      // foot/body geometry is attached to the Friend rig.
+      friendRig?.setPush(u, ROAD_Y);
 
       // hips in deck space (the pigeon group moved by hop/dip; the board is the reference)
       const hipY = HIP_Y + hop - dip - crouch;
@@ -342,8 +331,6 @@ export function Player() {
         friendModel.current.rotation.set(0, 0, 0);
         friendModel.current.scale.setScalar(1);
       }
-      if (friendPushFoot.current) friendPushFoot.current.visible = false;
-
       if (body) {
         // Pigeon ragdoll: rotate smoothly about center of mass (≈0.50 above feet)
         pg.rotation.set(body.rx, body.ry, body.rz);
@@ -602,11 +589,6 @@ export function Player() {
               {friendRig && (
                 <group ref={friendModel}>
                   <primitive object={friendRig.group} />
-                </group>
-              )}
-              {friendFootGeo && (
-                <group ref={friendPushFoot} visible={false}>
-                  <mesh geometry={friendFootGeo} material={voxelMaterial} scale={friendScale} castShadow receiveShadow />
                 </group>
               )}
               {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal rig. */}

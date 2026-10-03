@@ -253,6 +253,8 @@ export interface ShibuyaAnimalRig {
   mixer: THREE.AnimationMixer;
   clips: THREE.AnimationClip[];
   activeClip: string | null;
+  /** Adds the Shift push pose to source leg nodes; no replacement body parts are created. */
+  setPush: (progress: number, roadY: number) => void;
   dispose: () => void;
 }
 
@@ -261,6 +263,12 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   const raw = new THREE.Group();
   raw.name = `animal_${id}_source`;
   const nodes = new Map<string, THREE.Group>();
+  const pushNodeNames = new Set<string>(
+    id === "shiba" || id === "kitsune" || id === "deer"
+      ? [`animal_${id}_leg-1_-1`]
+      : id === "crane" ? [`animal_${id}_legR`] : [],
+  );
+  const pushPivots = new Map<string, THREE.Group>();
   for (const node of data.nodes ?? []) {
     const group = new THREE.Group();
     group.name = node.name;
@@ -270,7 +278,18 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   }
   for (const node of data.nodes ?? []) {
     const group = nodes.get(node.name)!;
-    (node.parent ? nodes.get(node.parent)! : raw).add(group);
+    const parent = node.parent ? nodes.get(node.parent)! : raw;
+    if (pushNodeNames.has(node.name)) {
+      // This is only an animation pivot around the original source node. The
+      // leg node and every one of its source boxes remain untouched.
+      const pivot = new THREE.Group();
+      pivot.name = `${node.name}_pushPivot`;
+      pushPivots.set(node.name, pivot);
+      parent.add(pivot);
+      pivot.add(group);
+    } else {
+      parent.add(group);
+    }
   }
 
   const geometries: THREE.BufferGeometry[] = [];
@@ -309,40 +328,32 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   const play = clips.find((clip) => clip.name === "Play") ?? clips.find((clip) => clip.name === "Iconic") ?? clips[0];
   if (play) mixer.clipAction(play).play();
 
+  const setPush = (progress: number, roadY: number) => {
+    // Progress follows the same smooth kick window as the Pigeon. The actual
+    // contact is applied to a pivot parent of the original source leg node,
+    // never to a newly drawn foot mesh.
+    let contact = 0;
+    if (progress >= 0 && progress < 0.24) contact = progress < 0.12 ? 0 : (progress - 0.12) / 0.12;
+    else if (progress >= 0.24 && progress < 0.62) contact = 1;
+    else if (progress >= 0.62 && progress < 0.82) contact = 1 - (progress - 0.62) / 0.2;
+    for (const pivot of pushPivots.values()) {
+      pivot.position.y = (roadY * Math.max(0, Math.min(1, contact))) / group.scale.y;
+      pivot.rotation.x = -0.34 * Math.max(0, Math.min(1, contact));
+    }
+  };
+
   return {
     group,
     mixer,
     clips,
     activeClip: play?.name ?? null,
+    setPush,
     dispose: () => {
       mixer.stopAllAction();
       mixer.uncacheRoot(group);
       geometries.forEach((geometry) => geometry.dispose());
     },
   };
-}
-
-/**
- * A tiny detachable right-foot contact piece for the playable push rig. It uses
- * the same source foot palette, while the untouched full animal remains the
- * visual body. At the bottom of the push cycle this piece is exactly on road
- * level, like the original Pigeon kick.
- */
-const SOURCE_FOOT_COLORS: Record<ShibuyaAnimalId, string> = {
-  shiba: "#f0e5ca",
-  tanuki: "#c5ae7e",
-  kitsune: "#f0e5ca",
-  deer: "#604f3c",
-  monkey: "#c4b6a0",
-  capybara: "#b09265",
-  crane: "#6c755d",
-  neko: "#d8c793",
-};
-export function getShibuyaAnimalPushFootGeo(id: ShibuyaAnimalId) {
-  return getGeometry(`shibuya-animal-${id}-push-foot`, () => [
-    { x: 0, y: 0.08, z: 0, w: 0.12, h: 0.16, d: 0.12, color: SOURCE_FOOT_COLORS[id] },
-    { x: 0.07, y: 0.018, z: 0.12, w: 0.34, h: 0.036, d: 0.2, color: SOURCE_FOOT_COLORS[id] },
-  ]);
 }
 
 /** Small bath scene added around the untouched source animal for onsen activity movers. */
