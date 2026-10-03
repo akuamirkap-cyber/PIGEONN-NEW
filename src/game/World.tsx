@@ -108,7 +108,6 @@ import { getRayTexture } from "./rays";
 import {
   engine,
   track,
-  SIGN_AHEAD,
   ARM_S,
   CAT_SCALE,
   CHICKEN_SCALE,
@@ -855,19 +854,16 @@ function Movers() {
       }
       const sg = signs.current.get(m.id);
       if (sg) {
-        const show = m.warned && engine.phase === "playing" && m.s > d + 1;
+        const vehicleDistance = m.s - d;
+        // PSA is visible only in the readable 40 m -> 20 m approach window.
+        const show = m.warned && engine.phase === "playing" && vehicleDistance <= 40 && vehicleDistance >= 20;
         sg.visible = show;
         if (show) {
-          const s = Math.min(m.s - 2.2, d + SIGN_AHEAD);
-          // PSA stays readable without sitting in the player's lane or center
-          // reticle: park it on the outside shoulder, high and compact.
-          const shoulderSide = m.lat >= 0 ? 1 : -1;
-          const shoulderLat = shoulderSide > 0
-            ? Math.min(6.6, m.lat + 1.6)
-            : Math.max(-6.6, m.lat - 1.6);
-          track.frame(s, shoulderLat, 2.65 + Math.sin(t * 6) * 0.08, sg.position);
+          // The warning is attached directly above the incoming vehicle, never
+          // parked on the shoulder or over the player's lane.
+          track.frame(m.s, m.lat, 2.2 + Math.sin(t * 6) * 0.08, sg.position);
           sg.quaternion.copy(camera.quaternion);
-          const pulse = 0.58 + 0.06 * Math.sin(t * 10);
+          const pulse = 0.7 + 0.06 * Math.sin(t * 10);
           sg.scale.setScalar(pulse);
         }
       }

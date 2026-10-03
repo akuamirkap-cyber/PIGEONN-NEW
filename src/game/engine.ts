@@ -2834,7 +2834,8 @@ class Engine {
           m.s = effectiveStopLine;
         }
         m.squash = Math.max(0, m.squash - dt * 4.5);
-        if (!m.warned && m.s - d < (isBike ? 34 : 32)) {
+        // Vehicle PSA enters exactly at 40 m, giving the player a clear warning window.
+        if (!m.warned && m.s - d < 40) {
           m.warned = true;
           if (this.phase === "playing") (isBike ? sfx.motor() : sfx.horn());
         }
