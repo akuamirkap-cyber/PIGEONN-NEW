@@ -208,7 +208,7 @@ export function getShibuyaShopperGeo(id: ShibuyaCharacterId) {
 }
 
 // ---------------------- 2. Little Japan Friends ----------------------
-const ANIMAL_HEIGHT_TARGETS: Record<ShibuyaAnimalId, number> = {
+export const ANIMAL_HEIGHT_TARGETS: Record<ShibuyaAnimalId, number> = {
   shiba: 0.82,
   tanuki: 0.78,
   kitsune: 0.85,
@@ -219,6 +219,18 @@ const ANIMAL_HEIGHT_TARGETS: Record<ShibuyaAnimalId, number> = {
   neko: 0.65,
 };
 
+/**
+ * Playable Friends are normalized against the Pigeon local height (1.23) and
+ * then enlarged by exactly 20%. The source model proportions remain untouched;
+ * only the whole source mesh receives this uniform display scale.
+ */
+export const SHIBUYA_PIGEON_REFERENCE_HEIGHT = 1.23;
+export const SHIBUYA_PLAYABLE_HEIGHT_MULTIPLIER = 1.2;
+export const SHIBUYA_PLAYABLE_HEIGHT = SHIBUYA_PIGEON_REFERENCE_HEIGHT * SHIBUYA_PLAYABLE_HEIGHT_MULTIPLIER;
+export function getShibuyaAnimalPlayerScale(id: ShibuyaAnimalId) {
+  return SHIBUYA_PLAYABLE_HEIGHT / ANIMAL_HEIGHT_TARGETS[id];
+}
+
 export function getShibuyaAnimalParts(id: ShibuyaAnimalId): Part[] {
   const data = buildAnimals(id);
   // Rotated by Math.PI / 2 so animal faces +x along the crossing / travel line
@@ -228,6 +240,29 @@ export function getShibuyaAnimalParts(id: ShibuyaAnimalId): Part[] {
 
 export function getShibuyaAnimalGeo(id: ShibuyaAnimalId) {
   return getGeometry(`shibuya-animal-${id}`, () => getShibuyaAnimalParts(id));
+}
+
+/**
+ * A tiny detachable right-foot contact piece for the playable push rig. It uses
+ * the same source foot palette, while the untouched full animal remains the
+ * visual body. At the bottom of the push cycle this piece is exactly on road
+ * level, like the original Pigeon kick.
+ */
+const SOURCE_FOOT_COLORS: Record<ShibuyaAnimalId, string> = {
+  shiba: "#f0e5ca",
+  tanuki: "#c5ae7e",
+  kitsune: "#f0e5ca",
+  deer: "#604f3c",
+  monkey: "#c4b6a0",
+  capybara: "#b09265",
+  crane: "#6c755d",
+  neko: "#d8c793",
+};
+export function getShibuyaAnimalPushFootGeo(id: ShibuyaAnimalId) {
+  return getGeometry(`shibuya-animal-${id}-push-foot`, () => [
+    { x: 0, y: 0.08, z: 0, w: 0.12, h: 0.16, d: 0.12, color: SOURCE_FOOT_COLORS[id] },
+    { x: 0.07, y: 0.018, z: 0.12, w: 0.34, h: 0.036, d: 0.2, color: SOURCE_FOOT_COLORS[id] },
+  ]);
 }
 
 /** Small bath scene added around the untouched source animal for onsen activity movers. */

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { buildVoxelGeometry, clamp, voxelMaterial, type Part } from "./voxel";
-import { getShibuyaAnimalGeo } from "./shibuyaPacks";
+import { getShibuyaAnimalGeo, getShibuyaAnimalPlayerScale } from "./shibuyaPacks";
 import { charBodyParts, charHeadParts, charLegParts, charTailParts, charWingParts, deckParts, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT, type Skin } from "./skins";
 
 /** Shared placement constants for the pigeon-on-board rig (used by the Player and the 3D thumbnails). */
@@ -158,7 +158,9 @@ export function buildPigeonGroup(
   if (skin.kind === "littleJapanFriend" && skin.friend) {
     // Keep the exact Shibuya Blocks animal geometry intact. It is cached by the
     // source pack and therefore deliberately not disposed with this thumbnail.
-    pigeon.add(new THREE.Mesh(getShibuyaAnimalGeo(skin.friend), voxelMaterial));
+    const friend = new THREE.Mesh(getShibuyaAnimalGeo(skin.friend), voxelMaterial);
+    friend.scale.setScalar(getShibuyaAnimalPlayerScale(skin.friend));
+    pigeon.add(friend);
   } else {
     pigeon.add(new THREE.Mesh(body, voxelMaterial));
     const h = new THREE.Mesh(head, voxelMaterial);
