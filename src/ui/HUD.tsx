@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { useUI } from "../game/store";
 import { BreadIcon } from "./BreadIcon";
 import { engine, NOS_MAX } from "../game/engine";
@@ -39,19 +38,6 @@ export function HUD() {
   const sprint = useUI((s) => s.sprint);
   const sprintLevel = useUI((s) => s.sprintLevel);
   const sprinting = sprint > 0.02 || sprintLevel > 0;
-  const previousBread = useRef(bread);
-  const [breadFlash, setBreadFlash] = useState(0);
-  useEffect(() => {
-    if (bread > previousBread.current) setBreadFlash((value) => value + 1);
-    previousBread.current = bread;
-  }, [bread]);
-  const previousPhase = useRef(phase);
-  const [collisionFlash, setCollisionFlash] = useState(0);
-  useEffect(() => {
-    if (phase === "crashed" && previousPhase.current !== "crashed") setCollisionFlash((value) => value + 1);
-    previousPhase.current = phase;
-  }, [phase]);
-
   const locationLabel = trackMode === "shibuya"
     ? `SHIBUYA ${shibuyaTime.toUpperCase()} ${dist} M`
     : trackMode === "haruna"
@@ -60,33 +46,11 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 select-none">
-      {inRun && breadFlash > 0 && (
-        <div key={breadFlash} className="bread-pickup-screen absolute left-1/2 top-[46%] z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-          <div className="bread-pickup-rays absolute inset-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2">
-            {Array.from({ length: 10 }, (_, index) => <span key={index} style={{ transform: `rotate(${index * 36}deg)` }} />)}
-          </div>
-          <div className="bread-pickup-flare relative flex h-56 w-56 items-center justify-center rounded-full">
-            <BreadIcon size={110} />
-          </div>
-          <div className="bread-pickup-label font-display text-[7cqw] leading-none text-white txt-outline-sm">+1 BREAD</div>
-        </div>
-      )}
-      {phase === "crashed" && collisionFlash > 0 && (
-        <div key={collisionFlash} className="collision-impact-screen pointer-events-none absolute inset-0 z-[60] flex items-center justify-center">
-          <div className="collision-impact-ring absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border-[8px] border-white/90" />
-          <div className="collision-impact-lines absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2">
-            {Array.from({ length: 12 }, (_, index) => <span key={index} style={{ transform: `rotate(${index * 30}deg)` }} />)}
-          </div>
-          <div className="collision-impact-label font-display text-[11cqw] text-[#fff8b0] txt-outline">BOOM!</div>
-        </div>
-      )}
-
       {/* bread counter (top-left) in vibrant royal blue pill + optional small speed indicator */}
       {inRun && (
         <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex items-center gap-2">
           <div
-            key={`bread-count-${bread}`}
-            className="bread-counter-pop flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/25 bg-gradient-to-b from-[#1687ff] to-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]"
+            className="flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/20 bg-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]"
           >
             <BreadIcon size={24} />
             <span className="font-display text-[4.8cqw] leading-none text-white txt-outline-sm">{bread}</span>
