@@ -266,6 +266,15 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   const pushNodeNames = new Set<string>(
     id === "shiba" || id === "kitsune" || id === "deer"
       ? [`animal_${id}_leg-1_-1`]
+      : id === "crane"
+        ? [`animal_${id}_legR`]
+        : id === "capybara"
+          ? [`animal_${id}_body`]
+          : [`animal_${id}_armR`],
+  );
+  const pushContactNodes = new Set<string>(
+    id === "shiba" || id === "kitsune" || id === "deer"
+      ? [`animal_${id}_leg-1_-1`]
       : id === "crane" ? [`animal_${id}_legR`] : [],
   );
   const pushPivots = new Map<string, THREE.Group>();
@@ -336,9 +345,20 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
     if (progress >= 0 && progress < 0.24) contact = progress < 0.12 ? 0 : (progress - 0.12) / 0.12;
     else if (progress >= 0.24 && progress < 0.62) contact = 1;
     else if (progress >= 0.62 && progress < 0.82) contact = 1 - (progress - 0.62) / 0.2;
-    for (const pivot of pushPivots.values()) {
-      pivot.position.y = (roadY * Math.max(0, Math.min(1, contact))) / group.scale.y;
-      pivot.rotation.x = -0.34 * Math.max(0, Math.min(1, contact));
+    const intensity = Math.max(0, Math.min(1, contact));
+    for (const [nodeName, pivot] of pushPivots) {
+      if (pushContactNodes.has(nodeName)) {
+        // Quadrupeds and the crane use their own original leg node. The source
+        // foot reaches ROAD_Y; no replacement foot is introduced.
+        pivot.position.y = (roadY * intensity) / group.scale.y;
+        pivot.rotation.x = -0.34 * intensity;
+      } else {
+        // Upright Friends do not have a separate leg node in the source rig;
+        // their own arm/body node performs an animal-specific push gesture.
+        pivot.position.y = (-0.055 * intensity) / group.scale.y;
+        pivot.rotation.x = -0.16 * intensity;
+        pivot.rotation.z = nodeName.endsWith("_armR") ? -0.42 * intensity : 0.08 * intensity;
+      }
     }
   };
 
