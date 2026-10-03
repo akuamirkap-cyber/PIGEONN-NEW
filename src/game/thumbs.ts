@@ -42,17 +42,18 @@ export function ensureThumbs(size = 208): boolean {
     sun.position.set(-2, 25, 4.5);
     scene.add(sun);
 
-    // Keep the rig readable inside the larger cards: a slightly tighter ortho frame
-    // makes the feet, board, and riding pose survive the small collection grid.
-    const half = 0.98;
+    // Showcase angle: lower and more frontal than the gameplay iso camera, so the
+    // character reads as a rider first and the board stays visible underneath.
+    const half = 0.88;
     const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
-    cam.position.set(-3.4, 7, 5.2).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.75, 0));
-    cam.lookAt(0, 0.75, 0);
+    cam.position.set(-5.2, 3.6, 7.4).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.78, 0));
+    cam.lookAt(0, 0.78, 0);
 
     const savedDown = curveUniforms.uCurveDown.value;
     curveUniforms.uCurveDown.value = 0;
     for (const skin of SKINS) {
       const { group, dispose } = buildPigeonGroup(skin, "default", useUI.getState().wheelColor);
+      group.scale.setScalar(1.1);
       group.rotation.y = 4.35; // 3/4 front view
       scene.add(group);
       renderer.render(scene, cam);

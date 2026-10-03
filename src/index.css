@@ -356,3 +356,37 @@ body,
 .deck-preview-baguette .deck-preview-wheel {
   --wheel-color: #2ec4b6;
 }
+
+/* Character picker focal card: a small stage for the selected rider, not a flat inventory tile. */
+.skin-showcase {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.85) 0 8%, transparent 29%),
+    linear-gradient(125deg, #b9e6ff 0%, #d7f1ff 52%, #ffe5a8 100%);
+}
+
+.skin-showcase::before {
+  position: absolute;
+  right: 17%;
+  bottom: -3rem;
+  z-index: -1;
+  width: 12rem;
+  height: 12rem;
+  border: 1.25rem solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  content: "";
+}
+
+.skin-showcase::after {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 0.7rem;
+  z-index: -1;
+  width: 42%;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: rgba(31, 36, 48, 0.2);
+  content: "";
+  filter: blur(0.32rem);
+  transform: rotate(-6deg);
+}

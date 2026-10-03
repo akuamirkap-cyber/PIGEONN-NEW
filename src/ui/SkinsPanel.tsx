@@ -37,6 +37,7 @@ function SkinCard({ skin }: { skin: Skin }) {
     sfx.click();
     if (unlocked) selectSkin(skin.id);
     else setPreview(skin.id);
+    setPreview(skin.id);
     engine.skinPop();
   };
 
@@ -44,12 +45,12 @@ function SkinCard({ skin }: { skin: Skin }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex w-full flex-col items-center rounded-2xl px-1 pb-1.5 pt-1 shadow-[0_3px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
+      className={`relative flex w-full flex-col items-center rounded-[20px] px-2 pb-2 pt-2 shadow-[0_4px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
         previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : "bg-white ring-2 ring-black/5"
       }`}
     >
-      <div className="relative flex h-[25cqw] w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
-        <Thumb skin={skin} locked={!unlocked} size={104} />
+      <div className="relative flex h-[32cqw] w-full items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
+        <Thumb skin={skin} locked={!unlocked} size={136} />
         {!unlocked && (
           <div className="absolute right-1 top-1">
             <LockIcon size={15} />
@@ -57,7 +58,7 @@ function SkinCard({ skin }: { skin: Skin }) {
         )}
         {equipped && <div className="absolute left-1 top-1 rounded-full bg-[#2ec4b6] px-1.5 py-0.5 font-display text-[2.1cqw] leading-none text-white">ON</div>}
       </div>
-      <div className="mt-1 w-full truncate text-center font-body text-[2.8cqw] font-extrabold text-[#1f2430]">{skin.name}</div>
+      <div className="mt-1 w-full truncate text-center font-body text-[3.1cqw] font-extrabold text-[#1f2430]">{skin.name}</div>
       {unlocked ? (
         <div className="mt-0.5 font-display text-[2.3cqw] leading-none text-[#1f9a8f]">{equipped ? "EQUIPPED" : skin.cost === 0 ? "FREE" : "OWNED"}</div>
       ) : (
@@ -263,45 +264,48 @@ export function SkinsPanel() {
 
         {tab === "skins" ? (
           <>
-            {/* previewed skin action row */}
-            <div className="mx-4 mb-2 flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-[0_3px_0_rgba(0,0,0,0.08)]">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 truncate font-display text-[3.8cqw] leading-none text-[#1f2430]">
-                  {!isUnlocked && <LockIcon size={14} />}
-                  {current.name.toUpperCase()}
-                  {current.cost === 0 && (
-                    <span className="rounded-md bg-[#2ec4b6]/20 px-1.5 py-0.5 font-display text-[2.2cqw] text-[#1f9a8f]">FREE</span>
-                  )}
+            {/* Large selected-character showcase: this is the focal point, not a top-down inventory grid. */}
+            <div className="skin-showcase relative mx-4 mb-3 h-[38cqw] min-h-[9.2rem] overflow-hidden rounded-[26px] px-4 py-3 shadow-[0_5px_0_rgba(31,36,48,0.16)]">
+              <div className="relative z-10 flex h-full w-[57%] flex-col items-start justify-center">
+                <div className="rounded-full bg-white/75 px-2.5 py-1 font-body text-[2.2cqw] font-black tracking-[0.18em] text-[#1f9a8f]">
+                  SHOWCASE
                 </div>
-                <div className="mt-1 truncate font-body text-[2.7cqw] font-bold text-[#8a8f99]">{current.tagline}</div>
+                <div className="mt-1.5 flex max-w-full items-center gap-1.5 font-display text-[5.2cqw] leading-[0.95] text-[#1f2430]">
+                  {!isUnlocked && <LockIcon size={15} />}
+                  <span className="truncate">{current.name.toUpperCase()}</span>
+                </div>
+                <div className="mt-1 max-w-full truncate font-body text-[2.6cqw] font-bold text-[#536476]">{current.tagline}</div>
+                <div key={shakeKey} className={`mt-2 ${shakeKey ? "shake" : ""}`}>
+                  <button
+                    type="button"
+                    onClick={action}
+                    disabled={isEquipped}
+                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-display text-[3.2cqw] leading-none ${
+                      isEquipped
+                        ? "bg-white/80 text-[#1f9a8f]"
+                        : isUnlocked
+                          ? "bg-[#2ec4b6] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px] active:shadow-[0_2px_0_#1f9a8f]"
+                          : affordable
+                            ? "bg-[#ffd60a] text-[#1f2430] shadow-[0_4px_0_#c9a400] active:translate-y-[2px] active:shadow-[0_2px_0_#c9a400]"
+                            : "bg-white/70 text-[#9aa1ad]"
+                    }`}
+                  >
+                    {isEquipped ? "EQUIPPED ✓" : isUnlocked ? "EQUIP" : affordable ? "UNLOCK" : "NEED"}
+                    {!isUnlocked && (
+                      <span className="flex items-center gap-1">
+                        <BreadIcon size={15} />
+                        {current.cost}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
-              <div key={shakeKey} className={shakeKey ? "shake" : undefined}>
-                <button
-                  type="button"
-                  onClick={action}
-                  disabled={isEquipped}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-display text-[3.4cqw] leading-none ${
-                    isEquipped
-                      ? "bg-[#e6f7f5] text-[#1f9a8f]"
-                      : isUnlocked
-                        ? "bg-[#2ec4b6] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px] active:shadow-[0_2px_0_#1f9a8f]"
-                        : affordable
-                          ? "bg-[#ffd60a] text-[#1f2430] shadow-[0_4px_0_#c9a400] active:translate-y-[2px] active:shadow-[0_2px_0_#c9a400]"
-                          : "bg-[#eef0f3] text-[#9aa1ad]"
-                  }`}
-                >
-                  {isEquipped ? "EQUIPPED ✓" : isUnlocked ? "EQUIP" : affordable ? "UNLOCK" : "NEED"}
-                  {!isUnlocked && (
-                    <span className="flex items-center gap-1">
-                      <BreadIcon size={16} />
-                      {current.cost}
-                    </span>
-                  )}
-                </button>
+              <div className="absolute -right-2 bottom-[-1.2rem] z-10 flex h-[11.5rem] w-[49%] items-end justify-center">
+                <Thumb skin={current} locked={!isUnlocked} size={184} />
               </div>
             </div>
 
-            <div className="grid flex-1 grid-cols-3 content-start gap-2 overflow-y-auto px-4 pb-4" style={{ touchAction: "pan-y" }}>
+            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto px-4 pb-4" style={{ touchAction: "pan-y" }}>
               {SKINS.map((s) => (
                 <SkinCard key={s.id} skin={s} />
               ))}
