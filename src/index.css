@@ -82,12 +82,13 @@ body,
 
 /* Full-screen pickup burst: always visible above the 3D scene like Subway Surfers. */
 .bread-pickup-screen {
-  animation: bread-pickup-screen 0.72s cubic-bezier(0.18, 0.9, 0.28, 1) both;
-  filter: drop-shadow(0 0 12px rgba(255, 205, 40, 0.55));
+  animation: bread-pickup-screen 0.78s cubic-bezier(0.18, 0.9, 0.28, 1) both;
+  filter: drop-shadow(0 0 24px rgba(255, 205, 40, 0.85));
 }
 .bread-pickup-flare {
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 12%, rgba(255, 232, 72, 0.95) 28%, rgba(255, 159, 28, 0.42) 54%, transparent 72%);
-  animation: bread-pickup-flare 0.72s ease-out both;
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0 12%, rgba(255, 232, 72, 0.98) 28%, rgba(255, 159, 28, 0.5) 58%, transparent 76%);
+  box-shadow: 0 0 34px 12px rgba(255, 208, 45, 0.42);
+  animation: bread-pickup-flare 0.78s ease-out both;
 }
 .bread-pickup-rays {
   animation: bread-pickup-rays 0.72s ease-out both;
@@ -96,8 +97,8 @@ body,
   position: absolute;
   left: calc(50% - 2px);
   bottom: 50%;
-  width: 4px;
-  height: 58px;
+  width: 8px;
+  height: 104px;
   border-radius: 999px;
   transform-origin: 50% 100%;
   background: linear-gradient(to top, rgba(255, 255, 255, 0.98), rgba(255, 224, 67, 0.85), transparent);
@@ -109,20 +110,20 @@ body,
   animation: bread-pickup-label 0.72s cubic-bezier(0.2, 1.2, 0.3, 1) both;
 }
 @keyframes bread-pickup-screen {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.48); }
-  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.16); }
-  48% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -58%) scale(1.24); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.42); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.24); }
+  48% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -58%) scale(1.42); }
 }
 @keyframes bread-pickup-flare {
-  0% { transform: scale(0.35) rotate(-12deg); opacity: 0; }
-  25% { transform: scale(1.15) rotate(4deg); opacity: 1; }
-  100% { transform: scale(1.6) rotate(20deg); opacity: 0; }
+  0% { transform: scale(0.28) rotate(-12deg); opacity: 0; }
+  25% { transform: scale(1.22) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1.9) rotate(20deg); opacity: 0; }
 }
 @keyframes bread-pickup-rays {
-  0% { transform: translate(-50%, -50%) scale(0.32) rotate(0deg); opacity: 0; }
+  0% { transform: translate(-50%, -50%) scale(0.2) rotate(0deg); opacity: 0; }
   24% { opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.45) rotate(18deg); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.72) rotate(18deg); opacity: 0; }
 }
 @keyframes bread-pickup-label {
   0% { transform: translateY(10px) scale(0.7); opacity: 0; }
