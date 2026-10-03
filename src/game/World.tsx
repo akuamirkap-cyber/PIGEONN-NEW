@@ -131,7 +131,7 @@ import {
 import { buildGroundGeometry } from "./ground";
 import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuildingModels";
 import {
-  getShibuyaAnimalGeo,
+  getShibuyaAnimalWorldGeo,
   getShibuyaBathGeo,
   getShibuyaCharacterGeo,
   getShibuyaRamenCustomerGeo,
@@ -676,7 +676,7 @@ const MoverView = memo(function MoverView({
       return getGeometry(`moto-${m.variant % 6}`, () => motorcycleParts(m.variant));
     }
     if (m.kind === "shibuya_animal") {
-      return getShibuyaAnimalGeo(m.shibuyaAnimal ?? "shiba");
+      return getShibuyaAnimalWorldGeo(m.shibuyaAnimal ?? "shiba");
     }
     if (m.kind === "cat") {
       if (m.phase === "hit") {

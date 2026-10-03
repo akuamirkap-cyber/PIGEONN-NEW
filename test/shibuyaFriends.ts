@@ -9,6 +9,7 @@ import {
   ANIMAL_HEIGHT_TARGETS,
   SHIBUYA_ANIMALS,
   SHIBUYA_PLAYABLE_HEIGHT,
+  SHIBUYA_CRANE_DISPLAY_MULTIPLIER,
   buildShibuyaAnimalRig,
   getShibuyaAnimalParts,
   getShibuyaAnimalPlayerScale,
@@ -30,7 +31,18 @@ const friendSkinIds = SHIBUYA_ANIMALS.map((id) => `friend-${id}`);
 const friendSkins = SKINS.filter((skin) => skin.kind === "littleJapanFriend");
 check("canonical roster has exactly eight source animals", SHIBUYA_ANIMALS.length === 8 && new Set(SHIBUYA_ANIMALS).size === 8, SHIBUYA_ANIMALS.join(", "));
 check("all eight source animal geometries resolve from Shibuya Blocks", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalParts(id).length > 0));
-check("all eight playable Friends are 20 percent taller than the Pigeon reference", SHIBUYA_ANIMALS.every((id) => Math.abs(ANIMAL_HEIGHT_TARGETS[id] * getShibuyaAnimalPlayerScale(id) - SHIBUYA_PLAYABLE_HEIGHT) < 1e-9));
+check("seven Friends are 20 percent taller and Crane is 2x display size", SHIBUYA_ANIMALS.every((id) => {
+  const expected = SHIBUYA_PLAYABLE_HEIGHT * (id === "crane" ? SHIBUYA_CRANE_DISPLAY_MULTIPLIER : 1);
+  return Math.abs(ANIMAL_HEIGHT_TARGETS[id] * getShibuyaAnimalPlayerScale(id) - expected) < 1e-9;
+}));
+check("Shiba, Kitsune, Deer, and Capybara use upright source body posture", ["shiba", "kitsune", "deer", "capybara"].every((id) => {
+  const rig = buildShibuyaAnimalRig(id as typeof SHIBUYA_ANIMALS[number]);
+  const body = rig.group.getObjectByName(`animal_${id}_body`);
+  const upright = body ? Math.abs(Math.abs(body.rotation.x) - Math.PI / 2) < 1e-6 : false;
+  rig.dispose();
+  return upright;
+}));
+check("playable Capybara source excludes the bath setting", !getShibuyaAnimalParts("capybara").some((part) => part.color === "#9b9f8f"));
 check("Shift push uses source leg pivots instead of replacement body meshes", readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("pushPivot") && !readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("PushFootGeo"));
 const animatedRigs = SHIBUYA_ANIMALS.map((id) => buildShibuyaAnimalRig(id));
 check("all eight playable Friends keep an active source Play animation", animatedRigs.every((rig) => rig.group.children.length > 0 && rig.clips.length > 0 && rig.activeClip === "Play"));

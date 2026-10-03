@@ -5,7 +5,7 @@ import { buildRigAnimations } from "../shibuya/voxel/rig";
 import { buildVehicles } from "../shibuya/voxel/vehicles";
 import { citizenActivityModel } from "../shibuya/world/citizenActivities";
 import { buildVoxelGeometry, type Part, getGeometry, getGeometryPair, voxelMaterial } from "./voxel";
-import type { AssetData } from "../shibuya/voxel/types";
+import type { AssetData, RigNode, Vec3 } from "../shibuya/voxel/types";
 
 export type ShibuyaCharacterId = "salaryman" | "student" | "chef" | "yakuza" | "sumo";
 
@@ -63,6 +63,44 @@ export const SHIBUYA_MOTORCYCLES: ShibuyaMotorcycleId[] = [
   "police",
 ];
 
+const STANDING_QUADRUPEDS = new Set<ShibuyaAnimalId>(["shiba", "kitsune", "deer"]);
+
+/**
+ * A Friend keeps every original source box, but the playable posture is a
+ * bipedal standing posture rather than a four-legged crawl. Only the source
+ * node transforms change; no silhouette/body replacement is made.
+ */
+function sourceAnimalNodePose(id: ShibuyaAnimalId, node: RigNode): { position: Vec3; rotation: Vec3 } {
+  const position: Vec3 = [...node.p];
+  const rotation: Vec3 = [...(node.rotation ?? [0, 0, 0])];
+  const prefix = `animal_${id}_`;
+  if (STANDING_QUADRUPEDS.has(id)) {
+    if (node.name === `${prefix}body`) {
+      // Turn the original source torso upright while its original legs remain
+      // grounded below it.
+      position[1] += 0.65;
+      rotation[0] += Math.PI / 2;
+    } else if (node.name === `${prefix}head`) {
+      // The source head was in front of a horizontal torso. Move it to the top
+      // of the same rotated torso, keeping its original boxes and face.
+      position[2] = -0.75;
+    } else if (node.name.startsWith(`${prefix}tail`)) {
+      // Keep the original tail attached to the lower/back side after the turn.
+      position[2] = 0.35;
+    }
+  } else if (id === "capybara") {
+    if (node.name === `${prefix}body`) {
+      position[1] = 1.05;
+      rotation[0] += Math.PI / 2;
+    } else if (node.name === `${prefix}head`) {
+      position[2] = -1.0;
+    } else if (node.name === `${prefix}yuzu`) {
+      position[2] = -0.3;
+    }
+  }
+  return { position, rotation };
+}
+
 /**
  * Resolves rigged hierarchy from Shibuya Blocks (nodes and boxes) into
  * accurately placed, grounded Pigeon SK8 Part[] boxes.
@@ -73,6 +111,7 @@ function convertRiggedToParts(
     rotateY?: number;
     targetHeight?: number;
     omitHelmet?: boolean;
+    animalId?: ShibuyaAnimalId;
   } = {}
 ): Part[] {
   const rotateY = options.rotateY ?? Math.PI / 2;
@@ -82,8 +121,9 @@ function convertRiggedToParts(
   for (const node of data.nodes ?? []) {
     const group = new THREE.Group();
     group.name = node.name;
-    group.position.set(...node.p);
-    if (node.rotation) group.rotation.set(...node.rotation);
+    const pose = options.animalId ? sourceAnimalNodePose(options.animalId, node) : { position: node.p, rotation: node.rotation ?? [0, 0, 0] as Vec3 };
+    group.position.set(...pose.position);
+    group.rotation.set(...pose.rotation);
     rigGroups.set(node.name, group);
   }
   for (const node of data.nodes ?? []) {
@@ -102,31 +142,50 @@ function convertRiggedToParts(
   const resolvedBoxes: {
     center: THREE.Vector3;
     size: [number, number, number];
+    rotation: Vec3;
     color: string;
     glow: boolean;
   }[] = [];
 
   const tempBoxPos = new THREE.Vector3();
+  const sourceQuaternion = new THREE.Quaternion();
+  const worldQuaternion = new THREE.Quaternion();
+  const finalQuaternion = new THREE.Quaternion();
+  const globalQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotateY);
+  const localEuler = new THREE.Euler();
+  const worldEuler = new THREE.Euler();
+  const corner = new THREE.Vector3();
 
   for (const b of boxes) {
     const parent = b.node ? rigGroups.get(b.node) : store;
     tempBoxPos.set(b.p[0] + b.s[0] / 2, b.p[1] + b.s[1] / 2, b.p[2] + b.s[2] / 2);
     if (parent) {
       tempBoxPos.applyMatrix4(parent.matrixWorld);
+      parent.getWorldQuaternion(worldQuaternion);
+    } else {
+      worldQuaternion.identity();
     }
+    sourceQuaternion.setFromEuler(localEuler.set(...(b.rotation ?? [0, 0, 0])));
+    worldQuaternion.multiply(sourceQuaternion);
+    finalQuaternion.copy(worldQuaternion).premultiply(globalQuaternion);
+    worldEuler.setFromQuaternion(finalQuaternion);
     const hx = b.s[0] / 2;
     const hy = b.s[1] / 2;
     const hz = b.s[2] / 2;
-    minX = Math.min(minX, tempBoxPos.x - hx);
-    maxX = Math.max(maxX, tempBoxPos.x + hx);
-    minY = Math.min(minY, tempBoxPos.y - hy);
-    maxY = Math.max(maxY, tempBoxPos.y + hy);
-    minZ = Math.min(minZ, tempBoxPos.z - hz);
-    maxZ = Math.max(maxZ, tempBoxPos.z + hz);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      corner.set(sx * hx, sy * hy, sz * hz).applyQuaternion(worldQuaternion).add(tempBoxPos);
+      minX = Math.min(minX, corner.x);
+      maxX = Math.max(maxX, corner.x);
+      minY = Math.min(minY, corner.y);
+      maxY = Math.max(maxY, corner.y);
+      minZ = Math.min(minZ, corner.z);
+      maxZ = Math.max(maxZ, corner.z);
+    }
 
     resolvedBoxes.push({
       center: tempBoxPos.clone(),
       size: [b.s[0], b.s[1], b.s[2]],
+      rotation: [worldEuler.x, worldEuler.y, worldEuler.z],
       color: b.color,
       glow: (b.glow ?? 0) > 0.1,
     });
@@ -149,16 +208,16 @@ function convertRiggedToParts(
     const rx = rawX * cos + rawZ * sin;
     const rz = -rawX * sin + rawZ * cos;
 
-    const rw = Math.abs(rotateY) > 0.1 ? rb.size[2] * scale : rb.size[0] * scale;
-    const rd = Math.abs(rotateY) > 0.1 ? rb.size[0] * scale : rb.size[2] * scale;
-
     return {
       x: rx,
       y: rawY,
       z: rz,
-      w: rw,
+      w: rb.size[0] * scale,
       h: rb.size[1] * scale,
-      d: rd,
+      d: rb.size[2] * scale,
+      rx: rb.rotation[0],
+      ry: rb.rotation[1],
+      rz: rb.rotation[2],
       color: rb.color,
       glow: rb.glow,
     };
@@ -228,19 +287,31 @@ export const ANIMAL_HEIGHT_TARGETS: Record<ShibuyaAnimalId, number> = {
 export const SHIBUYA_PIGEON_REFERENCE_HEIGHT = 1.23;
 export const SHIBUYA_PLAYABLE_HEIGHT_MULTIPLIER = 1.2;
 export const SHIBUYA_PLAYABLE_HEIGHT = SHIBUYA_PIGEON_REFERENCE_HEIGHT * SHIBUYA_PLAYABLE_HEIGHT_MULTIPLIER;
+export const SHIBUYA_CRANE_DISPLAY_MULTIPLIER = 2;
 export function getShibuyaAnimalPlayerScale(id: ShibuyaAnimalId) {
-  return SHIBUYA_PLAYABLE_HEIGHT / ANIMAL_HEIGHT_TARGETS[id];
+  const displayMultiplier = id === "crane" ? SHIBUYA_CRANE_DISPLAY_MULTIPLIER : 1;
+  return (SHIBUYA_PLAYABLE_HEIGHT * displayMultiplier) / ANIMAL_HEIGHT_TARGETS[id];
 }
 
 export function getShibuyaAnimalParts(id: ShibuyaAnimalId): Part[] {
   const data = buildAnimals(id);
   // Rotated by Math.PI / 2 so animal faces +x along the crossing / travel line
   const targetHeight = ANIMAL_HEIGHT_TARGETS[id] ?? 0.8;
-  return convertRiggedToParts(data, { rotateY: Math.PI / 2, targetHeight });
+  return convertRiggedToParts(data, { rotateY: Math.PI / 2, targetHeight, animalId: id });
 }
 
 export function getShibuyaAnimalGeo(id: ShibuyaAnimalId) {
   return getGeometry(`shibuya-animal-${id}`, () => getShibuyaAnimalParts(id));
+}
+
+/** World pedestrians keep the source activity posture; the playable/preview
+ * geometry above uses the standing Friend posture. Setting boxes remain
+ * filtered, so Capybara's bath is supplied separately by getShibuyaBathGeo. */
+export function getShibuyaAnimalWorldGeo(id: ShibuyaAnimalId) {
+  return getGeometry(`shibuya-world-animal-${id}`, () => {
+    const data = buildAnimals(id);
+    return convertRiggedToParts(data, { rotateY: Math.PI / 2, targetHeight: ANIMAL_HEIGHT_TARGETS[id] });
+  });
 }
 
 /**
@@ -281,8 +352,9 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   for (const node of data.nodes ?? []) {
     const group = new THREE.Group();
     group.name = node.name;
-    group.position.set(...node.p);
-    if (node.rotation) group.rotation.set(...node.rotation);
+    const pose = sourceAnimalNodePose(id, node);
+    group.position.set(...pose.position);
+    group.rotation.set(...pose.rotation);
     nodes.set(node.name, group);
   }
   for (const node of data.nodes ?? []) {

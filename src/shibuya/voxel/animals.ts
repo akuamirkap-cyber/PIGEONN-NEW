@@ -160,6 +160,10 @@ function capybara(b: Builder, p: Vec3) {
   r.box('yuzu', [-0.17, 0, -0.16], [0.34, 0.25, 0.32], '#e5c959');
   r.box('yuzu', [-0.12, 0.25, -0.1], [0.24, 0.067, 0.2], '#efd883');
   r.box('yuzu', [0.015, 0.31, -0.015], [0.13, 0.034, 0.085], '#6c9b4e');
+  // The onsen platform belongs to the activity scene, not to the playable
+  // capybara source body. The runner filters setting parts while World adds
+  // the same source bath beside the shop.
+  b.part = 'setting';
   r.box('root', [-1.01, 0.012, -1.3], [2.02, 0.14, 2.64], '#9b9f8f');
   r.box('root', [-0.91, 0.36, -1.2], [1.82, 0.05, 2.44], '#95c2bb');
   for (const x of [-1.06, 0.81]) for (let i = 0; i < 5; i++) r.box('root', [x, 0.12 + i % 2 * 0.025, -1.34 + i * 0.52], [0.25, 0.49, 0.5], i % 2 ? '#aab2a0' : '#bbc1aa');
@@ -175,6 +179,7 @@ function capybara(b: Builder, p: Vec3) {
     r.motion(clip, 'head', 'rotation', 0, 0.065, { cycles: 1 });
     r.motion(clip, 'yuzu', 'rotation', 2, 0.12, { cycles: 2 });
   }
+  b.part = 'store';
 }
 
 function crane(b: Builder, p: Vec3) {
