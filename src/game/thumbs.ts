@@ -4,7 +4,7 @@ import { useUI } from "./store";
 import { buildPigeonGroup } from "./pigeonRig";
 import { curveUniforms } from "./curve";
 
-export const THUMB_FRAME_COUNT = 8;
+export const THUMB_FRAME_COUNT = 16;
 const cache = new Map<string, { first: string; sprite: string }>();
 let failed = false;
 let listeners: (() => void)[] = [];
@@ -25,7 +25,7 @@ export function onThumbsReady(fn: () => void) {
 }
 
 /**
- * Renders every skin into one eight-frame sprite strip. CSS steps through the
+ * Renders every skin into one sixteen-frame sprite strip. CSS steps through the
  * strip in sync for every card, avoiding React re-renders and the stutter that
  * comes from replacing many large data URLs on every frame.
  */
