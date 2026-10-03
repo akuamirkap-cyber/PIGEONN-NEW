@@ -859,9 +859,15 @@ function Movers() {
         sg.visible = show;
         if (show) {
           const s = Math.min(m.s - 2.2, d + SIGN_AHEAD);
-          track.frame(s, m.lat, 1.9 + Math.sin(t * 6) * 0.12, sg.position);
+          // PSA stays readable without sitting in the player's lane or center
+          // reticle: park it on the outside shoulder, high and compact.
+          const shoulderSide = m.lat >= 0 ? 1 : -1;
+          const shoulderLat = shoulderSide > 0
+            ? Math.min(6.6, m.lat + 1.6)
+            : Math.max(-6.6, m.lat - 1.6);
+          track.frame(s, shoulderLat, 2.65 + Math.sin(t * 6) * 0.08, sg.position);
           sg.quaternion.copy(camera.quaternion);
-          const pulse = 1 + 0.12 * Math.sin(t * 10);
+          const pulse = 0.58 + 0.06 * Math.sin(t * 10);
           sg.scale.setScalar(pulse);
         }
       }
