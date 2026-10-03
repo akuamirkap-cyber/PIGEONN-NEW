@@ -49,8 +49,8 @@ function SkinCard({ skin }: { skin: Skin }) {
         previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : "bg-white ring-2 ring-black/5"
       }`}
     >
-      <div className="relative flex h-[32cqw] w-full items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
-        <Thumb skin={skin} locked={!unlocked} size={136} />
+      <div className="relative flex h-[27cqw] w-full items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
+        <Thumb skin={skin} locked={!unlocked} size={122} />
         {!unlocked && (
           <div className="absolute right-1 top-1">
             <LockIcon size={15} />
@@ -218,22 +218,24 @@ export function SkinsPanel() {
       </div>
 
       {/* panel */}
-      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[68%] flex-col rounded-t-[26px] bg-[#fff8ea] shadow-[0_-6px_0_rgba(0,0,0,0.1)]">
+      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[61%] flex-col rounded-t-[24px] bg-[#fff8ea] shadow-[0_-6px_0_rgba(0,0,0,0.1)]">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 px-4 pb-2 pt-3">
+        <div className="flex items-center gap-1 px-3 pb-1 pt-2">
           <button
             type="button"
             onClick={() => {
               sfx.click();
               setTab("skins");
             }}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2 font-display text-[3.6cqw] transition-all ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-2xl py-1.5 font-display text-[3.2cqw] leading-none whitespace-nowrap transition-all ${
               tab === "skins"
                 ? "bg-[#2ec4b6] text-white shadow-[0_3px_0_#1f9a8f]"
                 : "bg-white/70 text-[#1f2430]/70 hover:bg-white"
             }`}
           >
-            <span>🕊️</span> KARAKTER ({unlocked.length}/{SKINS.length})
+            <span>🕊️</span>
+            <span>KARAKTER</span>
+            <span className="font-body text-[2.2cqw] opacity-80">{unlocked.length}/{SKINS.length}</span>
           </button>
           <button
             type="button"
@@ -241,7 +243,7 @@ export function SkinsPanel() {
               sfx.click();
               setTab("decks");
             }}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2 font-display text-[3.6cqw] transition-all ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-2xl py-1.5 font-display text-[3.2cqw] leading-none whitespace-nowrap transition-all ${
               tab === "decks"
                 ? "bg-[#ff9f1c] text-white shadow-[0_3px_0_#c9700a]"
                 : "bg-white/70 text-[#1f2430]/70 hover:bg-white"
@@ -255,7 +257,7 @@ export function SkinsPanel() {
           <button
             type="button"
             onClick={close}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f2430] font-display text-[4.6cqw] text-white shadow-[0_4px_0_rgba(0,0,0,0.2)] active:translate-y-[2px] active:shadow-none"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1f2430] font-display text-[4.2cqw] text-white shadow-[0_3px_0_rgba(0,0,0,0.2)] active:translate-y-[2px] active:shadow-none"
             aria-label="Close"
           >
             ✕
@@ -265,22 +267,22 @@ export function SkinsPanel() {
         {tab === "skins" ? (
           <>
             {/* Large selected-character showcase: this is the focal point, not a top-down inventory grid. */}
-            <div className="skin-showcase relative mx-4 mb-3 h-[38cqw] min-h-[9.2rem] overflow-hidden rounded-[26px] px-4 py-3 shadow-[0_5px_0_rgba(31,36,48,0.16)]">
+            <div className="skin-showcase relative mx-3 mb-2 h-[30cqw] min-h-[7.4rem] overflow-hidden rounded-[22px] px-3 py-2 shadow-[0_4px_0_rgba(31,36,48,0.15)]">
               <div className="relative z-10 flex h-full w-[57%] flex-col items-start justify-center">
-                <div className="rounded-full bg-white/75 px-2.5 py-1 font-body text-[2.2cqw] font-black tracking-[0.18em] text-[#1f9a8f]">
+                <div className="rounded-full bg-white/75 px-2 py-0.5 font-body text-[2cqw] font-black tracking-[0.15em] text-[#1f9a8f]">
                   SHOWCASE
                 </div>
-                <div className="mt-1.5 flex max-w-full items-center gap-1.5 font-display text-[5.2cqw] leading-[0.95] text-[#1f2430]">
+                <div className="mt-1 flex max-w-full items-center gap-1 font-display text-[4.5cqw] leading-[0.95] text-[#1f2430]">
                   {!isUnlocked && <LockIcon size={15} />}
                   <span className="truncate">{current.name.toUpperCase()}</span>
                 </div>
-                <div className="mt-1 max-w-full truncate font-body text-[2.6cqw] font-bold text-[#536476]">{current.tagline}</div>
-                <div key={shakeKey} className={`mt-2 ${shakeKey ? "shake" : ""}`}>
+                <div className="mt-0.5 max-w-full truncate font-body text-[2.3cqw] font-bold text-[#536476]">{current.tagline}</div>
+                <div key={shakeKey} className={`mt-1.5 ${shakeKey ? "shake" : ""}`}>
                   <button
                     type="button"
                     onClick={action}
                     disabled={isEquipped}
-                    className={`flex items-center gap-1.5 rounded-xl px-3 py-2 font-display text-[3.2cqw] leading-none ${
+                    className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 font-display text-[2.9cqw] leading-none ${
                       isEquipped
                         ? "bg-white/80 text-[#1f9a8f]"
                         : isUnlocked
@@ -300,12 +302,12 @@ export function SkinsPanel() {
                   </button>
                 </div>
               </div>
-              <div className="absolute -right-2 bottom-[-1.2rem] z-10 flex h-[11.5rem] w-[49%] items-end justify-center">
-                <Thumb skin={current} locked={!isUnlocked} size={184} />
+              <div className="absolute -right-1 bottom-[-0.8rem] z-10 flex h-[9rem] w-[49%] items-end justify-center">
+                <Thumb skin={current} locked={!isUnlocked} size={160} />
               </div>
             </div>
 
-            <div className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto px-4 pb-4" style={{ touchAction: "pan-y" }}>
+            <div className="grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto px-3 pb-3" style={{ touchAction: "pan-y" }}>
               {SKINS.map((s) => (
                 <SkinCard key={s.id} skin={s} />
               ))}
