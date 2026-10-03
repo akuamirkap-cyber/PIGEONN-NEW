@@ -85,7 +85,7 @@ export function planterParts(): Part[] {
   return parts;
 }
 
-export function carParts(variant: number): Part[] {
+function rawCarParts(variant: number): Part[] {
   const v = Math.abs(variant) % 8;
   const glass = "#bfe3ff";
   const tire = "#26282d";
@@ -249,6 +249,25 @@ export function carParts(variant: number): Part[] {
     { x: 1.62, y: 0.65, z: -0.5, w: 0.08, h: 0.22, d: 0.3, color: "#fff7c2" },
     { x: -1.62, y: 0.65, z: 0.5, w: 0.08, h: 0.2, d: 0.28, color: "#ff3b3b" },
     { x: -1.62, y: 0.65, z: -0.5, w: 0.08, h: 0.2, d: 0.28, color: "#ff3b3b" },
+  ];
+}
+
+/**
+ * Add a continuous lower body/sill to every traffic car. The individual voxel
+ * details remain visible, but this shared envelope closes tiny seams between
+ * chassis, cabin, bonnet and bumper pieces at the low-poly camera distance.
+ */
+export function carParts(variant: number): Part[] {
+  const v = Math.abs(variant) % 8;
+  const source = rawCarParts(variant);
+  const bodyColor = v === 1 ? "#16181d" : v === 2 ? "#f4c430" : v === 3 ? "#f1f3f6" : v === 5 ? "#f4f6fa" : CAR_COLORS[v % CAR_COLORS.length];
+  const bodyLength = v === 3 ? 3.82 : v === 5 ? 3.15 : v === 1 ? 3.3 : 3.3;
+  const bodyDepth = v === 3 ? 1.68 : v === 5 ? 1.56 : 1.64;
+  return [
+    { x: 0, y: 0.7, z: 0, w: bodyLength, h: 0.5, d: bodyDepth, color: bodyColor },
+    { x: 0, y: 0.8, z: bodyDepth / 2 - 0.06, w: bodyLength - 0.12, h: 0.16, d: 0.12, color: bodyColor },
+    { x: 0, y: 0.8, z: -bodyDepth / 2 + 0.06, w: bodyLength - 0.12, h: 0.16, d: 0.12, color: bodyColor },
+    ...source,
   ];
 }
 

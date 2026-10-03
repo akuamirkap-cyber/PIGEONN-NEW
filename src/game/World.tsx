@@ -143,6 +143,7 @@ import {
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   const groupRef = useRef<THREE.Group>(null);
+  const isShibuya = useUI((state) => state.trackMode === "shibuya");
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
@@ -185,8 +186,10 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair("overpass", overpassParts);
       case "puddle":
         return getGeometryPair(`puddle-${d.variant}`, () => puddleParts(d.variant));
-      case "sakura":
-        return getGeometryPair(`sakura-${d.variant}`, () => sakuraParts(d.variant, 1 + (d.variant % 2) * 0.18));
+      case "sakura": {
+        const scale = (1 + (d.variant % 2) * 0.18) * (isShibuya ? 2 : 1);
+        return getGeometryPair(`sakura-${d.variant}-${isShibuya ? "shibuya" : "standard"}`, () => sakuraParts(d.variant, scale));
+      }
       case "lantern":
         return getGeometryPair("lantern", stoneLanternParts);
       case "ramen":
@@ -252,7 +255,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       default:
         return getGeometryPair("lamp", lampParts);
     }
-  }, [d]);
+  }, [d, isShibuya]);
   useEffect(() => {
     // Only dispose dynamically generated, non-cached building geometries
     if (d.kind === "building" && !d.spec?.shibuyaAssetId && !d.spec?.night)
@@ -667,7 +670,7 @@ const MoverView = memo(function MoverView({
     }
     if (m.kind === "motorcycle") {
       if (m.shibuyaMoto) {
-        return getShibuyaMotorcycleGeo(m.shibuyaMoto);
+        return getShibuyaMotorcycleGeo(m.shibuyaMoto, m.motorcycleHelmet !== false);
       }
       return getGeometry(`moto-${m.variant % 6}`, () => motorcycleParts(m.variant));
     }
@@ -681,7 +684,7 @@ const MoverView = memo(function MoverView({
       return getGeometry(`cat-walk-${m.variant % 4}`, () => catWalkParts(m.variant));
     }
     return getGeometry("chicken", chickenParts);
-  }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.shibuyaAnimal]);
+  }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.motorcycleHelmet, m.shibuyaAnimal]);
   const diamond = useMemo(() => getGeometry("sign-diamond", signDiamondParts), []);
   const exclaim = useMemo(() => getGeometry("sign-ex", signExclaimParts), []);
   const night = useUI((s) => s.trackMode === "shibuya" && s.shibuyaTime === "malam");

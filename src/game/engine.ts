@@ -385,8 +385,10 @@ export interface Mover {
   leanT?: number;
   /** Little Japan Friends (shiba, tanuki, kitsune, deer, monkey, capybara, crane, neko) */
   shibuyaAnimal?: ShibuyaAnimalId;
-  /** Japan Vehicle Pack motorcycle (cub, custom, sport, delivery, retro, cafe, trail, police) */
+  /** Japan Vehicle Pack motorcycle (including explicit Honda/Harley route aliases). */
   shibuyaMoto?: ShibuyaMotorcycleId;
+  /** Traffic rider variation: some riders wear a helmet and some do not. */
+  motorcycleHelmet?: boolean;
   /** Shibuya Blocks character (salaryman / pekerja kantor, student, chef, yakuza) */
   shibuyaChar?: ShibuyaCharacterId;
 }
@@ -807,6 +809,7 @@ class Engine {
   private flipToggle = false;
   private sparkT = 0;
   private patternIndex = 0;
+  private shibuyaMotoIndex = 0;
 
   player = {
     lane: 1,
@@ -947,6 +950,7 @@ class Engine {
     this.nextChunkS = 0;
     this.nextObstacleS = this.distance + 40;
     this.patternIndex = 0;
+    this.shibuyaMotoIndex = 0;
     const p = this.player;
     p.lane = 1;
     p.targetLane = 1;
@@ -4590,10 +4594,19 @@ class Engine {
     const m = this.newMover("motorcycle", s0, lane, LANE_LAT[lane]);
     m.speed = v * speedFactor;
     m.variant = randInt(0, 5);
-    // Japan Vehicle Pack: motorcycles with riders (cub, sport, delivery, custom, etc.)
-    // Prominently spawned in Shibuya streets alongside regular motorcycles
+    // Japan Vehicle Pack: explicitly guarantee a Honda and a Harley-style cruiser
+    // in the opening Shibuya traffic, then keep the rest varied. Helmet state is
+    // independent so the route visibly contains both helmeted and bareheaded riders.
     if (track.mode === "shibuya" ? Math.random() < 0.94 : Math.random() < 0.65) {
-      m.shibuyaMoto = pick(SHIBUYA_MOTORCYCLES);
+      const routeIndex = this.shibuyaMotoIndex++;
+      m.shibuyaMoto = track.mode === "shibuya" && routeIndex === 0
+        ? "honda"
+        : track.mode === "shibuya" && routeIndex === 1
+          ? "harley"
+          : pick(SHIBUYA_MOTORCYCLES);
+      m.motorcycleHelmet = track.mode === "shibuya"
+        ? routeIndex < 2 ? routeIndex === 0 : Math.random() < 0.62
+        : Math.random() < 0.72;
     }
     m.smokeT = rand(0, 0.08);
     this.movers.push(m);

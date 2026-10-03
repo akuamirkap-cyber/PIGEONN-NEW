@@ -19,6 +19,8 @@ export type ShibuyaAnimalId =
   | "neko";
 
 export type ShibuyaMotorcycleId =
+  | "honda"
+  | "harley"
   | "cub"
   | "custom"
   | "sport"
@@ -48,6 +50,8 @@ export const SHIBUYA_ANIMALS: ShibuyaAnimalId[] = [
 ];
 
 export const SHIBUYA_MOTORCYCLES: ShibuyaMotorcycleId[] = [
+  "honda",
+  "harley",
   "cub",
   "custom",
   "sport",
@@ -67,6 +71,7 @@ function convertRiggedToParts(
   options: {
     rotateY?: number;
     targetHeight?: number;
+    omitHelmet?: boolean;
   } = {}
 ): Part[] {
   const rotateY = options.rotateY ?? Math.PI / 2;
@@ -85,7 +90,7 @@ function convertRiggedToParts(
   }
   store.updateMatrixWorld(true);
 
-  const boxes = data.boxes.filter((b) => b.part !== "setting");
+  const boxes = data.boxes.filter((b) => b.part !== "setting" && !(options.omitHelmet && b.helmet));
   let minX = 1e9,
     maxX = -1e9;
   let minY = 1e9,
@@ -226,15 +231,37 @@ export function getShibuyaAnimalGeo(id: ShibuyaAnimalId) {
 }
 
 // ---------------------- 3. Japan Vehicle Pack: Motorcycles with Riders ----------------------
-export function getShibuyaMotorcycleParts(id: ShibuyaMotorcycleId): Part[] {
-  const data = buildVehicles(id);
-  // Rotated by Math.PI / 2 so motorcycle and rider face +x (oncoming traffic)
-  // Target height ~1.52m (standard motorcycle + rider with helmet height, below MOTOR_CLEAR_H = 1.55)
-  return convertRiggedToParts(data, { rotateY: Math.PI / 2, targetHeight: 1.52 });
+// Honda is represented by the source Super Cub and Harley by the source custom/cruiser
+// silhouette. The aliases keep the route vocabulary explicit without duplicating the
+// underlying Shibuya Blocks geometry.
+const MOTORCYCLE_SOURCE_IDS: Record<ShibuyaMotorcycleId, string> = {
+  honda: "cub",
+  harley: "custom",
+  cub: "cub",
+  custom: "custom",
+  sport: "sport",
+  delivery: "delivery",
+  retro: "retro",
+  cafe: "cafe",
+  trail: "trail",
+  police: "police",
+};
+
+export function getShibuyaMotorcycleParts(id: ShibuyaMotorcycleId, helmet = true): Part[] {
+  const data = buildVehicles(MOTORCYCLE_SOURCE_IDS[id]);
+  // Rotated by Math.PI / 2 so motorcycle and rider face +x (oncoming traffic).
+  // Target height ~1.52m (standard motorcycle + rider height, below MOTOR_CLEAR_H = 1.55).
+  // No-helmet variants keep the source face/head, but remove only boxes explicitly
+  // tagged as helmet geometry; the rider and bike remain one connected silhouette.
+  return convertRiggedToParts(data, {
+    rotateY: Math.PI / 2,
+    targetHeight: helmet ? 1.52 : 1.42,
+    omitHelmet: !helmet,
+  });
 }
 
-export function getShibuyaMotorcycleGeo(id: ShibuyaMotorcycleId) {
-  return getGeometry(`shibuya-moto-${id}`, () => getShibuyaMotorcycleParts(id));
+export function getShibuyaMotorcycleGeo(id: ShibuyaMotorcycleId, helmet = true) {
+  return getGeometry(`shibuya-moto-${id}-${helmet ? "helmet" : "no-helmet"}`, () => getShibuyaMotorcycleParts(id, helmet));
 }
 
 /** Glowing headlight and taillight for Shibuya motorcycle at night */

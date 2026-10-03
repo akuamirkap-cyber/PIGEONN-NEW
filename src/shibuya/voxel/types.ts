@@ -12,6 +12,8 @@ export interface VoxelBox {
   rotation?: Vec3;
   glow?: number;
   opacity?: number;
+  /** Marks rider helmet geometry so traffic variants can render helmet/no-helmet riders. */
+  helmet?: boolean;
   part: Part;
   node?: string;
 }
