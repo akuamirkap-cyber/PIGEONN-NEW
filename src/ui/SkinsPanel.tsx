@@ -3,7 +3,7 @@ import { useUI, WHEEL_COLORS, type WheelColor } from "../game/store";
 import { getSkin, SKINS, DECKS, type Skin, type DeckOption } from "../game/skins";
 import { sfx } from "../game/audio";
 import { engine } from "../game/engine";
-import { ensureThumbs, getThumb, onThumbsReady } from "../game/thumbs";
+import { ensureThumbs, getThumb, getThumbFrames, onThumbsReady } from "../game/thumbs";
 import { BreadIcon } from "./BreadIcon";
 import { PigeonIcon } from "./PigeonIcon";
 import { LockIcon } from "./LockIcon";
@@ -17,14 +17,69 @@ function useThumbs() {
   }, []);
 }
 
+function useThumbFrame(id: string) {
+  const frames = getThumbFrames(id);
+  const frameCount = frames?.length ?? 0;
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    setFrame(0);
+    if (frameCount < 2) return;
+    const timer = window.setInterval(() => {
+      setFrame((current) => (current + 1) % frameCount);
+    }, 240);
+    return () => window.clearInterval(timer);
+  }, [id, frameCount]);
+
+  return frames?.[frame % frameCount] ?? getThumb(id);
+}
+
 function Thumb({ skin, locked, size }: { skin: Skin; locked: boolean; size: number }) {
-  const url = getThumb(skin.id);
+  const url = useThumbFrame(skin.id);
   const style = locked ? { filter: "grayscale(0.85) brightness(0.8)" } : undefined;
-  if (url) return <img src={url} width={size} height={size} draggable={false} alt={skin.name} style={style} className="select-none" />;
+  if (url) return <img src={url} width={size} height={size} draggable={false} alt={skin.name} style={style} className="skin-thumb-spin select-none" />;
   return <PigeonIcon skin={skin} size={size} locked={locked} />;
 }
 
+type SkinRarity = "BASIC" | "EPIC" | "LEGENDARY" | "UNIQUE";
+
+const RARITY_META: Record<SkinRarity, { label: string; badge: string; image: string; card: string }> = {
+  BASIC: {
+    label: "BASIC",
+    badge: "bg-[#2ec4b6] text-white shadow-[0_2px_0_#1f9a8f]",
+    image: "bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]",
+    card: "bg-[#f4fffd] ring-2 ring-[#2ec4b6]/35",
+  },
+  EPIC: {
+    label: "EPIC",
+    badge: "bg-[#8b5cf6] text-white shadow-[0_2px_0_#6841c7]",
+    image: "bg-gradient-to-b from-[#e7d9ff] to-[#f7f0ff]",
+    card: "bg-[#fbf8ff] ring-2 ring-[#8b5cf6]/35",
+  },
+  LEGENDARY: {
+    label: "LEGENDARY",
+    badge: "bg-[#f59e0b] text-white shadow-[0_2px_0_#c56f00]",
+    image: "bg-gradient-to-b from-[#ffe0a3] to-[#fff5d9]",
+    card: "bg-[#fffaf0] ring-2 ring-[#f59e0b]/40",
+  },
+  UNIQUE: {
+    label: "UNIQUE",
+    badge: "bg-[#ef476f] text-white shadow-[0_2px_0_#b92d51]",
+    image: "bg-gradient-to-b from-[#ffd1e0] to-[#fff0f7]",
+    card: "bg-[#fff6fa] ring-2 ring-[#ef476f]/40",
+  },
+};
+
+function getSkinRarity(skin: Skin): SkinRarity {
+  if (skin.cost >= 200) return "UNIQUE";
+  if (skin.cost >= 100) return "LEGENDARY";
+  if (skin.cost >= 30) return "EPIC";
+  return "BASIC";
+}
+
 function SkinCard({ skin }: { skin: Skin }) {
+  const rarity = getSkinRarity(skin);
+  const rarityMeta = RARITY_META[rarity];
   const equipped = useUI((s) => s.skin) === skin.id;
   const previewing = useUI((s) => s.preview) === skin.id;
   const unlocked = useUI((s) => s.unlocked).includes(skin.id);
@@ -46,17 +101,20 @@ function SkinCard({ skin }: { skin: Skin }) {
       type="button"
       onClick={onClick}
       className={`relative flex w-full flex-col items-center rounded-[16px] px-1.5 pb-1.5 pt-1.5 shadow-[0_3px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
-        previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : "bg-white ring-2 ring-black/5"
+        previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : rarityMeta.card
       }`}
     >
-      <div className="relative flex h-[23cqw] w-full items-center justify-center overflow-hidden rounded-[12px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
+      <div className={`relative flex h-[23cqw] w-full items-center justify-center overflow-hidden rounded-[12px] ${rarityMeta.image}`}>
+        <div className={`absolute left-1 top-1 z-10 rounded-full px-1.5 py-0.5 font-display text-[2cqw] leading-none ${rarityMeta.badge}`}>
+          {rarityMeta.label}
+        </div>
         <Thumb skin={skin} locked={!unlocked} size={112} />
         {!unlocked && (
           <div className="absolute right-1 top-1">
             <LockIcon size={15} />
           </div>
         )}
-        {equipped && <div className="absolute left-1 top-1 rounded-full bg-[#2ec4b6] px-1.5 py-0.5 font-display text-[2.1cqw] leading-none text-white">ON</div>}
+        {equipped && <div className="absolute right-1 top-1 rounded-full bg-[#2ec4b6] px-1.5 py-0.5 font-display text-[2cqw] leading-none text-white shadow-[0_2px_0_#1f9a8f]">ON</div>}
       </div>
       <div className="mt-0.5 w-full truncate text-center font-body text-[2.7cqw] font-extrabold text-[#1f2430]">{skin.name}</div>
       {unlocked ? (
@@ -157,6 +215,8 @@ export function SkinsPanel() {
 
   const [shakeKey, setShakeKey] = useState(0);
   const current = getSkin(previewId);
+  const currentRarity = getSkinRarity(current);
+  const currentRarityMeta = RARITY_META[currentRarity];
   const isUnlocked = unlocked.includes(current.id);
   const isEquipped = equippedId === current.id;
   const affordable = wallet >= current.cost;
@@ -269,8 +329,13 @@ export function SkinsPanel() {
             {/* Large selected-character showcase: this is the focal point, not a top-down inventory grid. */}
             <div className="skin-showcase relative mx-3 mb-1.5 h-[24cqw] min-h-[6.1rem] overflow-hidden rounded-[18px] px-3 py-1.5 shadow-[0_3px_0_rgba(31,36,48,0.14)]">
               <div className="relative z-10 flex h-full w-[56%] flex-col items-start justify-center">
-                <div className="rounded-full bg-white/75 px-1.5 py-0.5 font-body text-[1.8cqw] font-black tracking-[0.12em] text-[#1f9a8f]">
-                  SHOWCASE
+                <div className="flex items-center gap-1">
+                  <div className="rounded-full bg-white/75 px-1.5 py-0.5 font-body text-[1.8cqw] font-black tracking-[0.12em] text-[#1f9a8f]">
+                    SHOWCASE
+                  </div>
+                  <div className={`rounded-full px-1.5 py-0.5 font-display text-[1.8cqw] leading-none ${currentRarityMeta.badge}`}>
+                    {currentRarityMeta.label}
+                  </div>
                 </div>
                 <div className="mt-0.5 flex max-w-full items-center gap-1 font-display text-[4.1cqw] leading-[0.95] text-[#1f2430]">
                   {!isUnlocked && <LockIcon size={15} />}

@@ -4,13 +4,19 @@ import { useUI } from "./store";
 import { buildPigeonGroup } from "./pigeonRig";
 import { curveUniforms } from "./curve";
 
-const cache = new Map<string, string>();
+const THUMB_FRAME_COUNT = 8;
+const cache = new Map<string, string[]>();
 let failed = false;
 let listeners: (() => void)[] = [];
 
 export function getThumb(id: string): string | undefined {
+  return cache.get(id)?.[0];
+}
+
+export function getThumbFrames(id: string): string[] | undefined {
   return cache.get(id);
 }
+
 export function onThumbsReady(fn: () => void) {
   listeners.push(fn);
   return () => {
@@ -19,8 +25,8 @@ export function onThumbsReady(fn: () => void) {
 }
 
 /**
- * Renders every skin once with a small offscreen WebGL renderer (same iso angle + lighting as the game)
- * and caches the results as PNG data URLs for the collection grid. Falls back gracefully if WebGL fails.
+ * Renders every skin from eight low-angle showcase views. The picker can then
+ * cycle real 3D poses instead of flipping one flat icon with CSS.
  */
 export function ensureThumbs(size = 208): boolean {
   if (cache.size === SKINS.length) return true;
@@ -42,11 +48,9 @@ export function ensureThumbs(size = 208): boolean {
     sun.position.set(-2, 25, 4.5);
     scene.add(sun);
 
-    // Showcase angle: lower and more frontal than the gameplay iso camera, so the
-    // character reads as a rider first and the board stays visible underneath.
+    // Almost eye-level: the rider should read front-on, never like a board seen from above.
     const half = 0.88;
     const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
-    // Almost eye-level: the rider should read front-on, never like a board seen from above.
     cam.position.set(-5.2, 0.8, 7.4).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.64, 0));
     cam.lookAt(0, 0.64, 0);
 
@@ -55,10 +59,15 @@ export function ensureThumbs(size = 208): boolean {
     for (const skin of SKINS) {
       const { group, dispose } = buildPigeonGroup(skin, "default", useUI.getState().wheelColor);
       group.scale.setScalar(1.1);
-      group.rotation.y = 4.35; // 3/4 front view
       scene.add(group);
-      renderer.render(scene, cam);
-      cache.set(skin.id, canvas.toDataURL("image/png"));
+      const frames: string[] = [];
+      for (let frame = 0; frame < THUMB_FRAME_COUNT; frame += 1) {
+        // Keep the first frame compatible with the old 3/4 showcase view, then orbit around the rider.
+        group.rotation.y = 4.35 + (frame / THUMB_FRAME_COUNT) * Math.PI * 2;
+        renderer.render(scene, cam);
+        frames.push(canvas.toDataURL("image/png"));
+      }
+      cache.set(skin.id, frames);
       scene.remove(group);
       dispose();
     }
