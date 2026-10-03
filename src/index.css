@@ -390,25 +390,3 @@ body,
   filter: blur(0.32rem);
   transform: rotate(-6deg);
 }
-
-/* One compositor animation drives every card in lockstep. The strip contains real
-   low-angle WebGL views, so this is smooth and cheap compared with React timers. */
-.skin-thumb-spin {
-  display: block;
-  flex: 0 0 auto;
-  background-position: 0 0;
-  background-repeat: no-repeat;
-  will-change: background-position;
-  animation: skin-thumb-showcase 2.24s steps(16, end) infinite !important;
-  animation-play-state: running !important;
-  image-rendering: auto;
-}
-
-@keyframes skin-thumb-showcase {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 100% 0;
-  }
-}

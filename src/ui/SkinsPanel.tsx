@@ -3,7 +3,7 @@ import { useUI, WHEEL_COLORS, type WheelColor } from "../game/store";
 import { getSkin, SKINS, DECKS, type Skin, type DeckOption } from "../game/skins";
 import { sfx } from "../game/audio";
 import { engine } from "../game/engine";
-import { ensureThumbs, getThumb, getThumbSprite, onThumbsReady, THUMB_FRAME_COUNT } from "../game/thumbs";
+import { ensureThumbs, getThumb, getThumbFrames, onThumbsReady } from "../game/thumbs";
 import { BreadIcon } from "./BreadIcon";
 import { PigeonIcon } from "./PigeonIcon";
 import { LockIcon } from "./LockIcon";
@@ -17,27 +17,28 @@ function useThumbs() {
   }, []);
 }
 
+function useThumbFrame(id: string) {
+  const frames = getThumbFrames(id);
+  const frameCount = frames?.length ?? 0;
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const seed = Array.from(id).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+    setFrame(frameCount > 0 ? seed % frameCount : 0);
+    if (frameCount < 2) return;
+    const timer = window.setInterval(() => {
+      setFrame((current) => (current + 1) % frameCount);
+    }, 240);
+    return () => window.clearInterval(timer);
+  }, [id, frameCount]);
+
+  return frames?.[frame % frameCount] ?? getThumb(id);
+}
+
 function Thumb({ skin, locked, size }: { skin: Skin; locked: boolean; size: number }) {
-  const sprite = getThumbSprite(skin.id);
-  const url = getThumb(skin.id);
+  const url = useThumbFrame(skin.id);
   const style = locked ? { filter: "grayscale(0.85) brightness(0.8)" } : undefined;
-  if (sprite) {
-    return (
-      <span
-        role="img"
-        aria-label={skin.name}
-        className="skin-thumb-spin select-none"
-        style={{
-          ...style,
-          width: size,
-          height: size,
-          backgroundImage: `url(${sprite})`,
-          backgroundSize: `${THUMB_FRAME_COUNT * 100}% 100%`,
-        }}
-      />
-    );
-  }
-  if (url) return <img src={url} width={size} height={size} draggable={false} alt={skin.name} style={style} className="select-none" />;
+  if (url) return <img src={url} width={size} height={size} draggable={false} alt={skin.name} style={style} className="skin-thumb-spin select-none" />;
   return <PigeonIcon skin={skin} size={size} locked={locked} />;
 }
 
