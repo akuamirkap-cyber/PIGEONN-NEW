@@ -13,6 +13,7 @@ import {
   SUBWAY_GAP,
   SUBWAY_ROOF_H,
   type BuildingSpec,
+  type ShibuyaBuildingId,
 } from "./models";
 import {
   SHIBUYA_ANIMALS,
@@ -258,6 +259,7 @@ export type DecorKind =
   | "lantern"
   | "ramen"
   | "ramen_customer"
+  | "shopper"
   | "machiya"
   | "house"
   | "village_house"
@@ -4061,9 +4063,12 @@ class Engine {
       // Semua aset arsitektur diulang secara deterministik. Tidak ada lagi undian yang
       // bisa melewatkan Torii, ramen, Tokyo Tower District, atau rumah pada satu run.
       const transferIds = ALL_SHIBUYA_BUILDING_IDS;
-      const nearBld = transferIds[(Math.abs(id) * 2) % transferIds.length];
-      const farBld = transferIds[(Math.abs(id) * 2 + 1) % transferIds.length];
-      const skyBld = transferIds[(Math.abs(id) * 2 + 2) % transferIds.length];
+      // Three consecutive lots per chunk make the complete transfer visible in the
+      // opening boulevard: ramen first, then 109/Q-FRONT, and so on.
+      const transferStart = (Math.floor(s0 / CHUNK_LEN) * 3) % transferIds.length;
+      const nearBld = transferIds[transferStart];
+      const farBld = transferIds[(transferStart + 1) % transferIds.length];
+      const skyBld = transferIds[(transferStart + 2) % transferIds.length];
       const farLat = curTunnel ? 16.2 : 23.8;
 
       const addRamenCustomers = (buildingS: number, buildingLat: number) => {
@@ -4072,15 +4077,38 @@ class Engine {
         const sidewalkLat = buildingLat < 0 ? -5.35 : 13.0;
         add("ramen_customer", buildingS - 1.05, sidewalkLat, 0.14, 0);
         add("ramen_customer", buildingS + 1.05, sidewalkLat + (buildingLat < 0 ? 0.28 : -0.28), 0.14, 3);
+        add("lantern", buildingS - 2.0, sidewalkLat, 0.14, 0);
+        add("lantern", buildingS + 2.0, sidewalkLat, 0.14, 1);
+        add("neon_sign", buildingS + 2.55, sidewalkLat, 0.14, 1);
+      };
+
+      const addKonbiniCustomers = (buildingS: number, buildingLat: number) => {
+        const sidewalkLat = buildingLat < 0 ? -5.25 : 12.85;
+        add("shopper", buildingS - 1.05, sidewalkLat, 0.14, 0);
+        add("shopper", buildingS + 1.15, sidewalkLat + (buildingLat < 0 ? 0.32 : -0.32), 0.14, 2);
+        add("vending", buildingS - 2.25, sidewalkLat, 0.12, 0);
+        add("mamachari", buildingS + 2.15, sidewalkLat, 0.12, 0);
+        add("sidewalk_planter", buildingS + 2.65, sidewalkLat, 0.12, 1);
+      };
+
+      const addShibuyaShopFrontage = (asset: ShibuyaBuildingId, buildingS: number, buildingLat: number) => {
+        if (asset === "ramen") addRamenCustomers(buildingS, buildingLat);
+        if (asset === "konbini") addKonbiniCustomers(buildingS, buildingLat);
+        if (asset === "izakaya") {
+          const sidewalkLat = buildingLat < 0 ? -5.25 : 12.85;
+          add("lantern", buildingS - 1.75, sidewalkLat, 0.14, 2);
+          add("lantern", buildingS + 1.75, sidewalkLat, 0.14, 0);
+          add("mamachari", buildingS + 2.25, sidewalkLat, 0.12, 2);
+        }
       };
 
       // 1. Near frontage: one exact transferred Shibuya Blocks asset every chunk.
       add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
-      if (nearBld === "ramen") addRamenCustomers(6, -10.2);
+      addShibuyaShopFrontage(nearBld, 6, -10.2);
 
       // 2. Far frontage: the next exact asset, visible across the full Shibuya avenue.
       add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
-      if (farBld === "ramen") addRamenCustomers(6, farLat);
+      addShibuyaShopFrontage(farBld, 6, farLat);
 
       // 3. Background landmark row: Tokyo Tower District brings its surrounding buildings,
       // while the other entries preserve their original Shibuya Blocks silhouettes.

@@ -192,6 +192,16 @@ export function getShibuyaRamenCustomerGeo(id: ShibuyaCharacterId) {
   return getGeometryPair(`shibuya-ramen-customer-${id}`, () => getShibuyaRamenCustomerParts(id));
 }
 
+/** Shopping customers reuse the Shibuya Blocks bag/browse rig for Konbini frontage. */
+export function getShibuyaShopperParts(id: ShibuyaCharacterId): Part[] {
+  const data = citizenActivityModel(buildCharacters(id), id, "shopping");
+  return convertRiggedToParts(data, { rotateY: 0, targetHeight: id === "sumo" ? 1.82 : 1.74 });
+}
+
+export function getShibuyaShopperGeo(id: ShibuyaCharacterId) {
+  return getGeometryPair(`shibuya-shopper-${id}`, () => getShibuyaShopperParts(id));
+}
+
 // ---------------------- 2. Little Japan Friends ----------------------
 const ANIMAL_HEIGHT_TARGETS: Record<ShibuyaAnimalId, number> = {
   shiba: 0.82,

@@ -17,6 +17,8 @@ export interface Part {
   rz?: number;
   /** self-luminous part (neon sign, lit window, headlight): rendered unlit at full brightness */
   glow?: boolean;
+  /** translucent source voxel, used by Shibuya Blocks glass panes */
+  opacity?: number;
 }
 
 const tmpColor = new THREE.Color();
@@ -70,13 +72,20 @@ export function getGeometry(key: string, make: () => Part[]): THREE.BufferGeomet
 export interface GeoPair {
   lit: THREE.BufferGeometry;
   glow: THREE.BufferGeometry | null;
+  /** Translucent geometry is kept separate so source storefront interiors remain visible. */
+  transparent: THREE.BufferGeometry | null;
 }
 
-/** Split parts into lit + glow geometries so signs/windows shine at night. */
+/** Split parts into lit, glow, and translucent geometries so source glass stays readable. */
 export function buildVoxelPair(parts: Part[]): GeoPair {
   const glowParts = parts.filter((p) => p.glow);
-  if (glowParts.length === 0) return { lit: buildVoxelGeometry(parts), glow: null };
-  return { lit: buildVoxelGeometry(parts.filter((p) => !p.glow)), glow: buildVoxelGeometry(glowParts) };
+  const transparentParts = parts.filter((p) => !p.glow && (p.opacity ?? 1) < 0.98);
+  const litParts = parts.filter((p) => !p.glow && (p.opacity ?? 1) >= 0.98);
+  return {
+    lit: buildVoxelGeometry(litParts),
+    glow: glowParts.length ? buildVoxelGeometry(glowParts) : null,
+    transparent: transparentParts.length ? buildVoxelGeometry(transparentParts) : null,
+  };
 }
 
 const pairCache = new Map<string, GeoPair>();
@@ -93,6 +102,10 @@ export function getGeometryPair(key: string, make: () => Part[]): GeoPair {
 
 /** Shared flat-shaded material for all voxel models. */
 export const voxelMaterial = applyCurve(new THREE.MeshLambertMaterial({ vertexColors: true }));
+/** Shared low-opacity material for source glass panels; storefront contents remain visible. */
+export const transparentVoxelMaterial = applyCurve(
+  new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }),
+);
 
 /** Unlit material for self-luminous parts: neon boxes glow evenly no matter how dark the night is
  *  (still bends with the world curve and fades into the distance haze). */

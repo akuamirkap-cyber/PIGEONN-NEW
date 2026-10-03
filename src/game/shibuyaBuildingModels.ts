@@ -64,6 +64,16 @@ export function getShibuyaBuildingParts(id: ShibuyaBuildingId): Part[] {
   const d = getAssetData(id);
   const floorY = d.floorY ?? 0.73;
   const storeBoxes = d.boxes.filter((b) => b.part !== "setting");
+  // Shibuya Blocks marks the surrounding diorama as `setting`. Keep the small props
+  // (trees, poles, lamps, planters, bicycle parts and frontage trim), but leave out
+  // the large road/ground slabs because Pigeon SK8 owns the playable road surface.
+  const settingDecor = d.boxes.filter((b) =>
+    b.part === "setting" &&
+    b.s[0] <= 4.2 &&
+    b.s[2] <= 4.2 &&
+    b.s[1] >= 0.08 &&
+    b.p[1] + b.s[1] > 0.42,
+  );
 
   let minX = 1e9,
     maxX = -1e9,
@@ -113,6 +123,30 @@ export function getShibuyaBuildingParts(id: ShibuyaBuildingId): Part[] {
       ry: b.rotation ? b.rotation[1] : undefined,
       rz: b.rotation ? b.rotation[2] : undefined,
       glow: (b.glow ?? 0) > 0.1,
+      opacity: b.opacity,
+    });
+  }
+
+  // 2b. Small diorama details copied from the same source asset. These are deliberately
+  // kept in the same local coordinate system as the shop so the street frontage reads
+  // like Shibuya Blocks instead of a bare floating building.
+  for (const b of settingDecor) {
+    const x = b.p[0] + b.s[0] / 2 - cx;
+    const y = b.p[1] + b.s[1] / 2 - floorY;
+    const z = b.p[2] + b.s[2] / 2 - frontZ;
+    parts.push({
+      x,
+      y,
+      z,
+      w: b.s[0],
+      h: b.s[1],
+      d: b.s[2],
+      color: b.color,
+      rx: b.rotation ? b.rotation[0] : undefined,
+      ry: b.rotation ? b.rotation[1] : undefined,
+      rz: b.rotation ? b.rotation[2] : undefined,
+      glow: (b.glow ?? 0) > 0.1,
+      opacity: b.opacity,
     });
   }
 

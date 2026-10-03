@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useReducer, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, pick, voxelMaterial, type GeoPair } from "./voxel";
+import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, pick, transparentVoxelMaterial, voxelMaterial, type GeoPair } from "./voxel";
 import { applyCurve } from "./curve";
 import {
   CHUNK_LEN,
@@ -134,6 +134,7 @@ import {
   getShibuyaAnimalGeo,
   getShibuyaCharacterGeo,
   getShibuyaRamenCustomerGeo,
+  getShibuyaShopperGeo,
   getShibuyaMotorcycleGeo,
   getShibuyaMotorcycleLightsGeo,
   getShibuyaSalarymanGeo,
@@ -193,6 +194,10 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "ramen_customer": {
         const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
         return getShibuyaRamenCustomerGeo(customer);
+      }
+      case "shopper": {
+        const customer = (["student", "salaryman", "sumo", "yakuza"] as const)[Math.abs(d.variant) % 4];
+        return getShibuyaShopperGeo(customer);
       }
       case "machiya":
         return getShibuyaBuildingGeoPair("machiya");
@@ -257,8 +262,8 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       };
   }, [d, geo]);
   useFrame(() => {
-    if (d.kind !== "ramen_customer" || !groupRef.current) return;
-    // Reuse the Shibuya Blocks eating pose and add a tiny seated breathing motion.
+    if ((d.kind !== "ramen_customer" && d.kind !== "shopper") || !groupRef.current) return;
+    // Reuse the Shibuya Blocks activity pose and add a tiny living motion.
     groupRef.current.position.y = d.pos[1] + Math.sin(engine.time * 2.2 + d.variant) * 0.018;
   });
 
@@ -266,6 +271,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "house" ||
     d.kind === "ramen" ||
     d.kind === "ramen_customer" ||
+    d.kind === "shopper" ||
     d.kind === "machiya" ||
     d.kind === "building" ||
     d.kind === "village_house" ||
@@ -282,6 +288,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip}>
       <mesh geometry={geo.lit} material={voxelMaterial} castShadow={d.kind !== "flowers"} receiveShadow />
       {geo.glow && <mesh geometry={geo.glow} material={glowMaterial} />}
+      {geo.transparent && <mesh geometry={geo.transparent} material={transparentVoxelMaterial} renderOrder={2} />}
     </group>
   );
 });
