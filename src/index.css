@@ -398,7 +398,9 @@ body,
   flex: 0 0 auto;
   background-position: 0 0;
   background-repeat: no-repeat;
-  animation: skin-thumb-showcase 2.24s steps(16, end) infinite;
+  will-change: background-position;
+  animation: skin-thumb-showcase 2.24s steps(16, end) infinite !important;
+  animation-play-state: running !important;
   image-rendering: auto;
 }
 
