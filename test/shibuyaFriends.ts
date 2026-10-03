@@ -8,6 +8,7 @@ import {
   ANIMAL_HEIGHT_TARGETS,
   SHIBUYA_ANIMALS,
   SHIBUYA_PLAYABLE_HEIGHT,
+  buildShibuyaAnimalRig,
   getShibuyaAnimalParts,
   getShibuyaAnimalPlayerScale,
   getShibuyaAnimalPushFootGeo,
@@ -31,6 +32,9 @@ check("canonical roster has exactly eight source animals", SHIBUYA_ANIMALS.lengt
 check("all eight source animal geometries resolve from Shibuya Blocks", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalParts(id).length > 0));
 check("all eight playable Friends are 20 percent taller than the Pigeon reference", SHIBUYA_ANIMALS.every((id) => Math.abs(ANIMAL_HEIGHT_TARGETS[id] * getShibuyaAnimalPlayerScale(id) - SHIBUYA_PLAYABLE_HEIGHT) < 1e-9));
 check("all eight have a right-foot push contact rig", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalPushFootGeo(id).attributes.position.count > 0));
+const animatedRigs = SHIBUYA_ANIMALS.map((id) => buildShibuyaAnimalRig(id));
+check("all eight playable Friends keep an active source Play animation", animatedRigs.every((rig) => rig.group.children.length > 0 && rig.clips.length > 0 && rig.activeClip === "Play"));
+animatedRigs.forEach((rig) => rig.dispose());
 check("all eight Little Japan Friends are free selectable skins", friendSkins.length === 8 && friendSkinIds.every((id) => friendSkins.some((skin) => skin.id === id && skin.cost === 0 && skin.friend)), friendSkins.map((skin) => skin.id).join(", "));
 
 useUI.getState().setTrackMode("shibuya");

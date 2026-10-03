@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { buildCharacters } from "../shibuya/voxel/characters";
 import { buildAnimals } from "../shibuya/voxel/animals";
+import { buildRigAnimations } from "../shibuya/voxel/rig";
 import { buildVehicles } from "../shibuya/voxel/vehicles";
 import { citizenActivityModel } from "../shibuya/world/citizenActivities";
-import { type Part, getGeometry, getGeometryPair } from "./voxel";
+import { buildVoxelGeometry, type Part, getGeometry, getGeometryPair, voxelMaterial } from "./voxel";
 import type { AssetData } from "../shibuya/voxel/types";
 
 export type ShibuyaCharacterId = "salaryman" | "student" | "chef" | "yakuza" | "sumo";
@@ -240,6 +241,85 @@ export function getShibuyaAnimalParts(id: ShibuyaAnimalId): Part[] {
 
 export function getShibuyaAnimalGeo(id: ShibuyaAnimalId) {
   return getGeometry(`shibuya-animal-${id}`, () => getShibuyaAnimalParts(id));
+}
+
+/**
+ * Runtime source rig for playable Friends. Unlike the old flattened preview
+ * geometry, this keeps every original Shibuya Blocks node and Play animation,
+ * so tails, arms, wings, heads, and legs do not behave like a statue.
+ */
+export interface ShibuyaAnimalRig {
+  group: THREE.Group;
+  mixer: THREE.AnimationMixer;
+  clips: THREE.AnimationClip[];
+  activeClip: string | null;
+  dispose: () => void;
+}
+
+export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
+  const data = buildAnimals(id);
+  const raw = new THREE.Group();
+  raw.name = `animal_${id}_source`;
+  const nodes = new Map<string, THREE.Group>();
+  for (const node of data.nodes ?? []) {
+    const group = new THREE.Group();
+    group.name = node.name;
+    group.position.set(...node.p);
+    if (node.rotation) group.rotation.set(...node.rotation);
+    nodes.set(node.name, group);
+  }
+  for (const node of data.nodes ?? []) {
+    const group = nodes.get(node.name)!;
+    (node.parent ? nodes.get(node.parent)! : raw).add(group);
+  }
+
+  const geometries: THREE.BufferGeometry[] = [];
+  for (const box of data.boxes.filter((item) => item.part !== "setting")) {
+    const geometry = buildVoxelGeometry([{
+      x: box.p[0] + box.s[0] / 2,
+      y: box.p[1] + box.s[1] / 2,
+      z: box.p[2] + box.s[2] / 2,
+      w: box.s[0],
+      h: box.s[1],
+      d: box.s[2],
+      color: box.color,
+      rx: box.rotation?.[0],
+      ry: box.rotation?.[1],
+      rz: box.rotation?.[2],
+      glow: (box.glow ?? 0) > 0.1,
+    }]);
+    geometries.push(geometry);
+    const mesh = new THREE.Mesh(geometry, voxelMaterial);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    (box.node ? nodes.get(box.node)! : raw).add(mesh);
+  }
+  raw.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(raw);
+  const rawHeight = Math.max(0.001, bounds.max.y - bounds.min.y);
+  raw.position.set(-(bounds.min.x + bounds.max.x) / 2, -bounds.min.y, -(bounds.min.z + bounds.max.z) / 2);
+
+  const group = new THREE.Group();
+  group.name = `playable-shibuya-${id}`;
+  group.rotation.y = Math.PI / 2;
+  group.scale.setScalar((ANIMAL_HEIGHT_TARGETS[id] > 0 ? getShibuyaAnimalPlayerScale(id) : 1) * (ANIMAL_HEIGHT_TARGETS[id] / rawHeight));
+  group.add(raw);
+  const clips = buildRigAnimations(group, data);
+  const mixer = new THREE.AnimationMixer(group);
+  const play = clips.find((clip) => clip.name === "Play") ?? clips.find((clip) => clip.name === "Iconic") ?? clips[0];
+  if (play) mixer.clipAction(play).play();
+
+  return {
+    group,
+    mixer,
+    clips,
+    activeClip: play?.name ?? null,
+    dispose: () => {
+      mixer.stopAllAction();
+      mixer.uncacheRoot(group);
+      geometries.forEach((geometry) => geometry.dispose());
+    },
+  };
 }
 
 /**

@@ -7,7 +7,7 @@ import { useUI } from "./store";
 import { charBodyParts, charHeadParts, charTailParts, charWingParts, deckParts, getSkin, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT } from "./skins";
 import { RIG, LegRig } from "./pigeonRig";
 import { nosTankParts } from "./models";
-import { getShibuyaAnimalGeo, getShibuyaAnimalPlayerScale, getShibuyaAnimalPushFootGeo } from "./shibuyaPacks";
+import { buildShibuyaAnimalRig, getShibuyaAnimalPlayerScale, getShibuyaAnimalPushFootGeo } from "./shibuyaPacks";
 
 /** Max truck steering angle (rad) at full lean — real trucks turn ~10–20° with the deck tilted ~15–20° */
 const TRUCK_MAX = 0.42;
@@ -53,7 +53,7 @@ export function Player() {
   const bank = useRef<THREE.Group>(null);
   const board = useRef<THREE.Group>(null);
   const pigeon = useRef<THREE.Group>(null);
-  const friendMesh = useRef<THREE.Mesh>(null);
+  const friendModel = useRef<THREE.Group>(null);
   const friendPushFoot = useRef<THREE.Group>(null);
   const torso = useRef<THREE.Group>(null); // body+head+wings; leans about the hips while the legs stay planted
   const head = useRef<THREE.Mesh>(null);
@@ -87,7 +87,7 @@ export function Player() {
   // Little Japan Friends use the original Shibuya Blocks geometry as one full
   // mesh. Do not run it through the pigeon body/head rig: that would distort
   // quadrupeds, the crane, and the capybara's bath setting.
-  const friendGeo = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalGeo(skin.friend) : null), [skin.kind, skin.friend]);
+  const friendRig = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? buildShibuyaAnimalRig(skin.friend) : null), [skin.kind, skin.friend]);
   const friendScale = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalPlayerScale(skin.friend) : 1), [skin.kind, skin.friend]);
   const friendFootGeo = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalPushFootGeo(skin.friend) : null), [skin.kind, skin.friend]);
   const flameMats = useMemo(
@@ -105,6 +105,7 @@ export function Player() {
   const starMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ffd166" }), []);
   useEffect(() => () => { starGeo.dispose(); starMat.dispose(); }, [starGeo, starMat]);
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos]);
+  useEffect(() => () => friendRig?.dispose(), [friendRig]);
   // IK legs: [0] = pushing leg on the camera side (+z), [1] = planted leg (-z)
   const legs = useMemo(() => [new LegRig(skin), new LegRig(skin)], [skin]);
   useEffect(() => () => legs.forEach((l) => l.dispose()), [legs]);
@@ -120,6 +121,7 @@ export function Player() {
     const ts = torso.current;
     const hd = head.current;
     if (!r || !yg || !bk || !bd || !pg || !ts || !hd) return;
+    friendRig?.mixer.update(dt);
     const [legPush, legPlant] = legs;
 
     const crashed = engine.phase === "crashed" || engine.phase === "gameover";
@@ -233,16 +235,17 @@ export function Player() {
       pg.rotation.set(0, 0, p.pitch * 0.5 + (g > 0 ? g * 0.35 : 0) + (g < 0 ? g * 0.25 : 0));
       pg.scale.set(PS * (1 + 0.18 * s), PS * (1 - 0.32 * s + idle), PS * (1 + 0.18 * s));
 
-      if (friendMesh.current && friendGeo) {
+      if (friendModel.current && friendRig) {
         // Keep the source animal recognizable in the air: a small centered tuck
-        // and board-following lean, without stretching any individual source box.
+        // and board-following lean, while the source Play clip animates its
+        // individual tail, arms, wings, head, and legs underneath.
         const jumpPose = airborne ? Math.min(1, p.airT * 7) : 0;
-        friendMesh.current.position.y = 0.018 * jumpPose;
-        friendMesh.current.rotation.set(-0.14 * jumpPose + p.pitch * 0.22, p.boardYaw * 0.12, p.roll * 0.18);
-        friendMesh.current.scale.set(
-          friendScale * (1 + 0.035 * jumpPose),
-          friendScale * (1 - 0.075 * jumpPose),
-          friendScale * (1 + 0.035 * jumpPose),
+        friendModel.current.position.y = 0.018 * jumpPose;
+        friendModel.current.rotation.set(-0.14 * jumpPose + p.pitch * 0.22, p.boardYaw * 0.12, p.roll * 0.18);
+        friendModel.current.scale.set(
+          1 + 0.035 * jumpPose,
+          1 - 0.075 * jumpPose,
+          1 + 0.035 * jumpPose,
         );
       }
       if (friendPushFoot.current && friendFootGeo) {
@@ -334,10 +337,10 @@ export function Player() {
       bk.rotation.x = 0;
       bk.position.set(0, 0, 0);
       pg.scale.set(PS, PS, PS);
-      if (friendMesh.current && friendGeo) {
-        friendMesh.current.position.set(0, 0, 0);
-        friendMesh.current.rotation.set(0, 0, 0);
-        friendMesh.current.scale.setScalar(friendScale);
+      if (friendModel.current && friendRig) {
+        friendModel.current.position.set(0, 0, 0);
+        friendModel.current.rotation.set(0, 0, 0);
+        friendModel.current.scale.setScalar(1);
       }
       if (friendPushFoot.current) friendPushFoot.current.visible = false;
 
@@ -596,19 +599,23 @@ export function Player() {
               </group>
             </group>
             <group ref={pigeon} position={[0, RIG.pigeonY, 0]}>
-              {friendGeo && <mesh ref={friendMesh} geometry={friendGeo} material={voxelMaterial} scale={friendScale} castShadow receiveShadow />}
+              {friendRig && (
+                <group ref={friendModel}>
+                  <primitive object={friendRig.group} />
+                </group>
+              )}
               {friendFootGeo && (
                 <group ref={friendPushFoot} visible={false}>
                   <mesh geometry={friendFootGeo} material={voxelMaterial} scale={friendScale} castShadow receiveShadow />
                 </group>
               )}
-              {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal skin. */}
-              <group visible={!friendGeo}>
+              {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal rig. */}
+              <group visible={!friendRig}>
                 {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
                 <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
                 <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
               </group>
-              <group ref={torso} name="pigeon-torso" visible={!friendGeo}>
+              <group ref={torso} name="pigeon-torso" visible={!friendRig}>
                 <mesh geometry={geos.body} material={voxelMaterial} castShadow receiveShadow />
                 <mesh ref={tail} geometry={geos.tail} material={voxelMaterial} position={TAIL_ROOT} castShadow />
                 <mesh ref={head} name="pigeon-head" geometry={geos.head} material={voxelMaterial} position={[0.32, 1.04, 0]} rotation={[0, 0, 0]} castShadow />
