@@ -330,11 +330,11 @@ function MainMenu() {
       </div>
 
       {/* ── Title: clear two-line lockup with breathing room below it ── */}
-      <div className="absolute left-0 right-0 top-[10.5%] z-10 flex flex-col items-center">
-        <div className="crossy-title crossy-title-white font-display text-[12.8cqw] leading-[0.9] tracking-[-0.035em] text-white">
+      <div className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center">
+        <div className="crossy-title crossy-title-white font-display text-[10.8cqw] leading-[0.9] tracking-[-0.03em] text-white">
           PIGEON
         </div>
-        <div className="crossy-title crossy-title-yellow font-display text-[16.8cqw] leading-[0.86] tracking-[-0.045em] text-[#ffd23f]">
+        <div className="crossy-title crossy-title-yellow font-display text-[14.5cqw] leading-[0.86] tracking-[-0.04em] text-[#ffd23f]">
           SK8
         </div>
       </div>
@@ -348,11 +348,11 @@ function MainMenu() {
             sfx.click();
             setShowMysteryBox(true);
           }}
-          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 rounded-xl border-2 border-white/90 bg-[#fff4c7]/95 px-3.5 py-1.5 shadow-[0_3px_0_#d5a92e] transition-transform hover:scale-[1.02] active:scale-95"
+          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 px-3.5 py-1.5 transition-transform hover:scale-[1.02] active:scale-95"
         >
           <span className="text-xl">🎁</span>
           <div className="flex flex-col items-start leading-none">
-            <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#a65d16]">
+            <span className="txt-outline-sm font-body text-[2.2cqw] font-extrabold tracking-wider text-[#fff4c7]">
               DAILY WORD HUNT
             </span>
             <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-[#1f405b]">
@@ -378,11 +378,11 @@ function MainMenu() {
             sfx.click();
             window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
           }}
-          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-lg border border-white/90 bg-[#d9fff0]/95 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-[#176b67] whitespace-nowrap shadow-[0_2px_0_#80cfc0] transition-all hover:bg-white active:scale-95"
+          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-white whitespace-nowrap transition-all active:scale-95"
         >
           <span>🏙️</span>
           <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
-          <span className="text-[#176b67]/70">→</span>
+          <span className="text-white/90">→</span>
         </button>
       </div>
 
