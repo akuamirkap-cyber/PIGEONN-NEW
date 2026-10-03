@@ -1607,6 +1607,15 @@ class Engine {
     p.board = board;
     p.impactDir = side;
     p.limbT = 0;
+    // Helix Jump-style impact feedback: a readable bounce ring, radial POW
+    // shards, and a strong camera punch at the exact collision point.
+    track.frame(this.distance, p.lat, Math.max(p.h, 0.4), tmpV);
+    const impactColor: [number, number, number] = cause === "pedestrian" ? [0.35, 0.95, 0.8] : [1, 0.38, 0.16];
+    this.spawnPulse(tmpV.x, tmpV.y, tmpV.z, { max: 0.7, r0: 0.42, r1: 4.8, color: impactColor });
+    this.emitWorld("pow", tmpV.x, tmpV.y, tmpV.z, tmpV.y - 0.35, 28, 0, 0);
+    this.emitWorld("spark", tmpV.x, tmpV.y + 0.2, tmpV.z, tmpV.y - 0.35, 20, 0, 0);
+    this.punch = Math.max(this.punch, 0.75);
+    this.shake = Math.max(this.shake, 1.15);
     this.emit("feather", 0, p.h + 0.5, p.lat, 42);
     this.emit("dust", 0, 0.05, p.lat, 24);
     sfx.crash();
@@ -5448,9 +5457,11 @@ class Engine {
    * dan kamera cuma dapat nudge zoom tipis.
    */
   private animalImpactFx(x: number, y: number, z: number, floorY: number, color: [number, number, number]) {
-    this.spawnPulse(x, y, z, { max: 0.28, r0: 0.35, r1: 1.7, color });
-    this.emitWorld("pow", x, y, z, floorY, 7, 0, 0);
-    this.punch = ANIMAL_PUNCH;
+    this.spawnPulse(x, y, z, { max: 0.42, r0: 0.35, r1: 2.8, color });
+    this.emitWorld("pow", x, y, z, floorY, 14, 0, 0);
+    this.emitWorld("spark", x, y + 0.15, z, floorY, 10, 0, 0);
+    this.punch = Math.max(this.punch, ANIMAL_PUNCH);
+    this.shake = Math.max(this.shake, 0.35);
   }
 
   /** Asap knalpot untuk kendaraan yang sedang berjalan (dipanggil tiap frame, dibatasi timer). */

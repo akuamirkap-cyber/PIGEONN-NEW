@@ -80,6 +80,46 @@ body,
   animation: bread-counter-pop 0.42s cubic-bezier(0.2, 1.5, 0.4, 1);
 }
 
+/* Helix Jump-style impact: a fast flash, ring expansion and radial motion lines. */
+.collision-impact-screen {
+  animation: collision-impact-screen 0.62s cubic-bezier(0.15, 0.8, 0.25, 1) both;
+  background: radial-gradient(circle at center, rgba(255, 236, 94, 0.3), rgba(255, 94, 65, 0.12) 20%, transparent 55%);
+}
+.collision-impact-ring {
+  animation: collision-impact-ring 0.62s cubic-bezier(0.12, 0.8, 0.25, 1) both;
+  box-shadow: 0 0 18px 8px rgba(255, 239, 120, 0.85), inset 0 0 18px rgba(255, 94, 65, 0.9);
+}
+.collision-impact-lines {
+  animation: collision-impact-lines 0.62s cubic-bezier(0.12, 0.8, 0.25, 1) both;
+}
+.collision-impact-lines span {
+  position: absolute;
+  left: calc(50% - 4px);
+  bottom: 50%;
+  width: 8px;
+  height: 132px;
+  border-radius: 999px;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,126,77,0.9), transparent);
+  box-shadow: 0 0 10px rgba(255, 145, 92, 0.95);
+}
+@keyframes collision-impact-screen {
+  0% { opacity: 0; transform: scale(1.08); }
+  10% { opacity: 1; transform: scale(1); }
+  35% { opacity: 0.85; }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+@keyframes collision-impact-ring {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.15); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3.2); }
+}
+@keyframes collision-impact-lines {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-12deg); }
+  14% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(18deg); }
+}
+
 /* Full-screen pickup burst: always visible above the 3D scene like Subway Surfers. */
 .bread-pickup-screen {
   animation: bread-pickup-screen 0.78s cubic-bezier(0.18, 0.9, 0.28, 1) both;
@@ -186,6 +226,10 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .shine,
   .bread-counter-pop,
+  .bread-pickup-screen,
+  .collision-impact-screen,
+  .collision-impact-ring,
+  .collision-impact-lines,
   .pulse,
   .popup,
   .card-in,

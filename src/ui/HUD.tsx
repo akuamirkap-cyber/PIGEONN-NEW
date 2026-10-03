@@ -45,6 +45,12 @@ export function HUD() {
     if (bread > previousBread.current) setBreadFlash((value) => value + 1);
     previousBread.current = bread;
   }, [bread]);
+  const previousPhase = useRef(phase);
+  const [collisionFlash, setCollisionFlash] = useState(0);
+  useEffect(() => {
+    if (phase === "crashed" && previousPhase.current !== "crashed") setCollisionFlash((value) => value + 1);
+    previousPhase.current = phase;
+  }, [phase]);
 
   const locationLabel = trackMode === "shibuya"
     ? `SHIBUYA ${shibuyaTime.toUpperCase()} ${dist} M`
@@ -63,6 +69,15 @@ export function HUD() {
             <BreadIcon size={110} />
           </div>
           <div className="bread-pickup-label font-display text-[7cqw] leading-none text-white txt-outline-sm">+1 BREAD</div>
+        </div>
+      )}
+      {phase === "crashed" && collisionFlash > 0 && (
+        <div key={collisionFlash} className="collision-impact-screen pointer-events-none absolute inset-0 z-[60] flex items-center justify-center">
+          <div className="collision-impact-ring absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border-[8px] border-white/90" />
+          <div className="collision-impact-lines absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2">
+            {Array.from({ length: 12 }, (_, index) => <span key={index} style={{ transform: `rotate(${index * 30}deg)` }} />)}
+          </div>
+          <div className="collision-impact-label font-display text-[11cqw] text-[#fff8b0] txt-outline">BOOM!</div>
         </div>
       )}
 
