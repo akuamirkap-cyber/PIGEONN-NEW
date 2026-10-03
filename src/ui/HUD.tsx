@@ -56,13 +56,13 @@ export function HUD() {
     <div className="pointer-events-none absolute inset-0 z-20 select-none">
       {inRun && breadFlash > 0 && (
         <div key={breadFlash} className="bread-pickup-screen absolute left-1/2 top-[46%] z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-          <div className="bread-pickup-rays absolute inset-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2">
+          <div className="bread-pickup-rays absolute inset-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2">
             {Array.from({ length: 10 }, (_, index) => <span key={index} style={{ transform: `rotate(${index * 36}deg)` }} />)}
           </div>
-          <div className="bread-pickup-flare relative flex h-28 w-28 items-center justify-center rounded-full">
-            <BreadIcon size={70} />
+          <div className="bread-pickup-flare relative flex h-56 w-56 items-center justify-center rounded-full">
+            <BreadIcon size={110} />
           </div>
-          <div className="bread-pickup-label font-display text-[5.4cqw] leading-none text-white txt-outline-sm">+1 BREAD</div>
+          <div className="bread-pickup-label font-display text-[7cqw] leading-none text-white txt-outline-sm">+1 BREAD</div>
         </div>
       )}
 
