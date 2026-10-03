@@ -390,3 +390,13 @@ body,
   filter: blur(0.32rem);
   transform: rotate(-6deg);
 }
+
+/* One shared requestAnimationFrame clock updates every real WebGL frame in lockstep. */
+.skin-thumb-spin {
+  display: block;
+  flex: 0 0 auto;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  will-change: background-position;
+  image-rendering: auto;
+}

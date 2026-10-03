@@ -4,17 +4,52 @@ import { useUI } from "./store";
 import { buildPigeonGroup } from "./pigeonRig";
 import { curveUniforms } from "./curve";
 
-const THUMB_FRAME_COUNT = 8;
-const cache = new Map<string, string[]>();
+export const THUMB_FRAME_COUNT = 16;
+const cache = new Map<string, { first: string; sprite: string }>();
+const spinningThumbs = new Set<HTMLElement>();
 let failed = false;
 let listeners: (() => void)[] = [];
+let spinStart = 0;
+let spinRaf = 0;
+let lastSpinFrame = -1;
 
-export function getThumb(id: string): string | undefined {
-  return cache.get(id)?.[0];
+function tickThumbSpin(now: number) {
+  const frame = Math.floor((now - spinStart) / 105) % THUMB_FRAME_COUNT;
+  if (frame !== lastSpinFrame) {
+    const position = `${(frame / (THUMB_FRAME_COUNT - 1)) * 100}% 0%`;
+    spinningThumbs.forEach((element) => {
+      element.style.backgroundPosition = position;
+    });
+    lastSpinFrame = frame;
+  }
+  spinRaf = window.requestAnimationFrame(tickThumbSpin);
 }
 
-export function getThumbFrames(id: string): string[] | undefined {
-  return cache.get(id);
+/** Register each visible card with one shared clock so every skin turns together. */
+export function registerThumbSpin(element: HTMLElement) {
+  spinningThumbs.add(element);
+  element.style.backgroundPosition = "0% 0%";
+  if (!spinRaf && typeof window !== "undefined") {
+    spinStart = performance.now();
+    lastSpinFrame = -1;
+    spinRaf = window.requestAnimationFrame(tickThumbSpin);
+  }
+  return () => {
+    spinningThumbs.delete(element);
+    if (spinningThumbs.size === 0 && spinRaf) {
+      window.cancelAnimationFrame(spinRaf);
+      spinRaf = 0;
+      lastSpinFrame = -1;
+    }
+  };
+}
+
+export function getThumb(id: string): string | undefined {
+  return cache.get(id)?.first;
+}
+
+export function getThumbSprite(id: string): string | undefined {
+  return cache.get(id)?.sprite;
 }
 
 export function onThumbsReady(fn: () => void) {
@@ -25,8 +60,9 @@ export function onThumbsReady(fn: () => void) {
 }
 
 /**
- * Renders every skin from eight low-angle showcase views. The picker can then
- * cycle real 3D poses instead of flipping one flat icon with CSS.
+ * Renders every skin into one sixteen-frame sprite strip. The shared animation
+ * clock moves only background-position, avoiding React re-renders and image
+ * decoding on every frame.
  */
 export function ensureThumbs(size = 208): boolean {
   if (cache.size === SKINS.length) return true;
@@ -35,6 +71,12 @@ export function ensureThumbs(size = 208): boolean {
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
+    const spriteCanvas = document.createElement("canvas");
+    spriteCanvas.width = size * THUMB_FRAME_COUNT;
+    spriteCanvas.height = size;
+    const spriteContext = spriteCanvas.getContext("2d");
+    if (!spriteContext) return false;
+
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: "low-power" });
     renderer.setPixelRatio(1);
     renderer.setSize(size, size, false);
@@ -60,14 +102,16 @@ export function ensureThumbs(size = 208): boolean {
       const { group, dispose } = buildPigeonGroup(skin, "default", useUI.getState().wheelColor);
       group.scale.setScalar(1.1);
       scene.add(group);
-      const frames: string[] = [];
       for (let frame = 0; frame < THUMB_FRAME_COUNT; frame += 1) {
-        // Keep the first frame compatible with the old 3/4 showcase view, then orbit around the rider.
         group.rotation.y = 4.35 + (frame / THUMB_FRAME_COUNT) * Math.PI * 2;
         renderer.render(scene, cam);
-        frames.push(canvas.toDataURL("image/png"));
+        spriteContext.drawImage(canvas, frame * size, 0, size, size);
       }
-      cache.set(skin.id, frames);
+      cache.set(skin.id, {
+        first: canvas.toDataURL("image/png"),
+        sprite: spriteCanvas.toDataURL("image/png"),
+      });
+      spriteContext.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
       scene.remove(group);
       dispose();
     }
