@@ -330,11 +330,11 @@ function MainMenu() {
       </div>
 
       {/* ── Title: clear two-line lockup with breathing room below it ── */}
-      <div className="absolute left-0 right-0 top-[11.5%] z-10 flex flex-col items-center drop-shadow-[0_8px_0_rgba(22,48,78,0.16)]">
-        <div className="crossy-title crossy-title-white font-display text-[14.5cqw] leading-[0.9] tracking-[-0.04em] text-white">
+      <div className="absolute left-0 right-0 top-[10.5%] z-10 flex flex-col items-center">
+        <div className="crossy-title crossy-title-white font-display text-[12.8cqw] leading-[0.9] tracking-[-0.035em] text-white">
           PIGEON
         </div>
-        <div className="crossy-title crossy-title-yellow font-display text-[19cqw] leading-[0.86] tracking-[-0.05em] text-[#ffd23f]">
+        <div className="crossy-title crossy-title-yellow font-display text-[16.8cqw] leading-[0.86] tracking-[-0.045em] text-[#ffd23f]">
           SK8
         </div>
       </div>
@@ -348,7 +348,7 @@ function MainMenu() {
             sfx.click();
             setShowMysteryBox(true);
           }}
-          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 rounded-2xl border-2 border-white/90 bg-[#fff4c7]/95 px-3.5 py-1.5 shadow-[0_4px_0_#d5a92e,0_8px_18px_rgba(45,91,115,0.18)] backdrop-blur-sm transition-transform hover:scale-[1.03] active:scale-95"
+          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 rounded-xl border-2 border-white/90 bg-[#fff4c7]/95 px-3.5 py-1.5 shadow-[0_3px_0_#d5a92e] transition-transform hover:scale-[1.02] active:scale-95"
         >
           <span className="text-xl">🎁</span>
           <div className="flex flex-col items-start leading-none">
@@ -378,7 +378,7 @@ function MainMenu() {
             sfx.click();
             window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
           }}
-          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-xl border-2 border-white/90 bg-[#d9fff0]/95 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-[#176b67] whitespace-nowrap shadow-[0_3px_0_#80cfc0,0_6px_14px_rgba(45,91,115,0.16)] backdrop-blur-sm transition-all hover:bg-white active:scale-95"
+          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-lg border border-white/90 bg-[#d9fff0]/95 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-[#176b67] whitespace-nowrap shadow-[0_2px_0_#80cfc0] transition-all hover:bg-white active:scale-95"
         >
           <span>🏙️</span>
           <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
