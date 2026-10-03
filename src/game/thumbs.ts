@@ -42,7 +42,9 @@ export function ensureThumbs(size = 208): boolean {
     sun.position.set(-2, 25, 4.5);
     scene.add(sun);
 
-    const half = 1.1;
+    // Keep the rig readable inside the larger cards: a slightly tighter ortho frame
+    // makes the feet, board, and riding pose survive the small collection grid.
+    const half = 0.98;
     const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
     cam.position.set(-3.4, 7, 5.2).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.75, 0));
     cam.lookAt(0, 0.75, 0);

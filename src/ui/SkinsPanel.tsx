@@ -44,12 +44,12 @@ function SkinCard({ skin }: { skin: Skin }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex w-full flex-col items-center rounded-2xl px-1 pb-1.5 pt-1 shadow-[0_3px_0_rgba(0,0,0,0.12)] active:translate-y-[2px] active:shadow-none ${
+      className={`relative flex w-full flex-col items-center rounded-2xl px-1 pb-1.5 pt-1 shadow-[0_3px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
         previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : "bg-white ring-2 ring-black/5"
       }`}
     >
-      <div className="relative flex h-[19cqw] w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
-        <Thumb skin={skin} locked={!unlocked} size={72} />
+      <div className="relative flex h-[25cqw] w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
+        <Thumb skin={skin} locked={!unlocked} size={104} />
         {!unlocked && (
           <div className="absolute right-1 top-1">
             <LockIcon size={15} />
@@ -67,6 +67,22 @@ function SkinCard({ skin }: { skin: Skin }) {
         </div>
       )}
     </button>
+  );
+}
+
+function DeckPreview3D({ baguette }: { baguette: boolean }) {
+  return (
+    <div className={`deck-preview-3d ${baguette ? "deck-preview-baguette" : "deck-preview-classic"}`} aria-hidden="true">
+      <div className="deck-preview-board">
+        <div className="deck-preview-grip" />
+        <div className="deck-preview-truck deck-preview-truck-front" />
+        <div className="deck-preview-truck deck-preview-truck-back" />
+        <div className="deck-preview-wheel deck-preview-wheel-a" />
+        <div className="deck-preview-wheel deck-preview-wheel-b" />
+        <div className="deck-preview-wheel deck-preview-wheel-c" />
+        <div className="deck-preview-wheel deck-preview-wheel-d" />
+      </div>
+    </div>
   );
 }
 
@@ -92,38 +108,8 @@ function DeckCard({ deck, active, onSelect }: { deck: DeckOption; active: boolea
       </div>
 
       {/* Visual illustration of deck */}
-      <div className="my-2 flex h-[22cqw] w-full items-center justify-center rounded-xl bg-gradient-to-b from-[#f0f4f8] to-[#e1e9f0] p-2">
-        {isBaguette ? (
-          <svg viewBox="0 0 160 50" className="w-[85%] h-auto drop-shadow-md">
-            {/* Baguette loaf body */}
-            <path d="M12 25 C12 14, 25 10, 80 10 C135 10, 148 14, 148 25 C148 36, 135 40, 80 40 C25 40, 12 36, 12 25 Z" fill="#c68038" stroke="#9e5f24" strokeWidth="2.5" />
-            <path d="M20 23 C22 17, 35 14, 80 14 C125 14, 138 17, 140 23 C138 28, 125 32, 80 32 C35 32, 22 28, 20 23 Z" fill="#d99042" />
-            {/* Baker's score slashes */}
-            {[35, 55, 75, 95, 115, 130].map((x) => (
-              <g key={x}>
-                <line x1={x - 4} y1="14" x2={x + 5} y2="34" stroke="#ffffff" strokeWidth="2.8" strokeLinecap="round" />
-                <line x1={x - 2} y1="14" x2={x + 7} y2="34" stroke="#7a4216" strokeWidth="1.2" strokeLinecap="round" opacity="0.65" />
-              </g>
-            ))}
-            {/* Melting Butter pat on nose */}
-            <rect x="116" y="16" width="14" height="12" rx="3" fill="#ffe066" stroke="#d4a300" strokeWidth="1.2" />
-            <rect x="120" y="18" width="6" height="5" rx="1.5" fill="#fffbe0" />
-            {/* Butter skate wheels */}
-            <rect x="28" y="38" width="16" height="8" rx="2.5" fill="#ffe066" stroke="#c99700" strokeWidth="1" />
-            <rect x="112" y="38" width="16" height="8" rx="2.5" fill="#ffe066" stroke="#c99700" strokeWidth="1" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 160 50" className="w-[85%] h-auto drop-shadow-md">
-            {/* Classic Skateboard Deck */}
-            <rect x="15" y="14" width="130" height="18" rx="8" fill="#2ec4b6" stroke="#1f9a8f" strokeWidth="2" />
-            <rect x="20" y="17" width="120" height="12" rx="5" fill="#22262e" />
-            {/* Deck grip tape line */}
-            <line x1="80" y1="17" x2="80" y2="29" stroke="#3b4252" strokeWidth="1.5" />
-            {/* Trucks & wheels */}
-            <rect x="35" y="32" width="14" height="9" rx="2" fill="#ffd60a" stroke="#cca500" strokeWidth="1" />
-            <rect x="110" y="32" width="14" height="9" rx="2" fill="#ffd60a" stroke="#cca500" strokeWidth="1" />
-          </svg>
-        )}
+      <div className="my-2 flex h-[26cqw] w-full items-center justify-center rounded-xl bg-gradient-to-b from-[#f0f4f8] to-[#e1e9f0] p-2">
+        <DeckPreview3D baguette={isBaguette} />
       </div>
 
       <div>
@@ -231,7 +217,7 @@ export function SkinsPanel() {
       </div>
 
       {/* panel */}
-      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[62%] flex-col rounded-t-[28px] bg-[#fff8ea] shadow-[0_-8px_0_rgba(0,0,0,0.12)]">
+      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[68%] flex-col rounded-t-[26px] bg-[#fff8ea] shadow-[0_-6px_0_rgba(0,0,0,0.1)]">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 px-4 pb-2 pt-3">
           <button
