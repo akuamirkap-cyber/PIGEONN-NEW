@@ -105,6 +105,9 @@ import {
 } from "./models";
 import { useUI, type TrackMode } from "./store";
 import { getRayTexture } from "./rays";
+import { getAssetData } from "../shibuya/voxel/models";
+import { buildAssetObject, disposeAsset } from "../shibuya/voxel/renderModel";
+import { citizenActivityModel } from "../shibuya/world/citizenActivities";
 import {
   engine,
   track,
@@ -139,6 +142,71 @@ import {
   getShibuyaMotorcycleLightsGeo,
   getShibuyaSalarymanGeo,
 } from "./shibuyaPacks";
+
+type RamenCustomerId = "salaryman" | "student" | "yakuza" | "sumo" | "chef";
+
+const RamenCustomerView = memo(function RamenCustomerView({
+  d,
+  customer,
+  rotationY,
+}: {
+  d: Decor;
+  customer: RamenCustomerId;
+  rotationY: number;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const model = useMemo(() => {
+    // Use the original Shibuya Blocks node hierarchy and its Eat/EatPause clips.
+    // This keeps the bowl, chopsticks, arms, head and source body together.
+    const source = getAssetData("characters", customer);
+    const data = citizenActivityModel(source, customer, "ramen");
+    const object = buildAssetObject(data);
+    const diorama = object.getObjectByName("Diorama");
+    if (diorama) diorama.visible = false;
+    object.updateMatrixWorld(true);
+
+    const rawBounds = new THREE.Box3().setFromObject(object);
+    const rawHeight = Math.max(0.001, rawBounds.max.y - rawBounds.min.y);
+    const targetHeight = customer === "sumo" ? 1.82 : 1.74;
+    const scale = targetHeight / rawHeight;
+    object.scale.setScalar(scale);
+    object.updateMatrixWorld(true);
+
+    const bounds = new THREE.Box3().setFromObject(object);
+    const characterRoot = object.getObjectByName(`character_${customer}_root`);
+    object.position.set(
+      characterRoot ? -characterRoot.position.x * scale : -(bounds.min.x + bounds.max.x) / 2,
+      -bounds.min.y,
+      characterRoot ? -characterRoot.position.z * scale : -(bounds.min.z + bounds.max.z) / 2,
+    );
+    object.updateMatrixWorld(true);
+    return object;
+  }, [customer]);
+
+  const mixer = useMemo(() => {
+    const next = new THREE.AnimationMixer(model);
+    const clip = model.animations.find((animation) => animation.name === "Eat") ?? model.animations.find((animation) => animation.name === "EatPause");
+    if (clip) {
+      const action = next.clipAction(clip);
+      action.play();
+      next.setTime((Math.abs(d.variant) * 0.63) % clip.duration);
+    }
+    return next;
+  }, [d.variant, model]);
+
+  useEffect(() => () => {
+    mixer.stopAllAction();
+    mixer.uncacheRoot(model);
+    disposeAsset(model);
+  }, [mixer, model]);
+
+  useFrame((_, delta) => {
+    mixer.update(Math.min(delta, 0.05));
+    if (groupRef.current) groupRef.current.position.y = d.pos[1] + Math.sin(engine.time * 2.1 + d.variant) * 0.012;
+  });
+
+  return <primitive ref={groupRef} object={model} position={d.pos} rotation-y={rotationY} />;
+});
 
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
@@ -287,6 +355,10 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "tower109";
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
+  if (d.kind === "ramen_customer") {
+    const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
+    return <RamenCustomerView d={d} customer={customer} rotationY={d.rotY + flip} />;
+  }
   return (
     <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip} scale={d.spec?.assetScale ?? 1}>
       <mesh geometry={geo.lit} material={voxelMaterial} castShadow={d.kind !== "flowers"} receiveShadow />
