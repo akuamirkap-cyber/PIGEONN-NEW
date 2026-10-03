@@ -39,6 +39,7 @@ export const SHIBUYA_CHARACTERS: ShibuyaCharacterId[] = [
   "sumo",
 ];
 
+/** Complete source roster retained from Shibuya Blocks. */
 export const SHIBUYA_ANIMALS: ShibuyaAnimalId[] = [
   "shiba",
   "tanuki",
@@ -49,6 +50,9 @@ export const SHIBUYA_ANIMALS: ShibuyaAnimalId[] = [
   "crane",
   "neko",
 ];
+
+/** Pigeon SK8 gameplay roster after removing the four requested Friends. */
+export const PIGEON_SHIBUYA_ANIMALS: ShibuyaAnimalId[] = ["tanuki", "monkey", "crane", "neko"];
 
 export const SHIBUYA_MOTORCYCLES: ShibuyaMotorcycleId[] = [
   "honda",

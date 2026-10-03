@@ -16,7 +16,7 @@ import {
   type ShibuyaBuildingId,
 } from "./models";
 import {
-  SHIBUYA_ANIMALS,
+  PIGEON_SHIBUYA_ANIMALS,
   SHIBUYA_CHARACTERS,
   SHIBUYA_MOTORCYCLES,
   type ShibuyaAnimalId,
@@ -4656,21 +4656,21 @@ class Engine {
   }
 
   private nextShibuyaAnimal(): ShibuyaAnimalId {
-    const animal = SHIBUYA_ANIMALS[this.shibuyaAnimalRosterIndex % SHIBUYA_ANIMALS.length];
+    const animal = PIGEON_SHIBUYA_ANIMALS[this.shibuyaAnimalRosterIndex % PIGEON_SHIBUYA_ANIMALS.length];
     this.shibuyaAnimalRosterIndex += 1;
     return animal;
   }
 
   /**
-   * The opening Shibuya window is curated, not luck-based: all eight source
-   * animals are queued ahead of the player on the first boulevard. Crossing,
-   * waving and onsen actors share the regular mover system and are later
-   * replenished by the round-robin obstacle patterns.
+   * The opening Shibuya window is curated, not luck-based: the retained
+   * Pigeon Friend roster is queued ahead of the player on the first boulevard.
+   * Crossing, waving and onsen actors share the regular mover system and are
+   * later replenished by the round-robin obstacle patterns.
    */
   private seedShibuyaAnimalRoster() {
     if (track.mode !== "shibuya") return;
-    const activities: ShibuyaAnimalActivity[] = ["waving", "crossing", "waving", "crossing", "bathing", "bathing", "waving", "crossing"];
-    for (let i = 0; i < SHIBUYA_ANIMALS.length; i++) {
+    const activities: ShibuyaAnimalActivity[] = ["waving", "bathing", "waving", "crossing"];
+    for (let i = 0; i < PIGEON_SHIBUYA_ANIMALS.length; i++) {
       const activity = activities[i];
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
       const dir = i % 2 === 0 ? 1 : -1;
@@ -4737,16 +4737,15 @@ class Engine {
       m.delay = Math.max(0.1, eta - walk + rand(-0.9, 0.9) + i * 0.35);
       this.movers.push(m);
 
-      // Shibuya uses a deterministic source roster instead of a random subset. The
-      // cursor wraps after eight, so a run always gets Shiba, Tanuki, Kitsune,
-      // Deer, Monkey, Capybara, Crane and Neko in the same mode.
+      // Shibuya uses the deterministic retained Pigeon roster instead of a
+      // random subset. The cursor wraps after the four enabled Friends.
       if (i === 0 && (track.mode === "shibuya" || Math.random() < 0.35)) {
         const petMover = this.newMover("shibuya_animal", pedestrianS + rand(-1.2, 1.2), -1, -dir * (edge - 0.4));
         petMover.dir = dir;
         petMover.crossingEdge = edge;
         petMover.speed = rand(2.0, 2.7);
         petMover.delay = Math.max(0.1, m.delay + rand(0.05, 0.3));
-        petMover.shibuyaAnimal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(SHIBUYA_ANIMALS);
+        petMover.shibuyaAnimal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(PIGEON_SHIBUYA_ANIMALS);
         petMover.shibuyaAnimalActivity = "crossing";
         if (signal) petMover.signalIntersectionId = signal.id;
         this.movers.push(petMover);
@@ -5235,7 +5234,7 @@ class Engine {
       case "shibuya_animals": {
         // Do not let a collectible suppress the deterministic opening roster;
         // these are soft sidewalk/crossing actors, not hard obstacles.
-        if (itemNearby && !(track.mode === "shibuya" && this.shibuyaAnimalRosterIndex < SHIBUYA_ANIMALS.length)) break;
+        if (itemNearby && !(track.mode === "shibuya" && this.shibuyaAnimalRosterIndex < PIGEON_SHIBUYA_ANIMALS.length)) break;
         // Four deterministic pairs cover the complete eight-member roster in
         // the opening route; later encounters continue the same round-robin.
         const n = track.mode === "shibuya" ? 2 : 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
@@ -5249,8 +5248,8 @@ class Engine {
           const distToTarget = Math.abs(targetLat - (-dir * startEdge));
           const tWalk = distToTarget / animalSpeed;
           const delay = Math.max(0.05, eta - tWalk + (i - (n - 1) / 2) * 0.3);
-          const slot = this.shibuyaAnimalRosterIndex % SHIBUYA_ANIMALS.length;
-          const animal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(SHIBUYA_ANIMALS);
+          const slot = this.shibuyaAnimalRosterIndex % PIGEON_SHIBUYA_ANIMALS.length;
+          const animal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(PIGEON_SHIBUYA_ANIMALS);
           const activity = track.mode !== "shibuya"
             ? "crossing"
             : animal === "monkey" || animal === "capybara"

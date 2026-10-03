@@ -7,6 +7,7 @@ import { useUI } from "../src/game/store";
 import { engine } from "../src/game/engine";
 import {
   ANIMAL_HEIGHT_TARGETS,
+  PIGEON_SHIBUYA_ANIMALS,
   SHIBUYA_ANIMALS,
   SHIBUYA_PLAYABLE_HEIGHT,
   SHIBUYA_CRANE_DISPLAY_MULTIPLIER,
@@ -27,11 +28,11 @@ function check(name: string, ok: boolean, detail = "") {
   log.push(`${ok ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-const friendSkinIds = SHIBUYA_ANIMALS.map((id) => `friend-${id}`);
+const friendSkinIds = PIGEON_SHIBUYA_ANIMALS.map((id) => `friend-${id}`);
 const friendSkins = SKINS.filter((skin) => skin.kind === "littleJapanFriend");
 check("canonical roster has exactly eight source animals", SHIBUYA_ANIMALS.length === 8 && new Set(SHIBUYA_ANIMALS).size === 8, SHIBUYA_ANIMALS.join(", "));
 check("all eight source animal geometries resolve from Shibuya Blocks", SHIBUYA_ANIMALS.every((id) => getShibuyaAnimalParts(id).length > 0));
-check("seven Friends are 20 percent taller and Crane is 2x display size", SHIBUYA_ANIMALS.every((id) => {
+check("retained Friends are 20 percent taller and Crane is 2x display size", PIGEON_SHIBUYA_ANIMALS.every((id) => {
   const expected = SHIBUYA_PLAYABLE_HEIGHT * (id === "crane" ? SHIBUYA_CRANE_DISPLAY_MULTIPLIER : 1);
   return Math.abs(ANIMAL_HEIGHT_TARGETS[id] * getShibuyaAnimalPlayerScale(id) - expected) < 1e-9;
 }));
@@ -45,19 +46,19 @@ check("Shiba, Kitsune, Deer, and Capybara use upright source body posture", ["sh
 check("playable Capybara source excludes the bath setting", !getShibuyaAnimalParts("capybara").some((part) => part.color === "#9b9f8f"));
 check("Shift push uses source leg pivots instead of replacement body meshes", readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("pushPivot") && !readFileSync("src/game/shibuyaPacks.ts", "utf8").includes("PushFootGeo"));
 const animatedRigs = SHIBUYA_ANIMALS.map((id) => buildShibuyaAnimalRig(id));
-check("all eight playable Friends keep an active source Play animation", animatedRigs.every((rig) => rig.group.children.length > 0 && rig.clips.length > 0 && rig.activeClip === "Play"));
+check("all eight retained/source animal rigs keep an active source Play animation", animatedRigs.every((rig) => rig.group.children.length > 0 && rig.clips.length > 0 && rig.activeClip === "Play"));
 animatedRigs.forEach((rig) => rig.dispose());
-check("all eight Little Japan Friends are free selectable skins", friendSkins.length === 8 && friendSkinIds.every((id) => friendSkins.some((skin) => skin.id === id && skin.cost === 0 && skin.friend)), friendSkins.map((skin) => skin.id).join(", "));
+check("only the retained four Friends are free selectable Pigeon skins", friendSkins.length === PIGEON_SHIBUYA_ANIMALS.length && friendSkinIds.every((id) => friendSkins.some((skin) => skin.id === id && skin.cost === 0 && skin.friend)) && !["friend-shiba", "friend-kitsune", "friend-deer", "friend-capybara"].some((id) => friendSkins.some((skin) => skin.id === id)), friendSkins.map((skin) => skin.id).join(", "));
 
 useUI.getState().setTrackMode("shibuya");
 engine.setTrackMode("shibuya");
 const openingFriends = engine.movers.filter((m) => m.kind === "shibuya_animal");
 const openingRoster = new Set(openingFriends.map((m) => m.shibuyaAnimal));
-check("opening Shibuya route seeds all eight animals without random selection", openingRoster.size === 8 && SHIBUYA_ANIMALS.every((id) => openingRoster.has(id)), [...openingRoster].join(", "));
+check("opening Shibuya route seeds only the four retained Friends", openingRoster.size === PIGEON_SHIBUYA_ANIMALS.length && PIGEON_SHIBUYA_ANIMALS.every((id) => openingRoster.has(id)) && !["shiba", "kitsune", "deer", "capybara"].some((id) => openingRoster.has(id)), [...openingRoster].join(", "));
 check("opening Friends include crossing, sidewalk waving, and bathing", openingFriends.some((m) => m.shibuyaAnimalActivity === "crossing")
   && openingFriends.some((m) => m.shibuyaAnimalActivity === "waving")
   && openingFriends.some((m) => m.shibuyaAnimalActivity === "bathing"));
-check("monkey and capybara are assigned to the bathing scene", openingFriends.filter((m) => m.shibuyaAnimal === "monkey" || m.shibuyaAnimal === "capybara").every((m) => m.shibuyaAnimalActivity === "bathing"));
+check("retained Monkey stays assigned to the bathing scene and Capybara is absent", openingFriends.filter((m) => m.shibuyaAnimal === "monkey").every((m) => m.shibuyaAnimalActivity === "bathing") && !openingFriends.some((m) => m.shibuyaAnimal === "capybara"));
 check("waving Friends stay on a sidewalk-facing side", openingFriends.filter((m) => m.shibuyaAnimalActivity === "waving").every((m) => Math.abs(m.lat) >= 5 && m.shibuyaAnimalSide));
 
 const ramenBusinessCounts = DISTRICTS.map((district) => district.businesses.filter((business) => business.kind === "ramen").length);

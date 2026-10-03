@@ -85,9 +85,11 @@ export interface Skin {
 const ORANGE = "#ff8c42";
 
 /**
- * The eight Little Japan Friends are real playable skins, not recoloured pigeon
- * stand-ins. Their mesh is resolved from the Shibuya Blocks source in Player and
- * pigeonRig; the palette fields keep the legacy character/deck code type-safe.
+ * The four retained Little Japan Friends are real playable skins, not
+ * recoloured pigeon stand-ins. Their mesh is resolved from the Shibuya Blocks
+ * source in Player and pigeonRig; the palette fields keep the legacy
+ * character/deck code type-safe. The removed source animals remain available
+ * to the Shibuya Blocks asset catalog, but are not Pigeon game skins.
  */
 const littleJapanFriendSkin = (friend: ShibuyaAnimalId, name: string, tagline: string, body: string, deck: string): Skin => ({
   id: `friend-${friend}`,
@@ -113,12 +115,8 @@ const littleJapanFriendSkin = (friend: ShibuyaAnimalId, name: string, tagline: s
 });
 
 const LITTLE_JAPAN_FRIEND_SKINS: Skin[] = [
-  littleJapanFriendSkin("shiba", "Shiba", "Little Japan Friend · source Shibuya Blocks", "#c69051", "#bb5844"),
   littleJapanFriendSkin("tanuki", "Tanuki", "Little Japan Friend · source Shibuya Blocks", "#8e714e", "#6b5f43"),
-  littleJapanFriendSkin("kitsune", "Kitsune", "Little Japan Friend · source Shibuya Blocks", "#ece8d8", "#b55643"),
-  littleJapanFriendSkin("deer", "Deer", "Little Japan Friend · source Shibuya Blocks", "#a78252", "#725a39"),
   littleJapanFriendSkin("monkey", "Monkey", "Little Japan Friend · source Shibuya Blocks", "#ac9b89", "#d69989"),
-  littleJapanFriendSkin("capybara", "Capybara", "Little Japan Friend · source Shibuya Blocks", "#b09265", "#95c2bb"),
   littleJapanFriendSkin("crane", "Crane", "Little Japan Friend · source Shibuya Blocks", "#edeedc", "#41493c"),
   littleJapanFriendSkin("neko", "Neko", "Little Japan Friend · source Shibuya Blocks", "#edead6", "#b95640"),
 ];
