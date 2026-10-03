@@ -367,12 +367,12 @@ body,
 
 .skin-showcase::before {
   position: absolute;
-  right: 17%;
-  bottom: -3rem;
+  right: 15%;
+  bottom: -2.5rem;
   z-index: -1;
-  width: 12rem;
-  height: 12rem;
-  border: 1.25rem solid rgba(255, 255, 255, 0.3);
+  width: 8.5rem;
+  height: 8.5rem;
+  border: 0.85rem solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   content: "";
 }

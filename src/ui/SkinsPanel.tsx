@@ -45,12 +45,12 @@ function SkinCard({ skin }: { skin: Skin }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex w-full flex-col items-center rounded-[20px] px-2 pb-2 pt-2 shadow-[0_4px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
+      className={`relative flex w-full flex-col items-center rounded-[16px] px-1.5 pb-1.5 pt-1.5 shadow-[0_3px_0_rgba(0,0,0,0.12)] transition-transform hover:z-10 hover:scale-[1.015] active:translate-y-[2px] active:shadow-none ${
         previewing ? "bg-[#e6f7f5] ring-[3px] ring-[#2ec4b6]" : "bg-white ring-2 ring-black/5"
       }`}
     >
-      <div className="relative flex h-[27cqw] w-full items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
-        <Thumb skin={skin} locked={!unlocked} size={122} />
+      <div className="relative flex h-[23cqw] w-full items-center justify-center overflow-hidden rounded-[12px] bg-gradient-to-b from-[#bfe6ff] to-[#e9f6ff]">
+        <Thumb skin={skin} locked={!unlocked} size={112} />
         {!unlocked && (
           <div className="absolute right-1 top-1">
             <LockIcon size={15} />
@@ -58,7 +58,7 @@ function SkinCard({ skin }: { skin: Skin }) {
         )}
         {equipped && <div className="absolute left-1 top-1 rounded-full bg-[#2ec4b6] px-1.5 py-0.5 font-display text-[2.1cqw] leading-none text-white">ON</div>}
       </div>
-      <div className="mt-1 w-full truncate text-center font-body text-[3.1cqw] font-extrabold text-[#1f2430]">{skin.name}</div>
+      <div className="mt-0.5 w-full truncate text-center font-body text-[2.7cqw] font-extrabold text-[#1f2430]">{skin.name}</div>
       {unlocked ? (
         <div className="mt-0.5 font-display text-[2.3cqw] leading-none text-[#1f9a8f]">{equipped ? "EQUIPPED" : skin.cost === 0 ? "FREE" : "OWNED"}</div>
       ) : (
@@ -218,7 +218,7 @@ export function SkinsPanel() {
       </div>
 
       {/* panel */}
-      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[61%] flex-col rounded-t-[24px] bg-[#fff8ea] shadow-[0_-6px_0_rgba(0,0,0,0.1)]">
+      <div className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[56%] flex-col rounded-t-[22px] bg-[#fff8ea] shadow-[0_-5px_0_rgba(0,0,0,0.1)]">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1 px-3 pb-1 pt-2">
           <button
@@ -267,22 +267,22 @@ export function SkinsPanel() {
         {tab === "skins" ? (
           <>
             {/* Large selected-character showcase: this is the focal point, not a top-down inventory grid. */}
-            <div className="skin-showcase relative mx-3 mb-2 h-[30cqw] min-h-[7.4rem] overflow-hidden rounded-[22px] px-3 py-2 shadow-[0_4px_0_rgba(31,36,48,0.15)]">
-              <div className="relative z-10 flex h-full w-[57%] flex-col items-start justify-center">
-                <div className="rounded-full bg-white/75 px-2 py-0.5 font-body text-[2cqw] font-black tracking-[0.15em] text-[#1f9a8f]">
+            <div className="skin-showcase relative mx-3 mb-1.5 h-[24cqw] min-h-[6.1rem] overflow-hidden rounded-[18px] px-3 py-1.5 shadow-[0_3px_0_rgba(31,36,48,0.14)]">
+              <div className="relative z-10 flex h-full w-[56%] flex-col items-start justify-center">
+                <div className="rounded-full bg-white/75 px-1.5 py-0.5 font-body text-[1.8cqw] font-black tracking-[0.12em] text-[#1f9a8f]">
                   SHOWCASE
                 </div>
-                <div className="mt-1 flex max-w-full items-center gap-1 font-display text-[4.5cqw] leading-[0.95] text-[#1f2430]">
+                <div className="mt-0.5 flex max-w-full items-center gap-1 font-display text-[4.1cqw] leading-[0.95] text-[#1f2430]">
                   {!isUnlocked && <LockIcon size={15} />}
                   <span className="truncate">{current.name.toUpperCase()}</span>
                 </div>
-                <div className="mt-0.5 max-w-full truncate font-body text-[2.3cqw] font-bold text-[#536476]">{current.tagline}</div>
-                <div key={shakeKey} className={`mt-1.5 ${shakeKey ? "shake" : ""}`}>
+                <div className="max-w-full truncate font-body text-[2cqw] font-bold text-[#536476]">{current.tagline}</div>
+                <div key={shakeKey} className={`mt-1 ${shakeKey ? "shake" : ""}`}>
                   <button
                     type="button"
                     onClick={action}
                     disabled={isEquipped}
-                    className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 font-display text-[2.9cqw] leading-none ${
+                    className={`flex items-center gap-1 rounded-lg px-2 py-1 font-display text-[2.6cqw] leading-none ${
                       isEquipped
                         ? "bg-white/80 text-[#1f9a8f]"
                         : isUnlocked
@@ -302,12 +302,12 @@ export function SkinsPanel() {
                   </button>
                 </div>
               </div>
-              <div className="absolute -right-1 bottom-[-0.8rem] z-10 flex h-[9rem] w-[49%] items-end justify-center">
-                <Thumb skin={current} locked={!isUnlocked} size={160} />
+              <div className="absolute -right-1 bottom-[-0.45rem] z-10 flex h-[7.3rem] w-[49%] items-end justify-center">
+                <Thumb skin={current} locked={!isUnlocked} size={132} />
               </div>
             </div>
 
-            <div className="grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto px-3 pb-3" style={{ touchAction: "pan-y" }}>
+            <div className="grid flex-1 grid-cols-3 content-start gap-1.5 overflow-y-auto px-3 pb-2" style={{ touchAction: "pan-y" }}>
               {SKINS.map((s) => (
                 <SkinCard key={s.id} skin={s} />
               ))}

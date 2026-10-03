@@ -46,8 +46,9 @@ export function ensureThumbs(size = 208): boolean {
     // character reads as a rider first and the board stays visible underneath.
     const half = 0.88;
     const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
-    cam.position.set(-5.2, 2.15, 7.4).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.7, 0));
-    cam.lookAt(0, 0.7, 0);
+    // Almost eye-level: the rider should read front-on, never like a board seen from above.
+    cam.position.set(-5.2, 0.8, 7.4).normalize().multiplyScalar(30).add(new THREE.Vector3(0, 0.64, 0));
+    cam.lookAt(0, 0.64, 0);
 
     const savedDown = curveUniforms.uCurveDown.value;
     curveUniforms.uCurveDown.value = 0;
