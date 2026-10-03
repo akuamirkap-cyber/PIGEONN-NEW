@@ -16,7 +16,7 @@ import {
   type ShibuyaBuildingId,
 } from "./models";
 import {
-  SHIBUYA_ANIMALS,
+  PIGEON_SHIBUYA_ANIMALS,
   SHIBUYA_CHARACTERS,
   SHIBUYA_MOTORCYCLES,
   type ShibuyaAnimalId,
@@ -29,6 +29,11 @@ import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
 import { Track, type TrackSample } from "./track";
 import { TURN, makeTurnState, resetTurnState, stepTurn, rearOf } from "./turnModel";
+import {
+  ALL_SHIBUYA_BUILDING_IDS,
+  getShibuyaAssetFootprint,
+  type ShibuyaAssetFootprint,
+} from "./shibuyaBuildingModels";
 
 export const track = new Track();
 
@@ -257,6 +262,8 @@ export type DecorKind =
   | "sakura"
   | "lantern"
   | "ramen"
+  | "ramen_customer"
+  | "shopper"
   | "machiya"
   | "house"
   | "village_house"
@@ -339,6 +346,7 @@ export interface Chunk {
 }
 export type MoverKind = "car" | "motorcycle" | "chicken" | "pedestrian" | "cat" | "dog" | "shibuya_animal";
 export type MoverPhase = "drive" | "wait" | "hop" | "pause" | "hit";
+export type ShibuyaAnimalActivity = "crossing" | "waving" | "bathing";
 export interface Mover {
   id: number;
   kind: MoverKind;
@@ -378,8 +386,14 @@ export interface Mover {
   leanT?: number;
   /** Little Japan Friends (shiba, tanuki, kitsune, deer, monkey, capybara, crane, neko) */
   shibuyaAnimal?: ShibuyaAnimalId;
-  /** Japan Vehicle Pack motorcycle (cub, custom, sport, delivery, retro, cafe, trail, police) */
+  /** Source-character activity: crossing, waving toward the player, or bathing beside a shop. */
+  shibuyaAnimalActivity?: ShibuyaAnimalActivity;
+  /** Waving/bathing actors stay on this storefront sidewalk side. */
+  shibuyaAnimalSide?: -1 | 1;
+  /** Japan Vehicle Pack motorcycle (including explicit Honda/Harley route aliases). */
   shibuyaMoto?: ShibuyaMotorcycleId;
+  /** Traffic rider variation: some riders wear a helmet and some do not. */
+  motorcycleHelmet?: boolean;
   /** Shibuya Blocks character (salaryman / pekerja kantor, student, chef, yakuza) */
   shibuyaChar?: ShibuyaCharacterId;
 }
@@ -661,6 +675,38 @@ const tmpS: TrackSample = { x: 0, y: 0, z: 0, th: 0, g: 0, kappa: 0 };
 const tmpV = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
 
+const SHIBUYA_ROAD_CLEARANCE = 6.8;
+const SHIBUYA_FOOTPRINT_GAP = 0.9;
+const SHIBUYA_MIN_ASSET_SCALE = 0.52;
+
+type ShibuyaFootprintBounds = { sMin: number; sMax: number; latMin: number; latMax: number };
+type ShibuyaPlacedFootprint = ShibuyaFootprintBounds & { asset: ShibuyaBuildingId; scale: number };
+type ShibuyaPlacement = { s: number; lat: number; scale: number; bounds: ShibuyaFootprintBounds };
+
+/**
+ * Convert source-local bounds into track coordinates. Shibuya source models have
+ * their road-facing facade at local z ~= 0; the positive-latitude row is turned
+ * around in World.tsx, so both axes are mirrored there.
+ */
+function shibuyaFootprintAt(
+  source: ShibuyaAssetFootprint,
+  s: number,
+  lat: number,
+  scale: number,
+): ShibuyaFootprintBounds {
+  const frontSide = lat > 0;
+  const sMin = s + (frontSide ? -source.maxX : source.minX) * scale;
+  const sMax = s + (frontSide ? -source.minX : source.maxX) * scale;
+  const latMin = lat + (frontSide ? -source.maxZ : source.minZ) * scale;
+  const latMax = lat + (frontSide ? -source.minZ : source.maxZ) * scale;
+  return { sMin, sMax, latMin, latMax };
+}
+
+function footprintOverlaps(a: ShibuyaFootprintBounds, b: ShibuyaFootprintBounds, gap = SHIBUYA_FOOTPRINT_GAP) {
+  return a.sMin < b.sMax + gap && a.sMax + gap > b.sMin
+    && a.latMin < b.latMax + gap && a.latMax + gap > b.latMin;
+}
+
 /* ---------- Engine ---------- */
 class Engine {
   phase: Phase = "menu";
@@ -700,6 +746,8 @@ class Engine {
   obstacles: Obstacle[] = [];
   breads: Bread[] = [];
   chunks: Chunk[] = [];
+  /** Actual transformed footprints for Shibuya source buildings still in the window. */
+  private shibuyaFootprints: ShibuyaPlacedFootprint[] = [];
   movers: Mover[] = [];
   crossings: Crossing[] = [];
   trains: Train[] = [];
@@ -766,6 +814,10 @@ class Engine {
   private flipToggle = false;
   private sparkT = 0;
   private patternIndex = 0;
+  /** Deterministic Shibuya roster cursor: every run shows all eight source animals. */
+  private shibuyaAnimalRosterIndex = 0;
+  private shibuyaPedestrianIndex = 0;
+  private shibuyaMotoIndex = 0;
 
   player = {
     lane: 1,
@@ -858,6 +910,7 @@ class Engine {
     this.obstacles = [];
     this.breads = [];
     this.chunks = [];
+    this.shibuyaFootprints = [];
     this.movers = [];
     this.crossings = [];
     this.trains = [];
@@ -905,6 +958,9 @@ class Engine {
     this.nextChunkS = 0;
     this.nextObstacleS = this.distance + 40;
     this.patternIndex = 0;
+    this.shibuyaAnimalRosterIndex = 0;
+    this.shibuyaPedestrianIndex = 0;
+    this.shibuyaMotoIndex = 0;
     const p = this.player;
     p.lane = 1;
     p.targetLane = 1;
@@ -958,6 +1014,7 @@ class Engine {
     this.pulses = [];
     this.downhillFlag = false;
     while (this.nextChunkS < this.distance + 90) this.spawnChunk();
+    this.seedShibuyaAnimalRoster();
     track.sample(this.distance, this.center);
     this.updateTransform();
     this.listVersion++;
@@ -2777,7 +2834,8 @@ class Engine {
           m.s = effectiveStopLine;
         }
         m.squash = Math.max(0, m.squash - dt * 4.5);
-        if (!m.warned && m.s - d < (isBike ? 34 : 32)) {
+        // Vehicle PSA enters exactly at 40 m, giving the player a clear warning window.
+        if (!m.warned && m.s - d < 40) {
           m.warned = true;
           if (this.phase === "playing") (isBike ? sfx.motor() : sfx.horn());
         }
@@ -3908,6 +3966,55 @@ class Engine {
     return { pos: [tmpV.x, tmpV.y, tmpV.z], rotY: -th };
   }
 
+  /**
+   * Find a safe slot for a transferred Shibuya asset.
+   *
+   * `makeShibuyaTowerSpec(w)` describes a requested lot, not the source model's
+   * bounds. This planner deliberately does not trust that lot width. It first
+   * tries the requested frontage/background row, then an outward reserve row. A
+   * source model is uniformly scaled only to fit the candidate row (never
+   * stretched); if that would make it an unreadable sliver, the duplicate is
+   * skipped rather than pushed through a neighbour. The same transformed bounds
+   * are stored for the next chunk, so consecutive source dioramas get a real
+   * spacing check instead of a decorative lot check.
+   */
+  private planShibuyaBuilding(asset: ShibuyaBuildingId, desiredS: number, desiredLat: number): ShibuyaPlacement | null {
+    const source = getShibuyaAssetFootprint(asset);
+    const isFrontage = Math.abs(desiredLat) < 15;
+    const preferredBackgroundLat = desiredLat < 0 ? -25.5 : 25.5;
+    const candidates = isFrontage
+      ? [
+        { lat: desiredLat, maxS: 10.6, maxLat: 8.5 },
+        { lat: preferredBackgroundLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: desiredLat < 0 ? 25.5 : -25.5, maxS: 18.0, maxLat: 18.0 },
+      ]
+      : [
+        { lat: desiredLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: preferredBackgroundLat, maxS: 21.5, maxLat: 19.5 },
+        { lat: desiredLat < 0 ? 25.5 : -25.5, maxS: 18.0, maxLat: 18.0 },
+      ];
+    const longitudinalOffsets = [0, -4, 4, -8, 8, -12, 12];
+
+    for (const candidate of candidates) {
+      const scale = Math.min(1, candidate.maxS / source.width, candidate.maxLat / source.depth);
+      // Tiny landmark copies are the same visual failure as an overlap: don't
+      // force them into a slot when a clean reserve slot is unavailable.
+      if (scale < SHIBUYA_MIN_ASSET_SCALE) continue;
+      for (const offset of longitudinalOffsets) {
+        const s = desiredS + offset;
+        const bounds = shibuyaFootprintAt(source, s, candidate.lat, scale);
+        if (bounds.latMin < -42 || bounds.latMax > 42) continue;
+        if ((candidate.lat < 0 && bounds.latMax > -SHIBUYA_ROAD_CLEARANCE)
+          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE)) continue;
+        if (this.shibuyaFootprints.some(existing => footprintOverlaps(bounds, existing))) continue;
+        const placed = { asset, scale, ...bounds };
+        this.shibuyaFootprints.push(placed);
+        return { s, lat: candidate.lat, scale, bounds };
+      }
+    }
+    return null;
+  }
+
   private spawnChunk() {
     const isHaruna = track.mode === "haruna";
     const isShibuya = track.mode === "shibuya";
@@ -3973,12 +4080,24 @@ class Engine {
     }
     const kind: Chunk["kind"] = isHaruna ? "haruna" : isShibuya ? "shibuya" : crossing ? "park" : Math.random() < 0.28 ? "park" : "street";
     const decor: Decor[] = [];
-    const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec) => {
+    const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec): ShibuyaPlacement | null => {
       // Keep cross-road clear of sidewalk decor, buildings, and trees (minimum 8.2m clearance)
       const absS = s0 + lx;
-      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return;
-      const pl = this.place(absS, lat, dy);
-      decor.push({ kind: k, pos: pl.pos, rotY: pl.rotY, variant, spec, frontSide: lat > 0 });
+      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return null;
+
+      let placedS = absS;
+      let placedLat = lat;
+      let placement: ShibuyaPlacement | null = null;
+      if (k === "building" && spec?.shibuyaAssetId && isShibuya) {
+        placement = this.planShibuyaBuilding(spec.shibuyaAssetId, absS, lat);
+        if (!placement) return null;
+        placedS = placement.s;
+        placedLat = placement.lat;
+        spec.assetScale = placement.scale;
+      }
+      const pl = this.place(placedS, placedLat, dy);
+      decor.push({ kind: k, pos: pl.pos, rotY: pl.rotY, variant, spec, frontSide: placedLat > 0 });
+      return placement;
     };
 
     if (isHaruna) {
@@ -4056,79 +4175,78 @@ class Engine {
         add("subway_track", 9, 0, 0);
       }
 
-      // ---- SHIBUYA: Semua gedung, rumah ramen & gedung ikonik dari Shibuya Blocks (tanpa terkecuali) ----
-      const nearShibuyaBuildings: ShibuyaBuildingId[] = [
-        "ramen",        // Rumah Ramen-ya Shibuya Blocks dengan noren, lampion & counter
-        "shibuya109",   // Gedung Ikonik Shibuya 109
-        "qfront",       // Gedung Ikonik Q-FRONT (Layar LED & Kafe)
-        "konbini",      // Toko Konbini 24H Shibuya
-        "neon",         // Gedung Neon Center-gai
-        "station",      // Gedung Stasiun JR Shibuya
-        "izakaya",      // Kedai Nonbei Yokocho Izakaya
-        "townhouse",    // Tokyo Townhouse
-        "machiya",      // Rumah Tradisional Machiya
-        "skyscraper",   // Gedung Shibuya Tower District
-        "tokyotower",   // Menara Ikonik Tokyo Tower
-        "pagoda",       // Pagoda 5 Tingkat & Sakura
-      ];
-      const farShibuyaBuildings: ShibuyaBuildingId[] = [
-        "skyscraper",   // Gedung Pencakar Langit Shibuya Tower
-        "qfront",       // Gedung Q-FRONT
-        "shibuya109",   // Gedung Shibuya 109
-        "neon",         // Gedung Neon Center-gai
-        "station",      // Stasiun JR Shibuya
-        "ramen",        // Rumah Ramen-ya
-        "konbini",      // Konbini 24H
-        "izakaya",      // Kedai Izakaya
-        "machiya",      // Rumah Kayu Machiya
-        "townhouse",    // Tokyo Townhouse
-        "tokyotower",   // Menara Tokyo Tower
-        "pagoda",       // Pagoda 5 Tingkat
-      ];
-      const skylineBuildings: ShibuyaBuildingId[] = [
-        "tokyotower",   // Menara Ikonik Tokyo Tower
-        "skyscraper",   // Gedung Pencakar Langit
-        "pagoda",       // Pagoda 5 Tingkat & Sakura
-        "shibuya109",   // Gedung Shibuya 109
-        "neon",         // Gedung Neon Center-gai
-        "qfront",       // Menara Q-FRONT
-        "station",      // Stasiun JR Shibuya
-        "ramen",        // Rumah Ramen
-        "konbini",      // Konbini 24H
-        "izakaya",      // Kedai Izakaya
-        "machiya",      // Rumah Machiya
-        "townhouse",    // Tokyo Townhouse
-      ];
+      // ---- SHIBUYA: sumber model tunggal dari Shibuya Blocks ----
+      // Semua aset arsitektur diulang secara deterministik. Tidak ada lagi undian yang
+      // bisa melewatkan Torii, ramen, Tokyo Tower District, atau rumah pada satu run.
+      const transferIds = ALL_SHIBUYA_BUILDING_IDS;
+      // Three consecutive lots per chunk make the complete transfer visible in the
+      // opening boulevard: ramen first, then 109/Q-FRONT, and so on.
+      const transferStart = (Math.floor(s0 / CHUNK_LEN) * 3) % transferIds.length;
+      const nearBld = transferIds[transferStart];
+      const farBld = transferIds[(transferStart + 1) % transferIds.length];
+      const skyBld = transferIds[(transferStart + 2) % transferIds.length];
+      // Both source storefront rows use the actual road-facing edge. The old
+      // +23.8 background row left shoppers, lamps and glass frontage detached
+      // in the middle of the avenue; the reserve planner handles true skyline
+      // landmarks separately when their source footprint needs it.
+      const farLat = curTunnel ? 16.2 : 10.2;
 
-      // 1. Near frontage (sisi kiri jalan): deretan toko, rumah, dan gedung
-      if (Math.random() < 0.22) {
-        if (Math.random() < 0.5) add("house", 6, -10.2, 0.1, randInt(0, 1));
-        else add("village_house", 6, -10.2, 0.1, randInt(0, 2));
-      } else {
-        const nearBld = nearShibuyaBuildings[Math.abs(id) % nearShibuyaBuildings.length];
-        add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
-      }
+      const frontageSidewalkLat = (buildingLat: number) => buildingLat < 0
+        ? buildingLat + 4.85
+        : buildingLat - 4.85;
 
-      // 2. Far frontage across all 6 lanes (sisi kanan jalan): deretan gedung, toko, dan rumah
-      if (Math.random() < 0.95) {
-        const farLat = curTunnel ? 16.2 : 23.8;
-        if (Math.random() < 0.22) {
-          if (Math.random() < 0.5) add("house", 6, farLat, -0.14, randInt(0, 1));
-          else add("village_house", 6, farLat, -0.14, randInt(0, 2));
-        } else {
-          const farBld = farShibuyaBuildings[Math.abs(id + 4) % farShibuyaBuildings.length];
-          add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+      const addRamenCustomers = (buildingS: number, buildingLat: number) => {
+        // The exact Shibuya Blocks Eat rig is rendered by World.tsx. Two customers
+        // sit at the frontage; the second one is the streetwear sumo requested by the user.
+        const sidewalkLat = frontageSidewalkLat(buildingLat);
+        add("ramen_customer", buildingS - 1.05, sidewalkLat, 0.14, 0);
+        add("ramen_customer", buildingS + 1.05, sidewalkLat + (buildingLat < 0 ? 0.28 : -0.28), 0.14, 3);
+        add("lantern", buildingS - 2.0, sidewalkLat, 0.14, 0);
+        add("lantern", buildingS + 2.0, sidewalkLat, 0.14, 1);
+        add("neon_sign", buildingS + 2.55, sidewalkLat, 0.14, 1);
+      };
+
+      const addKonbiniCustomers = (buildingS: number, buildingLat: number) => {
+        const sidewalkLat = frontageSidewalkLat(buildingLat);
+        add("shopper", buildingS - 1.05, sidewalkLat, 0.14, 0);
+        add("shopper", buildingS + 1.15, sidewalkLat + (buildingLat < 0 ? 0.32 : -0.32), 0.14, 2);
+        add("vending", buildingS - 2.25, sidewalkLat, 0.12, 0);
+        add("mamachari", buildingS + 2.15, sidewalkLat, 0.12, 0);
+        add("sidewalk_planter", buildingS + 2.65, sidewalkLat, 0.12, 1);
+      };
+
+      const addShibuyaShopFrontage = (asset: ShibuyaBuildingId, buildingS: number, buildingLat: number) => {
+        if (asset === "ramen") addRamenCustomers(buildingS, buildingLat);
+        if (asset === "konbini") addKonbiniCustomers(buildingS, buildingLat);
+        if (asset === "izakaya") {
+          const sidewalkLat = frontageSidewalkLat(buildingLat);
+          add("lantern", buildingS - 1.75, sidewalkLat, 0.14, 2);
+          add("lantern", buildingS + 1.75, sidewalkLat, 0.14, 0);
+          add("mamachari", buildingS + 2.25, sidewalkLat, 0.12, 2);
         }
-      }
+      };
 
-      // 3. Second skyline row: towering background skyscrapers & landmarks (placed every 2 chunks so no clutter)
-      if (id % 2 === 0) {
-        const skyBld = skylineBuildings[Math.abs(Math.floor(id / 2)) % skylineBuildings.length];
-        add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-      }
-      if (id % 2 === 1) {
-        const skyBld = skylineBuildings[Math.abs(Math.floor((id + 3) / 2)) % skylineBuildings.length];
-        add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      // 1. Near frontage: one exact transferred Shibuya Blocks asset every chunk.
+      const nearPlacement = add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
+      if (nearPlacement) addShibuyaShopFrontage(nearBld, nearPlacement.s, nearPlacement.lat);
+
+      // 2. Far frontage: the next exact asset, visible across the full Shibuya avenue.
+      const farPlacement = add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+      if (farPlacement) addShibuyaShopFrontage(farBld, farPlacement.s, farPlacement.lat);
+
+      // 3. A third skyline copy is optional. It is attempted in a reserve row,
+      // but the planner skips it when the source diorama cannot fit with a real
+      // gap. All thirteen assets are already guaranteed by the two frontage rows.
+      const skylineLat = id % 2 === 0 ? -25.5 : 25.5;
+      const skylinePlacement = add("building", 6, skylineLat, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      // The reserve skyline is still a real storefront copy: do not leave a
+      // ramen facade without its visible Eat rig (or a konbini without frontage).
+      if (skylinePlacement) addShibuyaShopFrontage(skyBld, skylinePlacement.s, skylinePlacement.lat);
+
+      // Keep a recognizable standalone house in the route in addition to Machiya and Townhouse.
+      // It is placed on the opposite skyline side so it never masks the exact transfer asset.
+      if (id % 3 === 0) {
+        add("house", 6, id % 2 === 0 ? 32.5 : -18.5, -0.12, id % 2);
       }
 
       // 4. Department store display billboards across the wide boulevard (far background only)
@@ -4491,10 +4609,19 @@ class Engine {
     const m = this.newMover("motorcycle", s0, lane, LANE_LAT[lane]);
     m.speed = v * speedFactor;
     m.variant = randInt(0, 5);
-    // Japan Vehicle Pack: motorcycles with riders (cub, sport, delivery, custom, etc.)
-    // Prominently spawned in Shibuya streets alongside regular motorcycles
+    // Japan Vehicle Pack: explicitly guarantee a Honda and a Harley-style cruiser
+    // in the opening Shibuya traffic, then keep the rest varied. Helmet state is
+    // independent so the route visibly contains both helmeted and bareheaded riders.
     if (track.mode === "shibuya" ? Math.random() < 0.94 : Math.random() < 0.65) {
-      m.shibuyaMoto = pick(SHIBUYA_MOTORCYCLES);
+      const routeIndex = this.shibuyaMotoIndex++;
+      m.shibuyaMoto = track.mode === "shibuya" && routeIndex === 0
+        ? "honda"
+        : track.mode === "shibuya" && routeIndex === 1
+          ? "harley"
+          : pick(SHIBUYA_MOTORCYCLES);
+      m.motorcycleHelmet = track.mode === "shibuya"
+        ? routeIndex < 2 ? routeIndex === 0 : Math.random() < 0.62
+        : Math.random() < 0.72;
     }
     m.smokeT = rand(0, 0.08);
     this.movers.push(m);
@@ -4527,6 +4654,39 @@ class Engine {
     // Open bread lane 'other' is kept completely clear of obstacles!
     this.listVersion++;
     return len + 2;
+  }
+
+  private nextShibuyaAnimal(): ShibuyaAnimalId {
+    const animal = PIGEON_SHIBUYA_ANIMALS[this.shibuyaAnimalRosterIndex % PIGEON_SHIBUYA_ANIMALS.length];
+    this.shibuyaAnimalRosterIndex += 1;
+    return animal;
+  }
+
+  /**
+   * The opening Shibuya window is curated, not luck-based: the retained
+   * Pigeon Friend roster is queued ahead of the player on the first boulevard.
+   * Crossing, waving and onsen actors share the regular mover system and are
+   * later replenished by the round-robin obstacle patterns.
+   */
+  private seedShibuyaAnimalRoster() {
+    if (track.mode !== "shibuya") return;
+    const activities: ShibuyaAnimalActivity[] = ["waving", "bathing", "waving", "crossing"];
+    for (let i = 0; i < PIGEON_SHIBUYA_ANIMALS.length; i++) {
+      const activity = activities[i];
+      const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
+      const dir = i % 2 === 0 ? 1 : -1;
+      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side * 5.3);
+      m.dir = dir;
+      m.speed = activity === "crossing" ? 2.35 : 0;
+      m.delay = activity === "crossing" ? Math.max(0.25, (m.s - this.distance) / Math.max(this.speed, START_SPEED) - 3.4) : 0;
+      m.crossingEdge = activity === "crossing" ? 5.2 : undefined;
+      m.shibuyaAnimal = this.nextShibuyaAnimal();
+      m.shibuyaAnimalActivity = activity;
+      m.shibuyaAnimalSide = side;
+      if (activity !== "crossing") m.phase = "pause";
+      this.movers.push(m);
+    }
+    this.moverVersion++;
   }
 
   private spawnPedestrians(x: number, t: number) {
@@ -4564,22 +4724,30 @@ class Engine {
       m.speed = elderly ? rand(0.85, 1.25) : rand(1.6, 2.3);
       // Mix casual walkers, salarymen, and Shibuya Blocks office workers.
       m.variant = elderly ? randInt(0, 2) : Math.random() < 0.35 ? randInt(5, 7) : randInt(0, 4);
-      if (!elderly && (track.mode === "shibuya" ? Math.random() < 0.72 : Math.random() < 0.40)) {
-        m.shibuyaChar = Math.random() < 0.8 ? "salaryman" : pick(SHIBUYA_CHARACTERS);
+      if (!elderly) {
+        const sumoDue = track.mode === "shibuya" && this.shibuyaPedestrianIndex % 3 === 0;
+        const makeShibuyaRig = track.mode === "shibuya" && (sumoDue || Math.random() < 0.72);
+        const makeRig = track.mode === "shibuya" ? makeShibuyaRig : Math.random() < 0.40;
+        if (makeRig) {
+          m.shibuyaChar = sumoDue ? "sumo" : Math.random() < 0.8 ? "salaryman" : pick(SHIBUYA_CHARACTERS);
+          if (track.mode === "shibuya") this.shibuyaPedestrianIndex += 1;
+        }
       }
       const eta = (pedestrianS - d) / est;
       const walk = (edge - 1.2) / m.speed;
       m.delay = Math.max(0.1, eta - walk + rand(-0.9, 0.9) + i * 0.35);
       this.movers.push(m);
 
-      // Also spawn Little Japan Friends (Shiba, Tanuki, Kitsune, Neko) crossing alongside pedestrians!
-      if (i === 0 && (track.mode === "shibuya" ? Math.random() < 0.65 : Math.random() < 0.35)) {
+      // Shibuya uses the deterministic retained Pigeon roster instead of a
+      // random subset. The cursor wraps after the four enabled Friends.
+      if (i === 0 && (track.mode === "shibuya" || Math.random() < 0.35)) {
         const petMover = this.newMover("shibuya_animal", pedestrianS + rand(-1.2, 1.2), -1, -dir * (edge - 0.4));
         petMover.dir = dir;
         petMover.crossingEdge = edge;
         petMover.speed = rand(2.0, 2.7);
         petMover.delay = Math.max(0.1, m.delay + rand(0.05, 0.3));
-        petMover.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+        petMover.shibuyaAnimal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(PIGEON_SHIBUYA_ANIMALS);
+        petMover.shibuyaAnimalActivity = "crossing";
         if (signal) petMover.signalIntersectionId = signal.id;
         this.movers.push(petMover);
       }
@@ -4808,7 +4976,9 @@ class Engine {
       else if (idx === 2) pattern = "pedestrians"; // Salaryman & crossing friends!
       else if (idx === 3) pattern = "shibuya_animals"; // Another Little Japan Friend encounter!
       else if (idx === 4) pattern = "oncoming"; // Fast oncoming with motorcycles!
-      else if (idx === 5) pattern = "motorcycles"; // Japan Vehicle Pack squad!
+      else if (idx === 5) pattern = "shibuya_animals"; // Finish the first four roster pairs deterministically.
+      else if (idx === 6) pattern = "motorcycles"; // Japan Vehicle Pack squad!
+      else if (idx === 7) pattern = "shibuya_animals"; // All eight source animals are now on route.
     }
 
     const itemNearby = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20));
@@ -5063,8 +5233,12 @@ class Engine {
         break;
       }
       case "shibuya_animals": {
-        if (itemNearby) break;
-        const n = 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
+        // Do not let a collectible suppress the deterministic opening roster;
+        // these are soft sidewalk/crossing actors, not hard obstacles.
+        if (itemNearby && !(track.mode === "shibuya" && this.shibuyaAnimalRosterIndex < PIGEON_SHIBUYA_ANIMALS.length)) break;
+        // Four deterministic pairs cover the complete eight-member roster in
+        // the opening route; later encounters continue the same round-robin.
+        const n = track.mode === "shibuya" ? 2 : 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
         const dir = Math.random() < 0.5 ? 1 : -1;
         const est = Math.max(this.speed, START_SPEED);
         const eta = Math.max(0.1, (x - d) / est);
@@ -5075,12 +5249,24 @@ class Engine {
           const distToTarget = Math.abs(targetLat - (-dir * startEdge));
           const tWalk = distToTarget / animalSpeed;
           const delay = Math.max(0.05, eta - tWalk + (i - (n - 1) / 2) * 0.3);
-          const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, -dir * startEdge);
+          const slot = this.shibuyaAnimalRosterIndex % PIGEON_SHIBUYA_ANIMALS.length;
+          const animal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(PIGEON_SHIBUYA_ANIMALS);
+          const activity = track.mode !== "shibuya"
+            ? "crossing"
+            : animal === "monkey" || animal === "capybara"
+              ? "bathing"
+              : slot % 2 === 0 ? "waving" : "crossing";
+          const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
+          const sidewalkLat = side * 5.3;
+          const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, activity === "crossing" ? -dir * startEdge : sidewalkLat);
           m.dir = dir;
-          m.speed = animalSpeed;
-          m.delay = delay;
-          m.crossingEdge = 5.2;
-          m.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+          m.speed = activity === "crossing" ? animalSpeed : 0;
+          m.delay = activity === "crossing" ? delay : 0;
+          m.crossingEdge = activity === "crossing" ? 5.2 : undefined;
+          m.shibuyaAnimal = animal;
+          m.shibuyaAnimalActivity = activity;
+          m.shibuyaAnimalSide = side;
+          if (activity !== "crossing") m.phase = "pause";
           this.movers.push(m);
         }
         this.moverVersion++;
@@ -5101,6 +5287,11 @@ class Engine {
     if (this.chunks.length && this.chunks[0].s0 + CHUNK_LEN < d - 20) {
       this.chunks.shift();
       changed = true;
+    }
+    if (this.shibuyaFootprints.length) {
+      const beforeFootprints = this.shibuyaFootprints.length;
+      this.shibuyaFootprints = this.shibuyaFootprints.filter(footprint => footprint.sMax > d - 30);
+      if (this.shibuyaFootprints.length !== beforeFootprints) changed = true;
     }
     const before = this.obstacles.length;
     this.obstacles = this.obstacles.filter((o) => o.s + obstacleHalf(o) > d - 16);

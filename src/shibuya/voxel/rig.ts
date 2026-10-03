@@ -1,6 +1,6 @@
 import { AnimationClip, Euler, Quaternion, QuaternionKeyframeTrack, VectorKeyframeTrack, type Group, type KeyframeTrack } from 'three';
 import type { Builder } from './builder';
-import type { AssetData, MotionChannel, RigAnimation, Vec3 } from './types';
+import type { AssetData, MotionChannel, RigAnimation, Vec3, VoxelBox } from './types';
 import type { PackMember } from './packCatalog';
 
 export class Rig {
@@ -18,8 +18,8 @@ export class Rig {
     target.rotation = rotation;
   }
 
-  box(node: string, p: Vec3, s: Vec3, color: string, rotation?: Vec3, glow?: number) {
-    this.b.box(p, s, color, { node: this.name(node), rotation, glow });
+  box(node: string, p: Vec3, s: Vec3, color: string, rotation?: Vec3, glow?: number, options: Partial<VoxelBox> = {}) {
+    this.b.box(p, s, color, { node: this.name(node), rotation, glow, ...options });
   }
 
   panel(node: string, kind: string, p: Vec3, s: [number, number], rotation?: Vec3) {

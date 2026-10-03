@@ -19,14 +19,18 @@ function wheel(r: Rig, name: string, p: Vec3, radius: number, width: number, par
   r.motion('Iconic', name, 'rotation', 0, 1, { wave: 'spin', cycles: 2 });
 }
 
+function helmetBox(r: Rig, p: Vec3, s: Vec3, color: string) {
+  r.box('head', p, s, color, undefined, undefined, { helmet: true });
+}
+
 function helmet(r: Rig, color: string, full = false) {
-  r.box('head', [-0.423, 0.475, -0.365], [0.846, 0.34, 0.72], color);
-  for (const x of [-0.423, 0.342]) r.box('head', [x, 0.095, -0.365], [0.081, 0.5, 0.67], color);
-  r.box('head', [-0.41, 0.1, -0.39], [0.82, 0.56, 0.12], color);
-  r.box('head', [-0.31, 0.346, 0.363], [0.62, 0.205, 0.05], '#4e7987');
-  r.box('head', [-0.27, 0.499, 0.421], [0.29, 0.025, 0.012], '#b0ded9');
-  r.box('head', [-0.028, 0.685, -0.35], [0.056, 0.13, 0.68], '#f1e8cb');
-  if (full) r.box('head', [-0.364, 0.06, 0.25], [0.728, 0.2, 0.14], color);
+  helmetBox(r, [-0.423, 0.475, -0.365], [0.846, 0.34, 0.72], color);
+  for (const x of [-0.423, 0.342]) helmetBox(r, [x, 0.095, -0.365], [0.081, 0.5, 0.67], color);
+  helmetBox(r, [-0.41, 0.1, -0.39], [0.82, 0.56, 0.12], color);
+  helmetBox(r, [-0.31, 0.346, 0.363], [0.62, 0.205, 0.05], '#4e7987');
+  helmetBox(r, [-0.27, 0.499, 0.421], [0.29, 0.025, 0.012], '#b0ded9');
+  helmetBox(r, [-0.028, 0.685, -0.35], [0.056, 0.13, 0.68], '#f1e8cb');
+  if (full) helmetBox(r, [-0.364, 0.06, 0.25], [0.728, 0.2, 0.14], color);
 }
 
 function motorcycleRider(b: Builder, id: string, vehicle: Rig) {

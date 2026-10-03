@@ -7,6 +7,7 @@ import { useUI } from "./store";
 import { charBodyParts, charHeadParts, charTailParts, charWingParts, deckParts, getSkin, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT } from "./skins";
 import { RIG, LegRig } from "./pigeonRig";
 import { nosTankParts } from "./models";
+import { buildShibuyaAnimalRig } from "./shibuyaPacks";
 
 /** Max truck steering angle (rad) at full lean — real trucks turn ~10–20° with the deck tilted ~15–20° */
 const TRUCK_MAX = 0.42;
@@ -52,6 +53,7 @@ export function Player() {
   const bank = useRef<THREE.Group>(null);
   const board = useRef<THREE.Group>(null);
   const pigeon = useRef<THREE.Group>(null);
+  const friendModel = useRef<THREE.Group>(null);
   const torso = useRef<THREE.Group>(null); // body+head+wings; leans about the hips while the legs stay planted
   const head = useRef<THREE.Mesh>(null);
   const wingL = useRef<THREE.Mesh>(null);
@@ -81,6 +83,10 @@ export function Player() {
     }),
     [skin, deckOverride, wheelColor],
   );
+  // Little Japan Friends use the original Shibuya Blocks geometry as one full
+  // mesh. Do not run it through the pigeon body/head rig: that would distort
+  // quadrupeds, the crane, and the capybara's bath setting.
+  const friendRig = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? buildShibuyaAnimalRig(skin.friend) : null), [skin.kind, skin.friend]);
   const flameMats = useMemo(
     () => ({
       core: new THREE.MeshBasicMaterial({ color: "#bfe9ff", transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -96,6 +102,7 @@ export function Player() {
   const starMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ffd166" }), []);
   useEffect(() => () => { starGeo.dispose(); starMat.dispose(); }, [starGeo, starMat]);
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos]);
+  useEffect(() => () => friendRig?.dispose(), [friendRig]);
   // IK legs: [0] = pushing leg on the camera side (+z), [1] = planted leg (-z)
   const legs = useMemo(() => [new LegRig(skin), new LegRig(skin)], [skin]);
   useEffect(() => () => legs.forEach((l) => l.dispose()), [legs]);
@@ -111,9 +118,13 @@ export function Player() {
     const ts = torso.current;
     const hd = head.current;
     if (!r || !yg || !bk || !bd || !pg || !ts || !hd) return;
+    // Keep source animation deterministic on tab/frame stalls and clear any
+    // active Shift gesture before the Pigeon ragdoll takes over.
+    friendRig?.mixer.update(Math.min(dt, 0.05));
     const [legPush, legPlant] = legs;
 
     const crashed = engine.phase === "crashed" || engine.phase === "gameover";
+    if (crashed) friendRig?.setPush(-1, ROAD_Y);
     const flapping = p.wing > 0.05;
 
     // follow the track frame
@@ -224,6 +235,23 @@ export function Player() {
       pg.rotation.set(0, 0, p.pitch * 0.5 + (g > 0 ? g * 0.35 : 0) + (g < 0 ? g * 0.25 : 0));
       pg.scale.set(PS * (1 + 0.18 * s), PS * (1 - 0.32 * s + idle), PS * (1 + 0.18 * s));
 
+      if (friendModel.current && friendRig) {
+        // Keep the source animal recognizable in the air: a small centered tuck
+        // and board-following lean, while the source Play clip animates its
+        // individual tail, arms, wings, head, and legs underneath.
+        const jumpPose = airborne ? Math.min(1, p.airT * 7) : 0;
+        friendModel.current.position.y = 0.018 * jumpPose;
+        friendModel.current.rotation.set(-0.14 * jumpPose + p.pitch * 0.22, p.boardYaw * 0.12, p.roll * 0.18);
+        friendModel.current.scale.set(
+          1 + 0.035 * jumpPose,
+          1 - 0.075 * jumpPose,
+          1 + 0.035 * jumpPose,
+        );
+      }
+      // Shift animates the selected source leg node itself. No replacement
+      // foot/body geometry is attached to the Friend rig.
+      friendRig?.setPush(u, ROAD_Y);
+
       // hips in deck space (the pigeon group moved by hop/dip; the board is the reference)
       const hipY = HIP_Y + hop - dip - crouch;
       // planted leg: sole stays on the deck under the body (slightly forward when driving)
@@ -301,7 +329,11 @@ export function Player() {
       bk.rotation.x = 0;
       bk.position.set(0, 0, 0);
       pg.scale.set(PS, PS, PS);
-
+      if (friendModel.current && friendRig) {
+        friendModel.current.position.set(0, 0, 0);
+        friendModel.current.rotation.set(0, 0, 0);
+        friendModel.current.scale.setScalar(1);
+      }
       if (body) {
         // Pigeon ragdoll: rotate smoothly about center of mass (≈0.50 above feet)
         pg.rotation.set(body.rx, body.ry, body.rz);
@@ -557,10 +589,18 @@ export function Player() {
               </group>
             </group>
             <group ref={pigeon} position={[0, RIG.pigeonY, 0]}>
-              {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
-              <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
-              <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
-              <group ref={torso} name="pigeon-torso">
+              {friendRig && (
+                <group ref={friendModel}>
+                  <primitive object={friendRig.group} />
+                </group>
+              )}
+              {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal rig. */}
+              <group visible={!friendRig}>
+                {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
+                <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
+                <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
+              </group>
+              <group ref={torso} name="pigeon-torso" visible={!friendRig}>
                 <mesh geometry={geos.body} material={voxelMaterial} castShadow receiveShadow />
                 <mesh ref={tail} geometry={geos.tail} material={voxelMaterial} position={TAIL_ROOT} castShadow />
                 <mesh ref={head} name="pigeon-head" geometry={geos.head} material={voxelMaterial} position={[0.32, 1.04, 0]} rotation={[0, 0, 0]} castShadow />

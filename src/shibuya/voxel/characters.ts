@@ -186,10 +186,13 @@ function addOutfit(r: Rig, id: string) {
       r.motion('Walk', `fore${side}`, 'rotation', 0, 0, { offset: -1.0 });
     }
   } else if (id === 'sumo') {
-    r.box('body', [-0.54, -0.13, -0.35], [1.08, 0.77, 0.7], '#e5b38b');
+    // Shibuya street variant: still broad and unmistakably sumo, but dressed for the city
+    // in a proper T-shirt and full-length trousers (not a bare mawashi).
+    r.box('body', [-0.54, -0.13, -0.35], [1.08, 0.77, 0.7], '#2f7183');
+    r.box('body', [-0.57, -0.24, -0.37], [1.14, 0.25, 0.74], '#344c64');
+    r.box('body', [-0.601, -0.115, -0.363], [1.202, 0.1, 0.726], '#243a50');
     r.box('body', [-0.07, 0.2, 0.362], [0.14, 0.07, 0.018], '#c49071');
-    r.box('body', [-0.601, -0.115, -0.363], [1.202, 0.24, 0.726], '#994c48');
-    r.box('body', [-0.21, -0.38, 0.36], [0.42, 0.52, 0.06], '#ab5c51');
+    r.box('body', [-0.21, -0.38, 0.36], [0.42, 0.52, 0.06], '#344c64');
     r.box('head', [-0.17, 0.75, -0.06], [0.34, 0.17, 0.31], '#394033');
     r.box('head', [-0.24, 0.9, -0.13], [0.48, 0.08, 0.2], '#394033');
   } else if (id === 'miko') {
@@ -286,7 +289,7 @@ const STYLES: Record<string, PersonStyle> = {
   salaryman: { shirt: '#3e6180', pants: '#3e6180' },
   student: { shirt: IVORY, pants: '#e7bd91', shoe: '#624e3a' },
   chef: { shirt: '#edead6', pants: '#485d57', shoe: '#b29b6b' },
-  sumo: { shirt: '#e5b38b', pants: '#e5b38b', skin: '#e5b38b', width: 1.17, bareArms: true, shoe: '#cf9e79' },
+  sumo: { shirt: '#2f7183', pants: '#344c64', skin: '#e7bd91', width: 1.17, bareArms: false, shoe: '#283746' },
   miko: { shirt: IVORY, pants: '#c35443', shoe: '#9e7951' },
   bosozoku: { shirt: IVORY, pants: '#dcd8bd', shoe: '#775744' },
 };

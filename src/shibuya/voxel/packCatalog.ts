@@ -17,7 +17,7 @@ export const CHARACTER_MEMBERS: PackMember[] = [
   { id: 'salaryman', name: 'Salaryman', japanese: '\u30b5\u30e9\u30ea\u30fc\u30de\u30f3', detail: 'Jas biru, dasi merah, kacamata, dan tas kerja. Siap mengejar kereta pagi.', motion: 'Jalan cepat / membungkuk sopan.', color: '#456b85' },
   { id: 'student', name: 'Sailor Student', japanese: '\u5b66\u751f', detail: 'Seragam sailor navy-putih, pita merah, kaus kaki tinggi, dan tas sekolah.', motion: 'Langkah ringan / melambaikan tangan.', color: '#617eae' },
   { id: 'chef', name: 'Ramen Chef', japanese: '\u30e9\u30fc\u30e1\u30f3\u8077\u4eba', detail: 'Tenugui, apron indigo, dan semangkuk ramen lengkap dengan telur dan nori.', motion: 'Langkah pendek sambil membawa ramen / menyajikan mangkuk.', color: '#447c74' },
-  { id: 'sumo', name: 'Sumo', japanese: '\u529b\u58eb', detail: 'Tubuh bulat voxel, chonmage, dan mawashi merah marun. Ukuran tubuh dibuat berbeda.', motion: 'Langkah berat bergoyang / latihan shiko.', color: '#b98664' },
+  { id: 'sumo', name: 'Sumo Streetwear', japanese: '\u529b\u58eb', detail: 'Tubuh bulat voxel, chonmage, kaos teal, dan celana panjang navy. Ukuran tubuh dibuat berbeda untuk suasana jalanan Tokyo.', motion: 'Langkah berat bergoyang / latihan shiko.', color: '#2f7183' },
   { id: 'miko', name: 'Shrine Miko', japanese: '\u5deb\u5973', detail: 'Atasan putih, hakama merah, rambut panjang, dan gohei kertas putih.', motion: 'Langkah lembut / mengangkat gohei.', color: '#b8584b' },
   { id: 'bosozoku', name: 'Bosozoku', japanese: '\u66b4\u8d70\u65cf', detail: 'Mantel panjang putih, bordir emas, ikat kepala merah, dan rambut pompadour.', motion: 'Langkah berayun / pose tangan di pinggang.', color: '#c0a66a' },
 ];

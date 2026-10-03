@@ -38,7 +38,6 @@ export function HUD() {
   const sprint = useUI((s) => s.sprint);
   const sprintLevel = useUI((s) => s.sprintLevel);
   const sprinting = sprint > 0.02 || sprintLevel > 0;
-
   const locationLabel = trackMode === "shibuya"
     ? `SHIBUYA ${shibuyaTime.toUpperCase()} ${dist} M`
     : trackMode === "haruna"
@@ -50,7 +49,9 @@ export function HUD() {
       {/* bread counter (top-left) in vibrant royal blue pill + optional small speed indicator */}
       {inRun && (
         <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex items-center gap-2">
-          <div className="flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/20 bg-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]">
+          <div
+            className="flex h-[9.5cqw] min-h-[38px] items-center gap-2 rounded-full border-2 border-white/20 bg-[#0b66e4] px-3.5 shadow-[0_3px_0_#0748a3]"
+          >
             <BreadIcon size={24} />
             <span className="font-display text-[4.8cqw] leading-none text-white txt-outline-sm">{bread}</span>
           </div>

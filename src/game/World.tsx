@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useReducer, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, pick, voxelMaterial, type GeoPair } from "./voxel";
+import { buildVoxelPair, getGeometry, getGeometryPair, glossyGroundMaterial, glowMaterial, pick, transparentVoxelMaterial, voxelMaterial, type GeoPair } from "./voxel";
 import { applyCurve } from "./curve";
 import {
   CHUNK_LEN,
@@ -105,10 +105,12 @@ import {
 } from "./models";
 import { useUI, type TrackMode } from "./store";
 import { getRayTexture } from "./rays";
+import { getAssetData } from "../shibuya/voxel/models";
+import { buildAssetObject, disposeAsset } from "../shibuya/voxel/renderModel";
+import { citizenActivityModel } from "../shibuya/world/citizenActivities";
 import {
   engine,
   track,
-  SIGN_AHEAD,
   ARM_S,
   CAT_SCALE,
   CHICKEN_SCALE,
@@ -131,15 +133,85 @@ import {
 import { buildGroundGeometry } from "./ground";
 import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuildingModels";
 import {
-  getShibuyaAnimalGeo,
+  getShibuyaAnimalWorldGeo,
+  getShibuyaBathGeo,
   getShibuyaCharacterGeo,
+  getShibuyaRamenCustomerGeo,
+  getShibuyaShopperGeo,
   getShibuyaMotorcycleGeo,
   getShibuyaMotorcycleLightsGeo,
   getShibuyaSalarymanGeo,
 } from "./shibuyaPacks";
 
+type RamenCustomerId = "salaryman" | "student" | "yakuza" | "sumo" | "chef";
+
+const RamenCustomerView = memo(function RamenCustomerView({
+  d,
+  customer,
+  rotationY,
+}: {
+  d: Decor;
+  customer: RamenCustomerId;
+  rotationY: number;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const model = useMemo(() => {
+    // Use the original Shibuya Blocks node hierarchy and its Eat/EatPause clips.
+    // This keeps the bowl, chopsticks, arms, head and source body together.
+    const source = getAssetData("characters", customer);
+    const data = citizenActivityModel(source, customer, "ramen");
+    const object = buildAssetObject(data);
+    const diorama = object.getObjectByName("Diorama");
+    if (diorama) diorama.visible = false;
+    object.updateMatrixWorld(true);
+
+    const rawBounds = new THREE.Box3().setFromObject(object);
+    const rawHeight = Math.max(0.001, rawBounds.max.y - rawBounds.min.y);
+    const targetHeight = customer === "sumo" ? 1.82 : 1.74;
+    const scale = targetHeight / rawHeight;
+    object.scale.setScalar(scale);
+    object.updateMatrixWorld(true);
+
+    const bounds = new THREE.Box3().setFromObject(object);
+    const characterRoot = object.getObjectByName(`character_${customer}_root`);
+    object.position.set(
+      characterRoot ? -characterRoot.position.x * scale : -(bounds.min.x + bounds.max.x) / 2,
+      -bounds.min.y,
+      characterRoot ? -characterRoot.position.z * scale : -(bounds.min.z + bounds.max.z) / 2,
+    );
+    object.updateMatrixWorld(true);
+    return object;
+  }, [customer]);
+
+  const mixer = useMemo(() => {
+    const next = new THREE.AnimationMixer(model);
+    const clip = model.animations.find((animation) => animation.name === "Eat") ?? model.animations.find((animation) => animation.name === "EatPause");
+    if (clip) {
+      const action = next.clipAction(clip);
+      action.play();
+      next.setTime((Math.abs(d.variant) * 0.63) % clip.duration);
+    }
+    return next;
+  }, [d.variant, model]);
+
+  useEffect(() => () => {
+    mixer.stopAllAction();
+    mixer.uncacheRoot(model);
+    disposeAsset(model);
+  }, [mixer, model]);
+
+  useFrame((_, delta) => {
+    mixer.update(Math.min(delta, 0.05));
+    if (groupRef.current) groupRef.current.position.y = d.pos[1] + Math.sin(engine.time * 2.1 + d.variant) * 0.012;
+  });
+
+  return <primitive ref={groupRef} object={model} position={d.pos} rotation-y={rotationY} />;
+});
+
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const isShibuya = useUI((state) => state.trackMode === "shibuya");
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
@@ -153,6 +225,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
             "skyscraper",
             "shibuya109",
             "station",
+            "torii",
             "ramen",
             "izakaya",
             "konbini",
@@ -181,12 +254,22 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair("overpass", overpassParts);
       case "puddle":
         return getGeometryPair(`puddle-${d.variant}`, () => puddleParts(d.variant));
-      case "sakura":
-        return getGeometryPair(`sakura-${d.variant}`, () => sakuraParts(d.variant, 1 + (d.variant % 2) * 0.18));
+      case "sakura": {
+        const scale = (1 + (d.variant % 2) * 0.18) * (isShibuya ? 2 : 1);
+        return getGeometryPair(`sakura-${d.variant}-${isShibuya ? "shibuya" : "standard"}`, () => sakuraParts(d.variant, scale));
+      }
       case "lantern":
         return getGeometryPair("lantern", stoneLanternParts);
       case "ramen":
         return getShibuyaBuildingGeoPair("ramen");
+      case "ramen_customer": {
+        const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
+        return getShibuyaRamenCustomerGeo(customer);
+      }
+      case "shopper": {
+        const customer = (["student", "salaryman", "sumo", "yakuza"] as const)[Math.abs(d.variant) % 4];
+        return getShibuyaShopperGeo(customer);
+      }
       case "machiya":
         return getShibuyaBuildingGeoPair("machiya");
       case "house":
@@ -240,7 +323,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       default:
         return getGeometryPair("lamp", lampParts);
     }
-  }, [d]);
+  }, [d, isShibuya]);
   useEffect(() => {
     // Only dispose dynamically generated, non-cached building geometries
     if (d.kind === "building" && !d.spec?.shibuyaAssetId && !d.spec?.night)
@@ -249,9 +332,17 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         geo.glow?.dispose();
       };
   }, [d, geo]);
+  useFrame(() => {
+    if ((d.kind !== "ramen_customer" && d.kind !== "shopper") || !groupRef.current) return;
+    // Reuse the Shibuya Blocks activity pose and add a tiny living motion.
+    groupRef.current.position.y = d.pos[1] + Math.sin(engine.time * 2.2 + d.variant) * 0.018;
+  });
+
   const facing =
     d.kind === "house" ||
     d.kind === "ramen" ||
+    d.kind === "ramen_customer" ||
+    d.kind === "shopper" ||
     d.kind === "machiya" ||
     d.kind === "building" ||
     d.kind === "village_house" ||
@@ -264,10 +355,15 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "tower109";
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
+  if (d.kind === "ramen_customer") {
+    const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
+    return <RamenCustomerView d={d} customer={customer} rotationY={d.rotY + flip} />;
+  }
   return (
-    <group position={d.pos} rotation-y={d.rotY + flip}>
+    <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip} scale={d.spec?.assetScale ?? 1}>
       <mesh geometry={geo.lit} material={voxelMaterial} castShadow={d.kind !== "flowers"} receiveShadow />
       {geo.glow && <mesh geometry={geo.glow} material={glowMaterial} />}
+      {geo.transparent && <mesh geometry={geo.transparent} material={transparentVoxelMaterial} renderOrder={2} />}
     </group>
   );
 });
@@ -646,12 +742,12 @@ const MoverView = memo(function MoverView({
     }
     if (m.kind === "motorcycle") {
       if (m.shibuyaMoto) {
-        return getShibuyaMotorcycleGeo(m.shibuyaMoto);
+        return getShibuyaMotorcycleGeo(m.shibuyaMoto, m.motorcycleHelmet !== false);
       }
       return getGeometry(`moto-${m.variant % 6}`, () => motorcycleParts(m.variant));
     }
     if (m.kind === "shibuya_animal") {
-      return getShibuyaAnimalGeo(m.shibuyaAnimal ?? "shiba");
+      return getShibuyaAnimalWorldGeo(m.shibuyaAnimal ?? "shiba");
     }
     if (m.kind === "cat") {
       if (m.phase === "hit") {
@@ -660,7 +756,12 @@ const MoverView = memo(function MoverView({
       return getGeometry(`cat-walk-${m.variant % 4}`, () => catWalkParts(m.variant));
     }
     return getGeometry("chicken", chickenParts);
-  }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.shibuyaAnimal]);
+  }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.motorcycleHelmet, m.shibuyaAnimal]);
+  const bathGeo = useMemo(() => (
+    m.kind === "shibuya_animal" && m.shibuyaAnimalActivity === "bathing" && (m.shibuyaAnimal === "monkey" || m.shibuyaAnimal === "capybara")
+      ? getShibuyaBathGeo()
+      : null
+  ), [m.kind, m.shibuyaAnimal, m.shibuyaAnimalActivity]);
   const diamond = useMemo(() => getGeometry("sign-diamond", signDiamondParts), []);
   const exclaim = useMemo(() => getGeometry("sign-ex", signExclaimParts), []);
   const night = useUI((s) => s.trackMode === "shibuya" && s.shibuyaTime === "malam");
@@ -675,12 +776,18 @@ const MoverView = memo(function MoverView({
     }
     return null;
   }, [night, m.kind, m.shibuyaMoto]);
-  const innerRot = m.kind === "car" || m.kind === "motorcycle" ? Math.PI : m.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
+  const animalActivityRot = m.kind === "shibuya_animal" && m.shibuyaAnimalActivity !== "crossing"
+    ? (m.shibuyaAnimalSide === 1 ? -Math.PI / 2 : Math.PI / 2)
+    : null;
+  // Vehicles keep the explicit π-facing-player orientation; activity actors
+  // only override the animal's local facing direction.
+  const innerRot = m.kind === "car" || m.kind === "motorcycle" ? Math.PI : animalActivityRot ?? (m.dir > 0 ? -Math.PI / 2 : Math.PI / 2);
   return (
     <>
       <group ref={(g) => register(m.id, g)}>
         <group rotation-y={innerRot}>
           <mesh geometry={geo} material={flashMat ?? voxelMaterial} castShadow receiveShadow />
+          {bathGeo && <mesh geometry={bathGeo} material={voxelMaterial} castShadow receiveShadow />}
           {lightsGeo && <mesh geometry={lightsGeo} material={glowMaterial} />}
         </group>
       </group>
@@ -755,9 +862,23 @@ function Movers() {
           const inner = g.children[0];
           inner.position.set(0, 0, 0);
           if (inner.children[0]) inner.children[0].position.set(0, 0, 0);
-          const walk = Math.abs(Math.sin(m.hopT * 11)) * 0.035;
-          inner.position.y = walk;
-          inner.rotation.x = Math.sin(m.hopT * 11) * 0.04;
+          const activity = m.shibuyaAnimalActivity ?? "crossing";
+          if (activity === "crossing") {
+            const walk = Math.abs(Math.sin(m.hopT * 11)) * 0.035;
+            inner.position.y = walk;
+            inner.rotation.x = Math.sin(m.hopT * 11) * 0.04;
+          } else if (activity === "waving") {
+            // The source rig is flattened for the runner, so a gentle readable
+            // side-to-side greeting keeps the unchanged animal silhouette alive
+            // without replacing it with an approximate model.
+            inner.position.y = 0.025 + Math.abs(Math.sin(t * 3.2 + m.id)) * 0.018;
+            inner.rotation.z = Math.sin(t * 3.2 + m.id) * 0.08;
+          } else {
+            // Onsen scene: the animal and the separate bath/steam geometry bob
+            // together beside the storefront, visibly distinct from crossers.
+            inner.position.y = 0.018 + Math.sin(t * 2.1 + m.id) * 0.012;
+            inner.rotation.x = Math.sin(t * 2.1 + m.id) * 0.025;
+          }
           inner.scale.setScalar(1);
         } else if (m.kind === "cat") {
           const inner = g.children[0];
@@ -805,13 +926,16 @@ function Movers() {
       }
       const sg = signs.current.get(m.id);
       if (sg) {
-        const show = m.warned && engine.phase === "playing" && m.s > d + 1;
+        const vehicleDistance = m.s - d;
+        // PSA is visible only in the readable 40 m -> 20 m approach window.
+        const show = m.warned && engine.phase === "playing" && vehicleDistance <= 40 && vehicleDistance >= 20;
         sg.visible = show;
         if (show) {
-          const s = Math.min(m.s - 2.2, d + SIGN_AHEAD);
-          track.frame(s, m.lat, 1.9 + Math.sin(t * 6) * 0.12, sg.position);
+          // The warning is attached directly above the incoming vehicle, never
+          // parked on the shoulder or over the player's lane.
+          track.frame(m.s, m.lat, 2.2 + Math.sin(t * 6) * 0.08, sg.position);
           sg.quaternion.copy(camera.quaternion);
-          const pulse = 1 + 0.12 * Math.sin(t * 10);
+          const pulse = 0.7 + 0.06 * Math.sin(t * 10);
           sg.scale.setScalar(pulse);
         }
       }
