@@ -110,14 +110,14 @@ export default function App() {
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden bg-[#151823]">
       {/* ── Floating Game Mode Switcher Bar ── */}
-      <div className="fixed top-2.5 left-1/2 -translate-x-1/2 z-50 flex items-center p-1 rounded-full bg-[#151823]/92 border border-white/20 shadow-2xl backdrop-blur-md font-sans">
+      <div className="fixed top-2.5 left-1/2 -translate-x-1/2 z-50 flex items-center p-1 rounded-full bg-white/65 border border-white/90 shadow-[0_4px_14px_rgba(34,77,104,0.2)] backdrop-blur-md font-sans">
         <button
           type="button"
           onClick={() => switchGameMode("pigeon")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-extrabold text-xs transition-all ${
             gameMode === "pigeon"
               ? "bg-[#ffd21f] text-[#151823] shadow-md scale-105"
-              : "text-white/70 hover:text-white hover:bg-white/10"
+              : "text-[#1f405b]/70 hover:text-[#1f405b] hover:bg-white/70"
           }`}
           title="Mode Game: Pigeon Skateboard Runner"
         >
@@ -130,7 +130,7 @@ export default function App() {
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-extrabold text-xs transition-all ${
             gameMode === "shibuya"
               ? "bg-[#2ec4b6] text-white shadow-md scale-105"
-              : "text-white/70 hover:text-white hover:bg-white/10"
+              : "text-[#1f405b]/70 hover:text-[#1f405b] hover:bg-white/70"
           }`}
           title="Mode Game: Shibuya Blocks Voxel World & Asset Studio"
         >

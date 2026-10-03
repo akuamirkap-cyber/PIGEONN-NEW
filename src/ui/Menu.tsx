@@ -319,22 +319,22 @@ function MainMenu() {
   return (
     <div className="menu-overlay pointer-events-none absolute inset-0 z-20 select-none">
       {/* ── Top Bar: compact, aligned wallet + best cards ── */}
-      <div className="absolute left-[4%] top-[3.5%] flex h-11 min-w-[25%] items-center gap-2 rounded-2xl border-2 border-white/20 bg-[#182236]/95 px-3.5 shadow-[0_4px_0_rgba(11,28,58,0.45),0_8px_18px_rgba(18,43,76,0.2)] backdrop-blur-sm">
-        <BreadIcon size={24} />
-        <span className="font-display text-[4.6cqw] leading-none text-white">{wallet}</span>
+      <div className="absolute left-[4%] top-[3.5%] flex h-11 min-w-[25%] items-center gap-2 px-1">
+        <BreadIcon size={25} />
+        <span className="crossy-ui-number font-display text-[4.8cqw] leading-none text-white">{wallet}</span>
       </div>
 
-      <div className="absolute right-[4%] top-[3.5%] flex h-11 min-w-[28%] items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-[#182236]/95 px-3.5 shadow-[0_4px_0_rgba(11,28,58,0.45),0_8px_18px_rgba(18,43,76,0.2)] backdrop-blur-sm">
-        <span className="font-display text-[3.8cqw] leading-none text-[#ffd23f]">BEST</span>
-        <span className="font-display text-[4.2cqw] leading-none text-white">{best}</span>
+      <div className="absolute right-[4%] top-[3.5%] flex h-11 min-w-[28%] items-center justify-center gap-1.5 px-1">
+        <span className="font-display text-[3.9cqw] leading-none text-[#ffe04b] txt-outline-sm">BEST</span>
+        <span className="crossy-ui-number font-display text-[4.4cqw] leading-none text-white">{best}</span>
       </div>
 
       {/* ── Title: clear two-line lockup with breathing room below it ── */}
       <div className="absolute left-0 right-0 top-[11.5%] z-10 flex flex-col items-center drop-shadow-[0_8px_0_rgba(22,48,78,0.16)]">
-        <div className="font-display txt-outline text-[14.5cqw] leading-[0.9] tracking-[-0.04em] text-white">
+        <div className="crossy-title crossy-title-white font-display text-[14.5cqw] leading-[0.9] tracking-[-0.04em] text-white">
           PIGEON
         </div>
-        <div className="font-display txt-outline text-[19cqw] leading-[0.86] tracking-[-0.05em] text-[#ffd23f]">
+        <div className="crossy-title crossy-title-yellow font-display text-[19cqw] leading-[0.86] tracking-[-0.05em] text-[#ffd23f]">
           SK8
         </div>
       </div>
@@ -348,25 +348,25 @@ function MainMenu() {
             sfx.click();
             setShowMysteryBox(true);
           }}
-          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 rounded-2xl border-2 border-[#ffe36b]/70 bg-gradient-to-b from-[#24324a]/96 to-[#151d2e]/96 px-3.5 py-1.5 shadow-[0_4px_0_#0d1422,0_8px_18px_rgba(0,0,0,0.22)] backdrop-blur-sm transition-transform hover:scale-[1.03] active:scale-95"
+          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 rounded-2xl border-2 border-white/90 bg-[#fff4c7]/95 px-3.5 py-1.5 shadow-[0_4px_0_#d5a92e,0_8px_18px_rgba(45,91,115,0.18)] backdrop-blur-sm transition-transform hover:scale-[1.03] active:scale-95"
         >
           <span className="text-xl">🎁</span>
           <div className="flex flex-col items-start leading-none">
-            <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#ffd21f]">
+            <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#a65d16]">
               DAILY WORD HUNT
             </span>
-            <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-white">
+            <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-[#1f405b]">
               {wordHunt.word.split("").map((ch, idx) => (
                 <span
                   key={idx}
-                  className={wordHunt.collected[idx] ? "text-[#ffd21f] font-bold" : "text-white/30"}
+                  className={wordHunt.collected[idx] ? "text-[#e19a16] font-bold" : "text-[#1f405b]/35"}
                 >
                   {ch}
                 </span>
               ))}
             </div>
           </div>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 font-display text-[2.4cqw] text-white/80">
+          <span className="rounded-full bg-[#ffd451] px-2 py-0.5 font-display text-[2.4cqw] text-[#1f405b] shadow-[0_2px_0_#d5a92e]">
             {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}
           </span>
         </button>
@@ -378,11 +378,11 @@ function MainMenu() {
             sfx.click();
             window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
           }}
-          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-xl border-2 border-[#52e0d0]/75 bg-[#182236]/95 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-[#66eadc] whitespace-nowrap shadow-[0_3px_0_rgba(11,64,72,0.55),0_6px_14px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-all hover:bg-[#2ec4b6]/20 active:scale-95"
+          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 rounded-xl border-2 border-white/90 bg-[#d9fff0]/95 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-[#176b67] whitespace-nowrap shadow-[0_3px_0_#80cfc0,0_6px_14px_rgba(45,91,115,0.16)] backdrop-blur-sm transition-all hover:bg-white active:scale-95"
         >
           <span>🏙️</span>
           <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
-          <span className="text-white/70">→</span>
+          <span className="text-[#176b67]/70">→</span>
         </button>
       </div>
 
