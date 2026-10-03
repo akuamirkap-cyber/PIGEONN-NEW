@@ -1,4 +1,5 @@
 import type { Part } from "./voxel";
+import type { ShibuyaAnimalId } from "./shibuyaPacks";
 import {
   catArmParts,
   catBodyParts,
@@ -21,7 +22,7 @@ export type HatKind = "cap" | "crown" | "mohawk" | "headband" | "beanie" | "viso
 export type AccessoryKind = "none" | "mailbag" | "hoodie";
 export type DeckKind = "standard" | "baguette";
 /** Spesies karakter yang bisa dimainkan. `undefined` di Skin berarti merpati. */
-export type CharKind = "pigeon" | "cat" | "flamingo" | "crow";
+export type CharKind = "pigeon" | "cat" | "flamingo" | "crow" | "littleJapanFriend";
 
 export interface DeckOption {
   id: "default" | "baguette";
@@ -77,9 +78,50 @@ export interface Skin {
   deckType?: DeckKind;
   /** spesies karakter (default: merpati) */
   kind?: CharKind;
+  /** Little Japan Friends source model from Shibuya Blocks, used as a full playable mesh. */
+  friend?: ShibuyaAnimalId;
 }
 
 const ORANGE = "#ff8c42";
+
+/**
+ * The eight Little Japan Friends are real playable skins, not recoloured pigeon
+ * stand-ins. Their mesh is resolved from the Shibuya Blocks source in Player and
+ * pigeonRig; the palette fields keep the legacy character/deck code type-safe.
+ */
+const littleJapanFriendSkin = (friend: ShibuyaAnimalId, name: string, tagline: string, body: string, deck: string): Skin => ({
+  id: `friend-${friend}`,
+  name,
+  tagline,
+  cost: 0,
+  kind: "littleJapanFriend",
+  friend,
+  body,
+  belly: body,
+  head: body,
+  neck1: body,
+  neck2: body,
+  wing: body,
+  wingTip: body,
+  tail: body,
+  tailTip: body,
+  beak: body,
+  cere: body,
+  feet: body,
+  deck,
+  wheels: "#1c1e22",
+});
+
+const LITTLE_JAPAN_FRIEND_SKINS: Skin[] = [
+  littleJapanFriendSkin("shiba", "Shiba", "Little Japan Friend · source Shibuya Blocks", "#c69051", "#bb5844"),
+  littleJapanFriendSkin("tanuki", "Tanuki", "Little Japan Friend · source Shibuya Blocks", "#8e714e", "#6b5f43"),
+  littleJapanFriendSkin("kitsune", "Kitsune", "Little Japan Friend · source Shibuya Blocks", "#ece8d8", "#b55643"),
+  littleJapanFriendSkin("deer", "Deer", "Little Japan Friend · source Shibuya Blocks", "#a78252", "#725a39"),
+  littleJapanFriendSkin("monkey", "Monkey", "Little Japan Friend · source Shibuya Blocks", "#ac9b89", "#d69989"),
+  littleJapanFriendSkin("capybara", "Capybara", "Little Japan Friend · source Shibuya Blocks", "#b09265", "#95c2bb"),
+  littleJapanFriendSkin("crane", "Crane", "Little Japan Friend · source Shibuya Blocks", "#edeedc", "#41493c"),
+  littleJapanFriendSkin("neko", "Neko", "Little Japan Friend · source Shibuya Blocks", "#edead6", "#b95640"),
+];
 
 export const SKINS: Skin[] = [
   {
@@ -175,6 +217,7 @@ export const SKINS: Skin[] = [
     wing: "#22252c", wingTip: "#171a20", tail: "#22252c", tailTip: "#2b3040", beak: "#3a3f47", cere: "#5b6472", feet: "#3a3f47",
     deck: "#2b2f38", wheels: "#1c1e22",
   },
+  ...LITTLE_JAPAN_FRIEND_SKINS,
 ];
 
 export function getSkin(id: string): Skin {

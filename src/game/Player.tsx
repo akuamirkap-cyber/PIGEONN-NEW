@@ -7,6 +7,7 @@ import { useUI } from "./store";
 import { charBodyParts, charHeadParts, charTailParts, charWingParts, deckParts, getSkin, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT } from "./skins";
 import { RIG, LegRig } from "./pigeonRig";
 import { nosTankParts } from "./models";
+import { getShibuyaAnimalGeo } from "./shibuyaPacks";
 
 /** Max truck steering angle (rad) at full lean — real trucks turn ~10–20° with the deck tilted ~15–20° */
 const TRUCK_MAX = 0.42;
@@ -81,6 +82,10 @@ export function Player() {
     }),
     [skin, deckOverride, wheelColor],
   );
+  // Little Japan Friends use the original Shibuya Blocks geometry as one full
+  // mesh. Do not run it through the pigeon body/head rig: that would distort
+  // quadrupeds, the crane, and the capybara's bath setting.
+  const friendGeo = useMemo(() => (skin.kind === "littleJapanFriend" && skin.friend ? getShibuyaAnimalGeo(skin.friend) : null), [skin.kind, skin.friend]);
   const flameMats = useMemo(
     () => ({
       core: new THREE.MeshBasicMaterial({ color: "#bfe9ff", transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -557,10 +562,14 @@ export function Player() {
               </group>
             </group>
             <group ref={pigeon} position={[0, RIG.pigeonY, 0]}>
-              {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
-              <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
-              <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
-              <group ref={torso} name="pigeon-torso">
+              {friendGeo && <mesh geometry={friendGeo} material={voxelMaterial} castShadow receiveShadow />}
+              {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal skin. */}
+              <group visible={!friendGeo}>
+                {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
+                <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
+                <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
+              </group>
+              <group ref={torso} name="pigeon-torso" visible={!friendGeo}>
                 <mesh geometry={geos.body} material={voxelMaterial} castShadow receiveShadow />
                 <mesh ref={tail} geometry={geos.tail} material={voxelMaterial} position={TAIL_ROOT} castShadow />
                 <mesh ref={head} name="pigeon-head" geometry={geos.head} material={voxelMaterial} position={[0.32, 1.04, 0]} rotation={[0, 0, 0]} castShadow />

@@ -230,6 +230,23 @@ export function getShibuyaAnimalGeo(id: ShibuyaAnimalId) {
   return getGeometry(`shibuya-animal-${id}`, () => getShibuyaAnimalParts(id));
 }
 
+/** Small bath scene added around the untouched source animal for onsen activity movers. */
+const shibuyaBathParts = (): Part[] => [
+  { x: -0.72, y: 0.06, z: -0.58, w: 1.44, h: 0.12, d: 1.16, color: "#9b9f8f" },
+  { x: -0.62, y: 0.16, z: -0.49, w: 1.24, h: 0.055, d: 0.98, color: "#95c2bb", opacity: 0.82 },
+  { x: -0.78, y: 0.18, z: -0.58, w: 0.12, h: 0.27, d: 1.16, color: "#bbc1aa" },
+  { x: 0.66, y: 0.18, z: -0.58, w: 0.12, h: 0.27, d: 1.16, color: "#bbc1aa" },
+  { x: -0.72, y: 0.18, z: -1.1, w: 1.44, h: 0.27, d: 0.12, color: "#aab2a0" },
+  { x: -0.72, y: 0.18, z: 0.0, w: 1.44, h: 0.27, d: 0.12, color: "#aab2a0" },
+  { x: -0.36, y: 0.52, z: -0.45, w: 0.1, h: 0.26, d: 0.1, color: "#e8efdf" },
+  { x: 0.0, y: 0.66, z: -0.28, w: 0.1, h: 0.22, d: 0.1, color: "#e8efdf" },
+  { x: 0.34, y: 0.78, z: -0.12, w: 0.1, h: 0.18, d: 0.1, color: "#e8efdf" },
+];
+
+export function getShibuyaBathGeo() {
+  return getGeometry("shibuya-animal-bath", shibuyaBathParts);
+}
+
 // ---------------------- 3. Japan Vehicle Pack: Motorcycles with Riders ----------------------
 // Honda is represented by the source Super Cub and Harley by the source custom/cruiser
 // silhouette. The aliases keep the route vocabulary explicit without duplicating the

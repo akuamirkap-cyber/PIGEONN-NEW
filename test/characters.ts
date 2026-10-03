@@ -153,7 +153,7 @@ for (const k of SKINS) {
 }
 check("semua karakter unik (tidak ada id dobel)", new Set(SKINS.map((s) => s.id)).size === SKINS.length, `${SKINS.length} karakter`);
 const species = new Set(SKINS.map((s) => s.kind ?? "pigeon"));
-check("ada 4 spesies karakter", species.size === 4, [...species].join(", "));
+check("ada 5 spesies karakter termasuk Little Japan Friends", species.size === 5 && species.has("littleJapanFriend"), [...species].join(", "));
 check("jumlah merpati tetap utuh", SKINS.filter((s) => !s.kind).length >= 12, `${SKINS.filter((s) => !s.kind).length} merpati`);
 const unlocked = useUI.getState().unlocked;
 check("kucing/flamingo/gagak otomatis kebuka (free)", ["cat", "flamingo", "crow"].every((id) => unlocked.includes(id)), unlocked.length + " karakter terbuka");

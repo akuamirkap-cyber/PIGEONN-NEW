@@ -346,6 +346,7 @@ export interface Chunk {
 }
 export type MoverKind = "car" | "motorcycle" | "chicken" | "pedestrian" | "cat" | "dog" | "shibuya_animal";
 export type MoverPhase = "drive" | "wait" | "hop" | "pause" | "hit";
+export type ShibuyaAnimalActivity = "crossing" | "waving" | "bathing";
 export interface Mover {
   id: number;
   kind: MoverKind;
@@ -385,6 +386,10 @@ export interface Mover {
   leanT?: number;
   /** Little Japan Friends (shiba, tanuki, kitsune, deer, monkey, capybara, crane, neko) */
   shibuyaAnimal?: ShibuyaAnimalId;
+  /** Source-character activity: crossing, waving toward the player, or bathing beside a shop. */
+  shibuyaAnimalActivity?: ShibuyaAnimalActivity;
+  /** Waving/bathing actors stay on this storefront sidewalk side. */
+  shibuyaAnimalSide?: -1 | 1;
   /** Japan Vehicle Pack motorcycle (including explicit Honda/Harley route aliases). */
   shibuyaMoto?: ShibuyaMotorcycleId;
   /** Traffic rider variation: some riders wear a helmet and some do not. */
@@ -809,6 +814,9 @@ class Engine {
   private flipToggle = false;
   private sparkT = 0;
   private patternIndex = 0;
+  /** Deterministic Shibuya roster cursor: every run shows all eight source animals. */
+  private shibuyaAnimalRosterIndex = 0;
+  private shibuyaPedestrianIndex = 0;
   private shibuyaMotoIndex = 0;
 
   player = {
@@ -950,6 +958,8 @@ class Engine {
     this.nextChunkS = 0;
     this.nextObstacleS = this.distance + 40;
     this.patternIndex = 0;
+    this.shibuyaAnimalRosterIndex = 0;
+    this.shibuyaPedestrianIndex = 0;
     this.shibuyaMotoIndex = 0;
     const p = this.player;
     p.lane = 1;
@@ -1004,6 +1014,7 @@ class Engine {
     this.pulses = [];
     this.downhillFlag = false;
     while (this.nextChunkS < this.distance + 90) this.spawnChunk();
+    this.seedShibuyaAnimalRoster();
     track.sample(this.distance, this.center);
     this.updateTransform();
     this.listVersion++;
@@ -4226,7 +4237,10 @@ class Engine {
       // but the planner skips it when the source diorama cannot fit with a real
       // gap. All thirteen assets are already guaranteed by the two frontage rows.
       const skylineLat = id % 2 === 0 ? -25.5 : 25.5;
-      add("building", 6, skylineLat, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      const skylinePlacement = add("building", 6, skylineLat, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      // The reserve skyline is still a real storefront copy: do not leave a
+      // ramen facade without its visible Eat rig (or a konbini without frontage).
+      if (skylinePlacement) addShibuyaShopFrontage(skyBld, skylinePlacement.s, skylinePlacement.lat);
 
       // Keep a recognizable standalone house in the route in addition to Machiya and Townhouse.
       // It is placed on the opposite skyline side so it never masks the exact transfer asset.
@@ -4641,6 +4655,39 @@ class Engine {
     return len + 2;
   }
 
+  private nextShibuyaAnimal(): ShibuyaAnimalId {
+    const animal = SHIBUYA_ANIMALS[this.shibuyaAnimalRosterIndex % SHIBUYA_ANIMALS.length];
+    this.shibuyaAnimalRosterIndex += 1;
+    return animal;
+  }
+
+  /**
+   * The opening Shibuya window is curated, not luck-based: all eight source
+   * animals are queued ahead of the player on the first boulevard. Crossing,
+   * waving and onsen actors share the regular mover system and are later
+   * replenished by the round-robin obstacle patterns.
+   */
+  private seedShibuyaAnimalRoster() {
+    if (track.mode !== "shibuya") return;
+    const activities: ShibuyaAnimalActivity[] = ["waving", "crossing", "waving", "crossing", "bathing", "bathing", "waving", "crossing"];
+    for (let i = 0; i < SHIBUYA_ANIMALS.length; i++) {
+      const activity = activities[i];
+      const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
+      const dir = i % 2 === 0 ? 1 : -1;
+      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side * 5.3);
+      m.dir = dir;
+      m.speed = activity === "crossing" ? 2.35 : 0;
+      m.delay = activity === "crossing" ? Math.max(0.25, (m.s - this.distance) / Math.max(this.speed, START_SPEED) - 3.4) : 0;
+      m.crossingEdge = activity === "crossing" ? 5.2 : undefined;
+      m.shibuyaAnimal = this.nextShibuyaAnimal();
+      m.shibuyaAnimalActivity = activity;
+      m.shibuyaAnimalSide = side;
+      if (activity !== "crossing") m.phase = "pause";
+      this.movers.push(m);
+    }
+    this.moverVersion++;
+  }
+
   private spawnPedestrians(x: number, t: number) {
     if ([0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20))) return 6;
     const n = 2 + (Math.random() < 0.7 ? 1 : 0) + (t > 0.4 && Math.random() < 0.5 ? 1 : 0);
@@ -4676,22 +4723,31 @@ class Engine {
       m.speed = elderly ? rand(0.85, 1.25) : rand(1.6, 2.3);
       // Mix casual walkers, salarymen, and Shibuya Blocks office workers.
       m.variant = elderly ? randInt(0, 2) : Math.random() < 0.35 ? randInt(5, 7) : randInt(0, 4);
-      if (!elderly && (track.mode === "shibuya" ? Math.random() < 0.72 : Math.random() < 0.40)) {
-        m.shibuyaChar = Math.random() < 0.8 ? "salaryman" : pick(SHIBUYA_CHARACTERS);
+      if (!elderly) {
+        const sumoDue = track.mode === "shibuya" && this.shibuyaPedestrianIndex % 3 === 0;
+        const makeShibuyaRig = track.mode === "shibuya" && (sumoDue || Math.random() < 0.72);
+        const makeRig = track.mode === "shibuya" ? makeShibuyaRig : Math.random() < 0.40;
+        if (makeRig) {
+          m.shibuyaChar = sumoDue ? "sumo" : Math.random() < 0.8 ? "salaryman" : pick(SHIBUYA_CHARACTERS);
+          if (track.mode === "shibuya") this.shibuyaPedestrianIndex += 1;
+        }
       }
       const eta = (pedestrianS - d) / est;
       const walk = (edge - 1.2) / m.speed;
       m.delay = Math.max(0.1, eta - walk + rand(-0.9, 0.9) + i * 0.35);
       this.movers.push(m);
 
-      // Also spawn Little Japan Friends (Shiba, Tanuki, Kitsune, Neko) crossing alongside pedestrians!
-      if (i === 0 && (track.mode === "shibuya" ? Math.random() < 0.65 : Math.random() < 0.35)) {
+      // Shibuya uses a deterministic source roster instead of a random subset. The
+      // cursor wraps after eight, so a run always gets Shiba, Tanuki, Kitsune,
+      // Deer, Monkey, Capybara, Crane and Neko in the same mode.
+      if (i === 0 && (track.mode === "shibuya" || Math.random() < 0.35)) {
         const petMover = this.newMover("shibuya_animal", pedestrianS + rand(-1.2, 1.2), -1, -dir * (edge - 0.4));
         petMover.dir = dir;
         petMover.crossingEdge = edge;
         petMover.speed = rand(2.0, 2.7);
         petMover.delay = Math.max(0.1, m.delay + rand(0.05, 0.3));
-        petMover.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+        petMover.shibuyaAnimal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(SHIBUYA_ANIMALS);
+        petMover.shibuyaAnimalActivity = "crossing";
         if (signal) petMover.signalIntersectionId = signal.id;
         this.movers.push(petMover);
       }
@@ -4920,7 +4976,9 @@ class Engine {
       else if (idx === 2) pattern = "pedestrians"; // Salaryman & crossing friends!
       else if (idx === 3) pattern = "shibuya_animals"; // Another Little Japan Friend encounter!
       else if (idx === 4) pattern = "oncoming"; // Fast oncoming with motorcycles!
-      else if (idx === 5) pattern = "motorcycles"; // Japan Vehicle Pack squad!
+      else if (idx === 5) pattern = "shibuya_animals"; // Finish the first four roster pairs deterministically.
+      else if (idx === 6) pattern = "motorcycles"; // Japan Vehicle Pack squad!
+      else if (idx === 7) pattern = "shibuya_animals"; // All eight source animals are now on route.
     }
 
     const itemNearby = [0, 1, 2].some((l) => this.isNearCollectibleItem(x, l, 22, 20));
@@ -5175,8 +5233,12 @@ class Engine {
         break;
       }
       case "shibuya_animals": {
-        if (itemNearby) break;
-        const n = 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
+        // Do not let a collectible suppress the deterministic opening roster;
+        // these are soft sidewalk/crossing actors, not hard obstacles.
+        if (itemNearby && !(track.mode === "shibuya" && this.shibuyaAnimalRosterIndex < SHIBUYA_ANIMALS.length)) break;
+        // Four deterministic pairs cover the complete eight-member roster in
+        // the opening route; later encounters continue the same round-robin.
+        const n = track.mode === "shibuya" ? 2 : 1 + (Math.random() < 0.65 ? 1 : 0) + (Math.random() < 0.35 ? 1 : 0);
         const dir = Math.random() < 0.5 ? 1 : -1;
         const est = Math.max(this.speed, START_SPEED);
         const eta = Math.max(0.1, (x - d) / est);
@@ -5187,12 +5249,24 @@ class Engine {
           const distToTarget = Math.abs(targetLat - (-dir * startEdge));
           const tWalk = distToTarget / animalSpeed;
           const delay = Math.max(0.05, eta - tWalk + (i - (n - 1) / 2) * 0.3);
-          const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, -dir * startEdge);
+          const slot = this.shibuyaAnimalRosterIndex % SHIBUYA_ANIMALS.length;
+          const animal = track.mode === "shibuya" ? this.nextShibuyaAnimal() : pick(SHIBUYA_ANIMALS);
+          const activity = track.mode !== "shibuya"
+            ? "crossing"
+            : animal === "monkey" || animal === "capybara"
+              ? "bathing"
+              : slot % 2 === 0 ? "waving" : "crossing";
+          const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
+          const sidewalkLat = side * 5.3;
+          const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, activity === "crossing" ? -dir * startEdge : sidewalkLat);
           m.dir = dir;
-          m.speed = animalSpeed;
-          m.delay = delay;
-          m.crossingEdge = 5.2;
-          m.shibuyaAnimal = pick(SHIBUYA_ANIMALS);
+          m.speed = activity === "crossing" ? animalSpeed : 0;
+          m.delay = activity === "crossing" ? delay : 0;
+          m.crossingEdge = activity === "crossing" ? 5.2 : undefined;
+          m.shibuyaAnimal = animal;
+          m.shibuyaAnimalActivity = activity;
+          m.shibuyaAnimalSide = side;
+          if (activity !== "crossing") m.phase = "pause";
           this.movers.push(m);
         }
         this.moverVersion++;

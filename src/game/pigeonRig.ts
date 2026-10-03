@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { buildVoxelGeometry, clamp, voxelMaterial, type Part } from "./voxel";
+import { getShibuyaAnimalGeo } from "./shibuyaPacks";
 import { charBodyParts, charHeadParts, charLegParts, charTailParts, charWingParts, deckParts, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT, type Skin } from "./skins";
 
 /** Shared placement constants for the pigeon-on-board rig (used by the Player and the 3D thumbnails). */
@@ -153,24 +154,31 @@ export function buildPigeonGroup(
   const pigeon = new THREE.Group();
   pigeon.position.y = RIG.pigeonY;
   pigeon.scale.setScalar(RIG.pigeonScale);
-  pigeon.add(new THREE.Mesh(body, voxelMaterial));
-  const h = new THREE.Mesh(head, voxelMaterial);
-  h.position.set(...RIG.headPos);
-  h.rotation.y = RIG.headRotY;
-  pigeon.add(h);
-  const wr = new THREE.Mesh(wingR, voxelMaterial);
-  wr.position.set(...RIG.wingRPos);
-  pigeon.add(wr);
-  const wl = new THREE.Mesh(wingL, voxelMaterial);
-  wl.position.set(...RIG.wingLPos);
-  pigeon.add(wl);
-  const tl = new THREE.Mesh(tail, voxelMaterial);
-  tl.position.set(...TAIL_ROOT);
-  pigeon.add(tl);
-  const legs = [new LegRig(skin, voxelMaterial, false), new LegRig(skin, voxelMaterial, false)];
-  legs[0].root.position.set(0, HIP_Y, LEG_Z);
-  legs[1].root.position.set(0, HIP_Y, -LEG_Z);
-  legs.forEach((l) => pigeon.add(l.root));
+  const legs: LegRig[] = [];
+  if (skin.kind === "littleJapanFriend" && skin.friend) {
+    // Keep the exact Shibuya Blocks animal geometry intact. It is cached by the
+    // source pack and therefore deliberately not disposed with this thumbnail.
+    pigeon.add(new THREE.Mesh(getShibuyaAnimalGeo(skin.friend), voxelMaterial));
+  } else {
+    pigeon.add(new THREE.Mesh(body, voxelMaterial));
+    const h = new THREE.Mesh(head, voxelMaterial);
+    h.position.set(...RIG.headPos);
+    h.rotation.y = RIG.headRotY;
+    pigeon.add(h);
+    const wr = new THREE.Mesh(wingR, voxelMaterial);
+    wr.position.set(...RIG.wingRPos);
+    pigeon.add(wr);
+    const wl = new THREE.Mesh(wingL, voxelMaterial);
+    wl.position.set(...RIG.wingLPos);
+    pigeon.add(wl);
+    const tl = new THREE.Mesh(tail, voxelMaterial);
+    tl.position.set(...TAIL_ROOT);
+    pigeon.add(tl);
+    legs.push(new LegRig(skin, voxelMaterial, false), new LegRig(skin, voxelMaterial, false));
+    legs[0].root.position.set(0, HIP_Y, LEG_Z);
+    legs[1].root.position.set(0, HIP_Y, -LEG_Z);
+    legs.forEach((l) => pigeon.add(l.root));
+  }
   scaled.add(pigeon);
 
   return {

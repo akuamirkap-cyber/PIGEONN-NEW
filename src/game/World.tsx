@@ -132,6 +132,7 @@ import { buildGroundGeometry } from "./ground";
 import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuildingModels";
 import {
   getShibuyaAnimalGeo,
+  getShibuyaBathGeo,
   getShibuyaCharacterGeo,
   getShibuyaRamenCustomerGeo,
   getShibuyaShopperGeo,
@@ -685,6 +686,11 @@ const MoverView = memo(function MoverView({
     }
     return getGeometry("chicken", chickenParts);
   }, [m.kind, m.variant, m.phase, m.shibuyaMoto, m.motorcycleHelmet, m.shibuyaAnimal]);
+  const bathGeo = useMemo(() => (
+    m.kind === "shibuya_animal" && m.shibuyaAnimalActivity === "bathing" && (m.shibuyaAnimal === "monkey" || m.shibuyaAnimal === "capybara")
+      ? getShibuyaBathGeo()
+      : null
+  ), [m.kind, m.shibuyaAnimal, m.shibuyaAnimalActivity]);
   const diamond = useMemo(() => getGeometry("sign-diamond", signDiamondParts), []);
   const exclaim = useMemo(() => getGeometry("sign-ex", signExclaimParts), []);
   const night = useUI((s) => s.trackMode === "shibuya" && s.shibuyaTime === "malam");
@@ -699,12 +705,18 @@ const MoverView = memo(function MoverView({
     }
     return null;
   }, [night, m.kind, m.shibuyaMoto]);
-  const innerRot = m.kind === "car" || m.kind === "motorcycle" ? Math.PI : m.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
+  const animalActivityRot = m.kind === "shibuya_animal" && m.shibuyaAnimalActivity !== "crossing"
+    ? (m.shibuyaAnimalSide === 1 ? -Math.PI / 2 : Math.PI / 2)
+    : null;
+  // Vehicles keep the explicit π-facing-player orientation; activity actors
+  // only override the animal's local facing direction.
+  const innerRot = m.kind === "car" || m.kind === "motorcycle" ? Math.PI : animalActivityRot ?? (m.dir > 0 ? -Math.PI / 2 : Math.PI / 2);
   return (
     <>
       <group ref={(g) => register(m.id, g)}>
         <group rotation-y={innerRot}>
           <mesh geometry={geo} material={flashMat ?? voxelMaterial} castShadow receiveShadow />
+          {bathGeo && <mesh geometry={bathGeo} material={voxelMaterial} castShadow receiveShadow />}
           {lightsGeo && <mesh geometry={lightsGeo} material={glowMaterial} />}
         </group>
       </group>
@@ -779,9 +791,23 @@ function Movers() {
           const inner = g.children[0];
           inner.position.set(0, 0, 0);
           if (inner.children[0]) inner.children[0].position.set(0, 0, 0);
-          const walk = Math.abs(Math.sin(m.hopT * 11)) * 0.035;
-          inner.position.y = walk;
-          inner.rotation.x = Math.sin(m.hopT * 11) * 0.04;
+          const activity = m.shibuyaAnimalActivity ?? "crossing";
+          if (activity === "crossing") {
+            const walk = Math.abs(Math.sin(m.hopT * 11)) * 0.035;
+            inner.position.y = walk;
+            inner.rotation.x = Math.sin(m.hopT * 11) * 0.04;
+          } else if (activity === "waving") {
+            // The source rig is flattened for the runner, so a gentle readable
+            // side-to-side greeting keeps the unchanged animal silhouette alive
+            // without replacing it with an approximate model.
+            inner.position.y = 0.025 + Math.abs(Math.sin(t * 3.2 + m.id)) * 0.018;
+            inner.rotation.z = Math.sin(t * 3.2 + m.id) * 0.08;
+          } else {
+            // Onsen scene: the animal and the separate bath/steam geometry bob
+            // together beside the storefront, visibly distinct from crossers.
+            inner.position.y = 0.018 + Math.sin(t * 2.1 + m.id) * 0.012;
+            inner.rotation.x = Math.sin(t * 2.1 + m.id) * 0.025;
+          }
           inner.scale.setScalar(1);
         } else if (m.kind === "cat") {
           const inner = g.children[0];
