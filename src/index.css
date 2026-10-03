@@ -410,9 +410,3 @@ body,
     background-position: 100% 0;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .skin-thumb-spin {
-    animation: none;
-  }
-}
