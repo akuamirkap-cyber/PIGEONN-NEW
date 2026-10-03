@@ -76,6 +76,24 @@ body,
   }
 }
 
+.bread-counter-pop {
+  animation: bread-counter-pop 0.42s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes bread-counter-pop {
+  0% {
+    transform: scale(0.88);
+    filter: brightness(1);
+  }
+  45% {
+    transform: scale(1.14);
+    filter: brightness(1.55) drop-shadow(0 0 8px rgba(255, 224, 67, 0.9));
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
 .pulse {
   animation: pulse-scale 1.1s ease-in-out infinite;
 }
@@ -116,6 +134,7 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .shine,
+  .bread-counter-pop,
   .pulse,
   .popup,
   .card-in,

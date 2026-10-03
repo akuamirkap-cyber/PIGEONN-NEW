@@ -1959,6 +1959,125 @@ function BreadFx() {
   return <instancedMesh ref={ref} args={[geo, voxelMaterial, BREAD_FX_N]} frustumCulled={false} />;
 }
 
+/* ---------- Subway-Surf-style bread pickup flash ---------- */
+const BREAD_BURST_N = 8;
+
+function makeBreadBurstTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.Texture();
+  const c = 80;
+  ctx.clearRect(0, 0, 160, 160);
+  ctx.save();
+  ctx.translate(c, c);
+  for (let i = 0; i < 10; i++) {
+    ctx.save();
+    ctx.rotate((Math.PI * 2 * i) / 10);
+    const ray = ctx.createLinearGradient(0, -14, 0, -72);
+    ray.addColorStop(0, "rgba(255,255,255,0.98)");
+    ray.addColorStop(0.35, "rgba(255,224,67,0.92)");
+    ray.addColorStop(1, "rgba(255,159,28,0)");
+    ctx.fillStyle = ray;
+    ctx.beginPath();
+    ctx.moveTo(-5, -10);
+    ctx.lineTo(5, -10);
+    ctx.lineTo(2, -72);
+    ctx.lineTo(0, -82);
+    ctx.lineTo(-2, -72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 47);
+  glow.addColorStop(0, "rgba(255,255,255,1)");
+  glow.addColorStop(0.18, "rgba(255,239,128,0.98)");
+  glow.addColorStop(0.48, "rgba(255,174,35,0.5)");
+  glow.addColorStop(1, "rgba(255,174,35,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff9c4";
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function BreadPickupFx() {
+  const sprites = useRef<(THREE.Sprite | null)[]>([]);
+  const texture = useMemo(makeBreadBurstTexture, []);
+  const materials = useMemo(
+    () => Array.from({ length: BREAD_BURST_N }, () => new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      color: "#fff4a8",
+    })),
+    [texture],
+  );
+  useEffect(() => () => {
+    texture.dispose();
+    materials.forEach((material) => material.dispose());
+  }, [materials, texture]);
+
+  useFrame(() => {
+    const d = engine.distance;
+    const p = engine.player;
+    let i = 0;
+    for (const fx of engine.breadFx) {
+      if (i >= BREAD_BURST_N) break;
+      const sprite = sprites.current[i];
+      if (!sprite) {
+        i++;
+        continue;
+      }
+      const u = Math.min(1, fx.age / 0.42);
+      const ease = u * u * (3 - 2 * u);
+      const s = d + fx.rel * (1 - ease) + 0.25 * ease;
+      const lat = fx.lat + (p.lat - fx.lat) * ease;
+      const h = fx.h + (p.h + 0.55 - fx.h) * ease + Math.sin(u * Math.PI) * 0.26;
+      track.frame(s, lat, h + 0.06, sprite.position);
+      const fadeIn = Math.min(1, u / 0.08);
+      const fadeOut = 1 - Math.max(0, (u - 0.22) / 0.78);
+      sprite.material.opacity = fadeIn * fadeOut;
+      sprite.scale.setScalar(0.2 + ease * 0.78);
+      sprite.material.rotation = fx.age * 2.8 + i * 0.55;
+      sprite.visible = true;
+      i++;
+    }
+    for (; i < BREAD_BURST_N; i++) {
+      const sprite = sprites.current[i];
+      if (sprite) {
+        sprite.visible = false;
+        sprite.material.opacity = 0;
+      }
+    }
+  });
+
+  return (
+    <group>
+      {Array.from({ length: BREAD_BURST_N }, (_, i) => (
+        <sprite
+          key={i}
+          ref={(sprite) => {
+            sprites.current[i] = sprite;
+          }}
+          material={materials[i]}
+          visible={false}
+        />
+      ))}
+    </group>
+  );
+}
+
 /* ---------- Denyut: satu cincin tipis saat hewan mental ---------- */
 const PULSE_POOL = 4;
 
@@ -2287,6 +2406,7 @@ export function World() {
       <UrbanCrowd />
       <Breads />
       <BreadFx />
+      <BreadPickupFx />
       <Particles />
       <Pulses />
     </group>
