@@ -17,8 +17,9 @@ export function Backdrop() {
   const mode = useUI((s) => s.trackMode);
   const tod = useUI((s) => s.shibuyaTime);
   const cloudyW = useUI((s) => s.weather === "cloudy");
+  const snowW = useUI((s) => s.weather === "snow");
   const night = mode === "shibuya" && tod === "malam";
-  const cloudy = cloudyW && !night;
+  const cloudy = (cloudyW || snowW) && !night;
   const root = useRef<THREE.Group>(null);
   const fuji = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Group>(null);
@@ -42,7 +43,7 @@ export function Backdrop() {
     // Shibuya: kejauhan selalu berupa kota Tokyo — malam skyline neon, siang hari
     // skyline putih/kaca biru + kota rendah (sesuai foto asli); mode lain tetap bukit.
     const dayTod = tod === "malam" ? "siang" : tod;
-    const dayMist = cloudy ? "#dfe7ee" : dayTod === "pagi" ? "#ffe7cd" : dayTod === "sore" ? "#f7cda4" : "#dbeeff";
+    const dayMist = snowW && !night ? "#e6eef6" : cloudy ? "#dfe7ee" : dayTod === "pagi" ? "#ffe7cd" : dayTod === "sore" ? "#f7cda4" : "#dbeeff";
     const hillsTex = mk(
       mode === "shibuya"
         ? night

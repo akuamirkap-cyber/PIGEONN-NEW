@@ -916,11 +916,12 @@ function Movers() {
           inner.scale.set(1 + sq * 0.35, 1 - sq, 1 + sq * 0.35);
           inner.position.y = Math.sin(t * 18 + m.variant) * 0.015 - sq * 0.25;
           if (m.kind === "motorcycle") {
-            // motor: goyang halus + sedikit rebahan (lebih lincah dari mobil)
+            // motor & pengendaranya SELALU TEGAK (jangan miring/rebah saat melaju);
+            // cukup getaran mesin vertikal yang sangat halus supaya tetap terasa hidup.
             inner.scale.set(1 + sq * 0.3, 1 - sq, 1 + sq * 0.3);
-            inner.rotation.z = Math.sin(t * 3.1 + m.id) * 0.045;
-            inner.rotation.x = Math.sin(t * 9 + m.id * 0.7) * 0.02;
-            inner.position.y += Math.abs(Math.sin(t * 26 + m.id)) * 0.012 - sq * 0.2;
+            inner.rotation.z = 0;
+            inner.rotation.x = 0;
+            inner.position.y += Math.abs(Math.sin(t * 26 + m.id)) * 0.006 - sq * 0.2;
           }
         }
       }
@@ -1262,8 +1263,8 @@ const ScrambleWalker = memo(function ScrambleWalker({ inter, idx }: { inter: Int
     }
     const lat = 4.2 + seed.u * 11.0; // median (4.2) -> trotoar seberang (15.2)
     const sPos = inter.s + seed.x + seed.diag * seed.u;
-    // tinggi permukaan: median/trotoar jauh ditinggikan, aspal jalur lawan rendah
-    const h = lat < 5.2 ? 0.18 : lat > 12.25 ? 0.18 : 0.03;
+    // tinggi permukaan tepat menapak: median ter-aspal 0.18, dek jalan lintas/trotoar jauh 0.175, apron 0.03
+    const h = lat < 5.2 ? 0.18 : lat > 12.25 ? 0.175 : 0.03;
     track.frame(sPos, lat, h, root.position);
     track.quat(sPos, root.quaternion);
     inner.rotation.y = seed.dirU > 0 ? -Math.PI / 2 : Math.PI / 2;

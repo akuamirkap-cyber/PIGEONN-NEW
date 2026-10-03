@@ -252,6 +252,49 @@ export function Player() {
       // foot/body geometry is attached to the Friend rig.
       friendRig?.setPush(u, ROAD_Y);
 
+      // ---- LENGAN/SAYAP: pose sesuai freestyle, BUKAN melambai ----
+      if (friendRig) {
+        const armK = 1 - Math.exp(-dt * 9);
+        const breathe = Math.sin(t * 2.3) * 0.035;
+        // stance santai: bahu sedikit ke belakang, lengan renggang tipis menjaga balance
+        let rxL = -0.24, rxR = -0.24;
+        let spL = 0.16 + breathe, spR = 0.16 + breathe;
+        const grabbing = Math.abs(g) > 0.05;
+        const flapTrick = tr?.kind === "wingflap";
+        if (u >= 0) {
+          // ayunan balik mengikuti hentakan kaki (mirroring pushSwing sayap merpati)
+          const swing = 0.4 * (1 + 0.8 * spr) * Math.sin(Math.PI * Math.min(1, u));
+          rxL -= swing;
+          rxR -= swing * 0.7;
+        } else if (grabbing) {
+          // GRAB (method/indy): tangan kanan menjangkau papan, kiri membuka lebar
+          rxR = g > 0 ? 0.95 : 0.8;
+          spR = 0.06;
+          rxL = -0.28;
+          spL = 0.75;
+        } else if (flapTrick) {
+          // wingflap: lengan/sayap mengepak sesuai irama trick
+          const flapA = 0.55 + Math.sin(t * 40) * 0.5;
+          spL = flapA; spR = flapA;
+          rxL = -0.1; rxR = -0.1;
+        } else if (airborne) {
+          // flip/ollie di udara: kedua tangan terbuka lebar menjaga keseimbangan
+          const openT = Math.min(1, p.airT * 5);
+          rxL = -0.12 + openT * 0.12; rxR = -0.12 + openT * 0.12;
+          spL = 0.3 + 0.5 * openT; spR = 0.3 + 0.5 * openT;
+        } else if (p.grinding) {
+          // grind: rapat & rendah menjaga posisi di atas rail
+          rxL = 0.12; rxR = 0.12; spL = 0.42; spR = 0.42;
+        } else {
+          // carve/berbelok: lengan sisi LUAR sedikit terangkat (seperti sayap luar merpati)
+          const lvA = nm ? engine.turn.leanVis : -p.carve * 1.6;
+          const amt = Math.abs(lvA) * 0.45;
+          if (lvA > 0) spL += amt; else spR += amt;
+        }
+        // rz: lengan kanan terbuka = +, kiri terbuka = - (konvensi clip sumber)
+        friendRig.setArmPose({ rx: rxL, ry: 0, rz: -spL }, { rx: rxR, ry: 0, rz: spR }, armK);
+      }
+
       // hips in deck space (the pigeon group moved by hop/dip; the board is the reference)
       const hipY = HIP_Y + hop - dip - crouch;
       // planted leg: sole stays on the deck under the body (slightly forward when driving)
@@ -333,6 +376,8 @@ export function Player() {
         friendModel.current.position.set(0, 0, 0);
         friendModel.current.rotation.set(0, 0, 0);
         friendModel.current.scale.setScalar(1);
+        // lengan lunglai kembali ke bawah saat ragdoll (tanpa snap)
+        friendRig.setArmPose(null, null, 1 - Math.exp(-dt * 5));
       }
       if (body) {
         // Pigeon ragdoll: rotate smoothly about center of mass (≈0.50 above feet)

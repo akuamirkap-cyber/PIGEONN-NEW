@@ -1,8 +1,16 @@
 import type { Part } from "./voxel";
+import { bustGeometryCache } from "./voxel";
 import {
   type ShibuyaBuildingId,
   getShibuyaBuildingParts,
 } from "./shibuyaBuildingModels";
+
+/** HMR: saat file model diganti, memori geometri HARUS dibuang —
+ *  kalau tidak, mesh motor/mobil lama (cache `getGeometry`) tetap dipakai
+ *  meskipun source parts-nya sudah baru. */
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => bustGeometryCache());
+}
 
 export type { ShibuyaBuildingId };
 
@@ -313,7 +321,7 @@ export function motorcycleParts(variant: number): Part[] {
     { x: 0.14, y: 0.44, z: -0.25, w: 0.11, h: 0.05, d: 0.16, color: chrome },
     // ================= PENGENDARA =================
     // Duduk straddle di jok: pinggul di jok (atas 0.73), paha maju, betis turun ke footpeg,
-    // badan sedikit membungkuk ke depan, kedua tangan benar-benar menggenggam grip setang.
+    // badan TEGAK LURUS (bukan membungkuk), kedua tangan benar-benar menggenggam grip setang.
     { x: -0.28, y: 0.83, z: 0, w: 0.26, h: 0.2, d: 0.4, color: pants }, // pinggul
     { x: -0.06, y: 0.78, z: 0.2, w: 0.38, h: 0.16, d: 0.16, color: pants }, // paha kiri
     { x: -0.06, y: 0.78, z: -0.2, w: 0.38, h: 0.16, d: 0.16, color: pants }, // paha kanan
@@ -321,35 +329,40 @@ export function motorcycleParts(variant: number): Part[] {
     { x: 0.12, y: 0.62, z: -0.21, w: 0.16, h: 0.26, d: 0.15, color: pants }, // betis kanan
     { x: 0.16, y: 0.5, z: 0.23, w: 0.24, h: 0.11, d: 0.16, color: boots }, // sepatu kiri di footpeg
     { x: 0.16, y: 0.5, z: -0.23, w: 0.24, h: 0.11, d: 0.16, color: boots }, // sepatu kanan
-    // badan (jaket) dengan punggung condong ke depan
+    // badan (jaket) — TEGAK LURUS di atas jok (tidak membungkuk miring ke depan)
     { x: -0.3, y: 0.97, z: 0, w: 0.3, h: 0.24, d: 0.42, color: riderJacket }, // perut
-    { x: -0.22, y: 1.17, z: 0, w: 0.32, h: 0.22, d: 0.44, color: riderJacket }, // dada
-    { x: -0.18, y: 1.29, z: 0, w: 0.3, h: 0.1, d: 0.46, color: riderJacket }, // bahu
-    { x: -0.22, y: 1.06, z: 0, w: 0.13, h: 0.36, d: 0.47, color: paint }, // strip resleting senada motor
-    { x: -0.22, y: 1.28, z: 0, w: 0.14, h: 0.07, d: 0.44, color: "#f1f3f6" }, // kerah putih
-    // lengan dua segmen dari bahu ke grip setang (siku membengkok, tangan pas di grip)
-    { x: 0.0, y: 1.2, z: 0.21, w: 0.38, h: 0.14, d: 0.14, rz: -0.36, color: riderJacket }, // lengan atas
-    { x: 0.0, y: 1.2, z: -0.21, w: 0.38, h: 0.14, d: 0.14, rz: -0.36, color: riderJacket },
-    { x: 0.33, y: 1.0, z: 0.26, w: 0.42, h: 0.13, d: 0.13, rz: -0.58, color: riderJacket }, // lengan bawah
-    { x: 0.33, y: 1.0, z: -0.26, w: 0.42, h: 0.13, d: 0.13, rz: -0.58, color: riderJacket },
+    { x: -0.3, y: 1.17, z: 0, w: 0.32, h: 0.22, d: 0.44, color: riderJacket }, // dada
+    { x: -0.3, y: 1.29, z: 0, w: 0.3, h: 0.1, d: 0.46, color: riderJacket }, // bahu
+    { x: -0.3, y: 1.06, z: 0, w: 0.13, h: 0.36, d: 0.47, color: paint }, // strip resleting senada motor
+    { x: -0.3, y: 1.28, z: 0, w: 0.14, h: 0.07, d: 0.44, color: "#f1f3f6" }, // kerah putih
+    // lengan dua segmen: LENGAN ATAS turun CEPAT dekat bahu (siku cukup menekuk),
+    // lengan bawah nyaris HORIZONTAL ke depan ke grip. Dari belakang/belakang-atas
+    // lengan terlihat pendek merapat ke badan (foreshortened), bukan pipa diagonal
+    // panjang yang bikin siluetnya tampak bengkok/miring.
+    // lengan TANGGA sederhana: TANPA rotasi diagonal sama sekali — kotak vertikal
+    // turun, lalu kotak horizontal maju ke grip; semuanya sejajar sumbu jalan.
+    { x: -0.18, y: 1.09, z: 0.245, w: 0.12, h: 0.32, d: 0.12, color: riderJacket }, // lengan atas (kotak turun)
+    { x: -0.18, y: 1.09, z: -0.245, w: 0.12, h: 0.32, d: 0.12, color: riderJacket },
+    { x: 0.14, y: 0.955, z: 0.27, w: 0.52, h: 0.11, d: 0.12, color: riderJacket }, // lengan bawah (kotak lurus maju)
+    { x: 0.14, y: 0.955, z: -0.27, w: 0.52, h: 0.11, d: 0.12, color: riderJacket },
     { x: 0.52, y: 0.87, z: 0.29, w: 0.18, h: 0.17, d: 0.15, color: "#2b2f38" }, // sarung tangan menggenggam grip (+z)
     { x: 0.52, y: 0.87, z: -0.29, w: 0.18, h: 0.17, d: 0.15, color: "#2b2f38" }, // sarung tangan menggenggam grip (-z)
-    // tas punggung kecil
-    { x: -0.46, y: 1.06, z: 0, w: 0.2, h: 0.34, d: 0.34, color: "#3f434c" },
-    { x: -0.55, y: 1.1, z: 0, w: 0.06, h: 0.16, d: 0.24, color: "#2b2f38" },
-    // ---- helm bulat dengan kaca depan (visor) ----
-    { x: -0.12, y: 1.34, z: 0, w: 0.15, h: 0.12, d: 0.15, color: "#e0b48f" }, // leher
-    { x: -0.1, y: 1.44, z: 0, w: 0.3, h: 0.17, d: 0.32, color: helmet }, // tempurung bawah
-    { x: -0.1, y: 1.555, z: 0, w: 0.25, h: 0.09, d: 0.28, color: helmet }, // tempurung atas (membulat)
-    { x: -0.1, y: 1.62, z: 0, w: 0.17, h: 0.045, d: 0.2, color: helmet }, // puncak helm
-    { x: -0.1, y: 1.36, z: 0, w: 0.32, h: 0.08, d: 0.34, color: helmet }, // dasar helm menutup tengkuk
-    { x: -0.1, y: 1.52, z: 0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet }, // pelipis kiri
-    { x: -0.1, y: 1.52, z: -0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet },
-    { x: 0.06, y: 1.47, z: 0, w: 0.1, h: 0.13, d: 0.29, color: "#20242c" }, // kaca helm (gelap)
-    { x: 0.05, y: 1.55, z: 0, w: 0.13, h: 0.05, d: 0.32, color: helmet }, // bibir atas kaca
-    { x: 0.04, y: 1.375, z: 0, w: 0.2, h: 0.09, d: 0.28, color: helmet }, // dagu (chin bar)
-    { x: -0.1, y: 1.6, z: 0, w: 0.22, h: 0.06, d: 0.33, color: paint }, // strip senada motor
-    { x: -0.27, y: 1.46, z: 0, w: 0.1, h: 0.12, d: 0.22, color: paint }, // spoiler belakang
+    // tas punggung kecil (menempel punggung yang tegak)
+    { x: -0.52, y: 1.06, z: 0, w: 0.2, h: 0.34, d: 0.34, color: "#3f434c" },
+    { x: -0.61, y: 1.1, z: 0, w: 0.06, h: 0.16, d: 0.24, color: "#2b2f38" },
+    // ---- helm bulat dengan kaca depan (visor), tepat di atas leher yang tegak ----
+    { x: -0.29, y: 1.34, z: 0, w: 0.15, h: 0.12, d: 0.15, color: "#e0b48f" }, // leher
+    { x: -0.28, y: 1.44, z: 0, w: 0.3, h: 0.17, d: 0.32, color: helmet }, // tempurung bawah
+    { x: -0.28, y: 1.555, z: 0, w: 0.25, h: 0.09, d: 0.28, color: helmet }, // tempurung atas (membulat)
+    { x: -0.28, y: 1.62, z: 0, w: 0.17, h: 0.045, d: 0.2, color: helmet }, // puncak helm
+    { x: -0.28, y: 1.36, z: 0, w: 0.32, h: 0.08, d: 0.34, color: helmet }, // dasar helm menutup tengkuk
+    { x: -0.28, y: 1.52, z: 0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet }, // pelipis kiri
+    { x: -0.28, y: 1.52, z: -0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet },
+    { x: -0.12, y: 1.47, z: 0, w: 0.1, h: 0.13, d: 0.29, color: "#20242c" }, // kaca helm (gelap)
+    { x: -0.13, y: 1.55, z: 0, w: 0.13, h: 0.05, d: 0.32, color: helmet }, // bibir atas kaca
+    { x: -0.14, y: 1.375, z: 0, w: 0.2, h: 0.09, d: 0.28, color: helmet }, // dagu (chin bar)
+    { x: -0.28, y: 1.6, z: 0, w: 0.22, h: 0.06, d: 0.33, color: paint }, // strip senada motor
+    { x: -0.45, y: 1.46, z: 0, w: 0.1, h: 0.12, d: 0.22, color: paint }, // spoiler belakang
   ];
   return parts.map((p) => ({ ...p, y: p.y + DROP }));
 }

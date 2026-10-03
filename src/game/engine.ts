@@ -223,6 +223,12 @@ export interface Obstacle {
   catHit?: boolean;
 }
 export const RAIL_LENGTHS = [7, 12, 18, 24];
+/**
+ * Jarak sisi minimal antara ramp dan rel grind di lajur yang sama.
+ * 2.3 m: cukup jelas supaya tidak "ketembus", tapi masih nyaman
+ * untuk kombo lompat dari ramp lalu mendarat grind di rel.
+ */
+export const RAMP_RAIL_MIN_GAP = 2.3;
 export function obstacleHalf(o: Obstacle) {
   return o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
 }
@@ -468,6 +474,44 @@ export function crossCarH(lat: number): number {
   return smooth * CROSS_DECK_H;
 }
 
+/** Titik tunggu pejalan kaki Shibuya di median tengah (bukan di aspal jalur seberang). */
+export const SHIBUYA_MEDIAN_LAT = 4.72;
+
+/**
+ * Tinggi permukaan yang diinjak pejalan kaki pada lat tertentu.
+ * Trotoar, curb, dan median lebih tinggi dari aspal — tanpa ini kaki penyeberang
+ * tenggelam ke trotoar atau tampak melayang di atas jalan.
+ */
+export function pedGroundH(lat: number, mode: "tokyo" | "haruna" | "shibuya"): number {
+  if (mode === "shibuya") {
+    if (lat <= -4.0 && lat >= -8.2) return 0.12; // trotoar dekat
+    if (lat < -3.7 && lat > -4.0) return 0.14;  // curb dekat
+    if (lat >= 3.7 && lat <= 5.0) return 0.16;  // median tengah (tempat menunggu)
+    if (lat > 12.3 && lat < 12.6) return 0.14;  // curb jauh
+    if (lat >= 12.6 && lat <= 16.1) return 0.12; // trotoar jauh
+    if (lat < -8.2 || lat > 16.1) return 0.1;   // plaza
+    return 0; // aspal
+  }
+  if (lat < 0) {
+    if (lat <= -4.0 && lat >= -7.0) return 0.12;
+    if (lat < -3.7 && lat > -4.0) return 0.14;
+    if (lat < -7.0) return 0.1;
+    return 0;
+  }
+  if (lat >= 4.0 && lat <= 6.3) return 0.12;
+  if (lat > 3.7 && lat < 4.0) return 0.14;
+  if (lat > 6.3) return 0.1;
+  return 0;
+}
+
+/** Permukaan scramble crossing: apron datar, median di-aspal (0.18), jalan lintas naik 0.175. */
+export function scramblePedH(lat: number): number {
+  if (lat < -4.0) return 0.175;
+  if (lat >= 3.5 && lat <= 5.3) return 0.18; // median yang di-pave
+  if (lat > 12.3) return 0.175;
+  return 0.03; // apron persimpangan
+}
+
 export interface Intersection {
   id: number;
   s: number;
@@ -676,6 +720,9 @@ const tmpV = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
 
 const SHIBUYA_ROAD_CLEARANCE = 6.8;
+/** Sisi seberang avenue Shibuya: aspal jalur mobil berakhir di lat 12.3 (curb 12.6).
+ *  Jejak gedung toko dilarang masuk ke sana — wajib mulai di atas trotoar jauh. */
+const SHIBUYA_ROAD_CLEARANCE_FAR = 12.75;
 const SHIBUYA_FOOTPRINT_GAP = 0.9;
 const SHIBUYA_MIN_ASSET_SCALE = 0.52;
 
@@ -2755,8 +2802,12 @@ class Engine {
         }
         if (m.s < d - 16) remove = true;
       } else if (m.kind === "pedestrian") {
+        // Kaki penyeberang selalu menapak permukaan yang benar (trotoar/median/dek
+        // perempatan) — tidak lagi melayang di atas trotoar atau tenggelam ke aspal.
+        const gh = this.pedSurfaceAt(m.lat, m.s);
         if (m.phase === "wait") {
           m.delay -= dt;
+          m.h = lerp(m.h, gh, Math.min(1, dt * 8));
           const signal = m.signalIntersectionId == null
             ? undefined
             : this.intersections.find((inter) => inter.id === m.signalIntersectionId);
@@ -2773,13 +2824,19 @@ class Engine {
             else if (Math.abs(m.lat) < 4.8) v = 0; // berhenti dulu di tepi / median
           }
           m.lat += m.dir * v * dt;
+          const ghNow = this.pedSurfaceAt(m.lat, m.s);
           if (v > 0.01) {
             m.hopT += dt * (v / m.speed);
-            m.h = Math.abs(Math.sin(m.hopT * 9)) * 0.06;
+            m.h = ghNow + Math.abs(Math.sin(m.hopT * 9)) * 0.06;
           } else {
-            m.h = Math.max(0, m.h - dt * 0.3); // berdiri tenang menunggu
+            m.h = Math.max(ghNow, m.h - dt * 0.3); // berdiri tenang menunggu
           }
-          if (Math.abs(m.lat) > (m.crossingEdge ?? 7.2) + 0.45) remove = true;
+          // Di Shibuya, penyeberang dari trotoar dekat BERAKHIR di median — mereka
+          // tidak pernah masuk ke aspal jalur seberang (5.0..12.3) tempat mobil lewat.
+          const farOut = track.mode === "shibuya" && m.dir > 0
+            ? SHIBUYA_MEDIAN_LAT + 0.45
+            : (m.crossingEdge ?? 7.2) + 0.45;
+          if (m.dir > 0 ? m.lat > farOut : m.lat < -((m.crossingEdge ?? 7.2) + 0.45)) remove = true;
         }
         if (m.s < d - 16) remove = true;
       } else if (m.kind === "car" || m.kind === "motorcycle") {
@@ -3094,6 +3151,21 @@ class Engine {
         }
       }
     }
+  }
+
+  /** Permukaan yang diinjak pejalan kaki: trotoar/median/curb, plus dek perempatan / scramble. */
+  private pedSurfaceAt(lat: number, s: number): number {
+    let h = pedGroundH(lat, track.mode);
+    for (const it of this.intersections) {
+      const ds = Math.abs(s - it.s);
+      if (it.scramble) {
+        if (ds < 6.7) { h = Math.max(h, scramblePedH(lat)); break; }
+      } else if (ds < (it.wide ? 6.3 : 4.2)) {
+        h = Math.max(h, crossCarH(lat));
+        break;
+      }
+    }
+    return h;
   }
 
   private spawnCrossCar(intersectionId: number, s: number, startLat: number, dir: 1 | -1, speed: number) {
@@ -3866,7 +3938,9 @@ class Engine {
       for (let i = 0; i < n; i++) {
         const dir = i === 0 ? firstDir : i === 1 ? -firstDir : Math.random() < 0.5 ? 1 : -1;
         const px = s + offsets[i];
-        const m = this.newMover("pedestrian", px, -1, -dir * edge);
+        // Shibuya: penyeberang arah sebaliknya MENUNGGU DI MEDIAN (bukan di aspal jalur
+        // seberang 5.0..12.3). Penyeberang dari trotoar dekat juga selesai di median.
+        const m = this.newMover("pedestrian", px, -1, track.mode === "shibuya" && dir < 0 ? SHIBUYA_MEDIAN_LAT : -dir * edge);
         m.dir = dir;
         m.crossingEdge = edge;
         m.signalIntersectionId = inter.id;
@@ -4005,7 +4079,7 @@ class Engine {
         const bounds = shibuyaFootprintAt(source, s, candidate.lat, scale);
         if (bounds.latMin < -42 || bounds.latMax > 42) continue;
         if ((candidate.lat < 0 && bounds.latMax > -SHIBUYA_ROAD_CLEARANCE)
-          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE)) continue;
+          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE_FAR)) continue;
         if (this.shibuyaFootprints.some(existing => footprintOverlaps(bounds, existing))) continue;
         const placed = { asset, scale, ...bounds };
         this.shibuyaFootprints.push(placed);
@@ -4081,9 +4155,14 @@ class Engine {
     const kind: Chunk["kind"] = isHaruna ? "haruna" : isShibuya ? "shibuya" : crossing ? "park" : Math.random() < 0.28 ? "park" : "street";
     const decor: Decor[] = [];
     const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec): ShibuyaPlacement | null => {
-      // Keep cross-road clear of sidewalk decor, buildings, and trees (minimum 8.2m clearance)
+      // Keep cross-road clear of sidewalk decor, buildings, and trees. Clearance mengikuti
+      // lebar nyata zona perempatan: scramble menutup seluruh avenue (±11.5m), jadi dekor /
+      // tiang tidak boleh berdiri di aspal tempat mobil lintas & penyeberang berjalan.
       const absS = s0 + lx;
-      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return null;
+      if (
+        this.intersections.some((it) => Math.abs(absS - it.s) < (it.scramble ? 12.2 : it.wide ? 11.0 : 8.8)) ||
+        Math.abs(absS - this.nextIntersectionS) < 12.2
+      ) return null;
 
       let placedS = absS;
       let placedLat = lat;
@@ -4189,11 +4268,14 @@ class Engine {
       // +23.8 background row left shoppers, lamps and glass frontage detached
       // in the middle of the avenue; the reserve planner handles true skyline
       // landmarks separately when their source footprint needs it.
-      const farLat = curTunnel ? 16.2 : 10.2;
+      // PENTING: barisan seberang DIPINDAH dari lat 10.2 (itu masih aspal jalur
+      // seberang 5.0..12.3!) ke 16.2, tepat di belakang trotoar jauh — supaya
+      // etalase, lampion, dan pengunjung toko berdiri di trotoar, BUKAN di jalan mobil.
+      const farLat = 16.2;
 
       const frontageSidewalkLat = (buildingLat: number) => buildingLat < 0
-        ? buildingLat + 4.85
-        : buildingLat - 4.85;
+        ? buildingLat + 4.85   // sisi dekat: trotoar dalam lebar, pengunjung berdiri ~depan toko
+        : buildingLat - 1.15;  // sisi seberang: rapat di muka etalase, tetap ATAS trotoar jauh (12.6..16.1)
 
       const addRamenCustomers = (buildingS: number, buildingLat: number) => {
         // The exact Shibuya Blocks Eat rig is rendered by World.tsx. Two customers
@@ -4271,11 +4353,13 @@ class Engine {
       if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.8, 0.12, randInt(0, 2));
       if (Math.random() < 0.3) add("mamachari", rand(2.5, 9.5), -4.9, 0.12, randInt(0, 3));
       if (Math.random() < 0.4) add("tree", rand(2.5, 9.5), -6.6, 0.12, randInt(0, 2));
-      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 12.0 : 16.2, 0.12, randInt(0, 2));
+      // Pohon sisi seberang juga harus di trotoar jauh, bukan di aspal jalur seberang (12.0 -> 15.6)
+      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 15.6 : 16.2, 0.12, randInt(0, 2));
 
-      // 7. Lampu jalan: di kedua trotoar
+      // 7. Lampu jalan: di kedua trotoar (sisi seberang SELALU di atas trotoar jauh
+      // 12.6..16.1 — lat 10.5 dulu masih aspal jalur mobil seberang 5.0..12.3)
       add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.12);
-      add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 10.5 : 12.55, 0.14);
+      add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 12.75 : 12.55, 0.14);
       if (!curTunnel && id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
 
       // 8. Pagar pembatas trotoar pipa putih khas Jepang kini disapu mulus & kontinu di ground.ts mengikuti kontur jalan tanpa patah/anak tangga
@@ -4466,6 +4550,46 @@ class Engine {
     if (this.intersections.some((it) => Math.abs(it.s - s) < (it.scramble ? 11 : it.wide ? 10.5 : 8.5))) return;
     if (this.laneReserved(lane, s)) return;
     const hLen = half ?? OBSTACLE_DEFS[kind].halfLen;
+    // Ramp & rel besi (grind rail) tidak boleh terlalu dekat apalagi ketembus satu sama lain
+    // di lajur yang sama: jaga jarak sisi minimal supaya kombo ramp -> rel tetap nyaman dimainkan.
+    if (kind === "rail") {
+      for (const o of this.obstacles) {
+        if (o.kind !== "ramp" || o.lane !== lane) continue;
+        const oHalf = o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
+        if (Math.abs(o.s - s) < oHalf + hLen + RAMP_RAIL_MIN_GAP) return; // rel: batalkan saja
+      }
+    } else if (kind === "ramp") {
+      for (let i = this.obstacles.length - 1; i >= 0; i--) {
+        const o = this.obstacles[i];
+        if (o.lane !== lane) continue;
+        const oHalf = o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
+        if (o.kind === "rail") {
+          if (Math.abs(o.s - s) >= oHalf + hLen + RAMP_RAIL_MIN_GAP) continue;
+          if (!_force) return; // ramp biasa: batalkan, jangan potong rel yang sudah ada
+          // Ramp darurat (runway bus / perlintasan): PANGKAS ujung rel yang bentrok supaya
+          // kedua ujungnya tetap berjarak RAMP_RAIL_MIN_GAP dari badan ramp.
+          const railStart = o.s - oHalf;
+          const railEnd = o.s + oHalf;
+          const keepHead = o.s < s; // sisakan sisi rel yang menjauhi ramp
+          const newStart = keepHead ? railStart : s + hLen + RAMP_RAIL_MIN_GAP;
+          const newEnd = keepHead ? s - hLen - RAMP_RAIL_MIN_GAP : railEnd;
+          if (newEnd - newStart < 6) {
+            this.obstacles.splice(i, 1); // sisa terlalu pendek untuk di-grind: hapus
+          } else {
+            o.s = (newStart + newEnd) / 2;
+            o.half = (newEnd - newStart) / 2;
+            track.frame(o.s, LANE_LAT[o.lane], 0, tmpV);
+            track.quat(o.s, tmpQ);
+            o.pos = [tmpV.x, tmpV.y, tmpV.z];
+            o.quat = [tmpQ.x, tmpQ.y, tmpQ.z, tmpQ.w];
+          }
+        } else if (o.kind === "ramp") {
+          if (!_force && Math.abs(o.s - s) < oHalf + hLen + 0.6) return; // jangan tumpuk dua ramp
+        } else if (_force && Math.abs(o.s - s) < oHalf + hLen + 0.35) {
+          this.obstacles.splice(i, 1); // ramp darurat menyingkirkan rintangan kecil yang menabrak badannya
+        }
+      }
+    }
     // JANGAN PERNAH menempatkan obstacle di dekat apalagi di belakang item (huruf, roket, kaleng NOS)!
     // Clearance 22m di depan item dan 20m di belakang item agar pemain bebas & aman mengambil item.
     if (this.isNearCollectibleItem(s, lane, hLen + 22.0, hLen + 20.0)) return;
@@ -4675,7 +4799,9 @@ class Engine {
       const activity = activities[i];
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
       const dir = i % 2 === 0 ? 1 : -1;
-      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side * 5.3);
+      // Hewan pinggir jalan berdiri di trotoar: sisi +1 di trotoar JAUH (12.6..16.1),
+      // bukan di aspal jalur seberang (5.0..12.3) seperti lat 5.3 sebelumnya.
+      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side > 0 ? 13.45 : -5.3);
       m.dir = dir;
       m.speed = activity === "crossing" ? 2.35 : 0;
       m.delay = activity === "crossing" ? Math.max(0.25, (m.s - this.distance) / Math.max(this.speed, START_SPEED) - 3.4) : 0;
@@ -5257,7 +5383,8 @@ class Engine {
               ? "bathing"
               : slot % 2 === 0 ? "waving" : "crossing";
           const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
-          const sidewalkLat = side * 5.3;
+          // Sisi +1 = trotoar jauh (12.6..16.1), bukan aspal jalur seberang yang dilewati mobil
+          const sidewalkLat = side > 0 ? 13.45 : -5.3;
           const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, activity === "crossing" ? -dir * startEdge : sidewalkLat);
           m.dir = dir;
           m.speed = activity === "crossing" ? animalSpeed : 0;

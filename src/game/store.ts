@@ -65,7 +65,7 @@ interface UIState {
   cameraMode: CameraMode;
   setCameraMode: (m: CameraMode) => void;
   /** cuaca mode siang: cerah / berawan indah */
-  weather: "sunny" | "cloudy";
+  weather: "sunny" | "cloudy" | "snow";
   toggleWeather: () => void;
   /** kecerahan lampu malam: 0 = redup, 1 = pas, 2 = terang */
   nightBright: 0 | 1 | 2;
@@ -196,9 +196,13 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-camera", cameraMode);
     set({ cameraMode });
   },
-  weather: load<"sunny" | "cloudy">("pigeon-sk8-weather", "sunny") === "cloudy" ? "cloudy" : "sunny",
+  weather: ((): "sunny" | "cloudy" | "snow" => {
+    const w = load<string>("pigeon-sk8-weather", "sunny");
+    return w === "cloudy" || w === "snow" ? (w as "cloudy" | "snow") : "sunny";
+  })(),
   toggleWeather: () => {
-    const weather = get().weather === "sunny" ? "cloudy" : "sunny";
+    const cur = get().weather;
+    const weather: "sunny" | "cloudy" | "snow" = cur === "sunny" ? "cloudy" : cur === "cloudy" ? "snow" : "sunny";
     save("pigeon-sk8-weather", weather);
     set({ weather });
   },

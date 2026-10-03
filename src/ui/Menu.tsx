@@ -197,12 +197,18 @@ function SettingsRow() {
       <div className="flex w-full gap-1.5">
         <CyclePill
           label="CUACA"
-          value={weather === "cloudy" ? "BERAWAN" : "CERAH"}
-          accent={weather === "cloudy" ? "#6b7f93" : undefined}
+          value={weather === "cloudy" ? "BERAWAN" : weather === "snow" ? "SALJU" : "CERAH"}
+          accent={weather === "cloudy" ? "#6b7f93" : weather === "snow" ? "#8fb8d8" : undefined}
           onTap={() => {
             toggleWeather();
             sfx.click();
-            addPopup(weather === "sunny" ? "SIANG BERAWAN ☁️" : "SIANG CERAH ☀️", weather === "sunny" ? "#8fa3b8" : "#ffc46b", weather === "sunny" ? "langit lembut keperakan" : "matahari penuh");
+            if (weather === "cloudy") {
+              addPopup("CUACA BERSALJU ❄️", "#a8cdec", "dunia tertutup salju tipis — indah & adem");
+            } else if (weather === "snow") {
+              addPopup("SIANG CERAH ☀️", "#ffc46b", "matahari penuh");
+            } else {
+              addPopup("SIANG BERAWAN ☁️", "#8fa3b8", "langit lembut keperakan");
+            }
           }}
         />
         <CyclePill
