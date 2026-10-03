@@ -2,10 +2,11 @@ import * as THREE from "three";
 import { buildCharacters } from "../shibuya/voxel/characters";
 import { buildAnimals } from "../shibuya/voxel/animals";
 import { buildVehicles } from "../shibuya/voxel/vehicles";
-import { type Part, getGeometry } from "./voxel";
+import { citizenActivityModel } from "../shibuya/world/citizenActivities";
+import { type Part, getGeometry, getGeometryPair } from "./voxel";
 import type { AssetData } from "../shibuya/voxel/types";
 
-export type ShibuyaCharacterId = "salaryman" | "student" | "chef" | "yakuza";
+export type ShibuyaCharacterId = "salaryman" | "student" | "chef" | "yakuza" | "sumo";
 
 export type ShibuyaAnimalId =
   | "shiba"
@@ -32,6 +33,7 @@ export const SHIBUYA_CHARACTERS: ShibuyaCharacterId[] = [
   "student",
   "chef",
   "yakuza",
+  "sumo",
 ];
 
 export const SHIBUYA_ANIMALS: ShibuyaAnimalId[] = [
@@ -174,6 +176,20 @@ export function getShibuyaSalarymanParts(): Part[] {
 
 export function getShibuyaSalarymanGeo(key = "normal") {
   return getGeometry(`shibuya-salaryman-${key}`, () => getShibuyaSalarymanParts());
+}
+
+/**
+ * The runner reuses the same activity rig as Shibuya Blocks for the ramen frontage.
+ * This keeps the bowl, chopsticks, steam, and eating pose from the source mode instead
+ * of inventing a second approximation just for Pigeon SK8.
+ */
+export function getShibuyaRamenCustomerParts(id: ShibuyaCharacterId): Part[] {
+  const data = citizenActivityModel(buildCharacters(id), id, "ramen");
+  return convertRiggedToParts(data, { rotateY: 0, targetHeight: id === "sumo" ? 1.82 : 1.74 });
+}
+
+export function getShibuyaRamenCustomerGeo(id: ShibuyaCharacterId) {
+  return getGeometryPair(`shibuya-ramen-customer-${id}`, () => getShibuyaRamenCustomerParts(id));
 }
 
 // ---------------------- 2. Little Japan Friends ----------------------

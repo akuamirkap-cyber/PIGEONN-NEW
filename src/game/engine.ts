@@ -13,7 +13,6 @@ import {
   SUBWAY_GAP,
   SUBWAY_ROOF_H,
   type BuildingSpec,
-  type ShibuyaBuildingId,
 } from "./models";
 import {
   SHIBUYA_ANIMALS,
@@ -29,6 +28,7 @@ import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
 import { Track, type TrackSample } from "./track";
 import { TURN, makeTurnState, resetTurnState, stepTurn, rearOf } from "./turnModel";
+import { ALL_SHIBUYA_BUILDING_IDS } from "./shibuyaBuildingModels";
 
 export const track = new Track();
 
@@ -257,6 +257,7 @@ export type DecorKind =
   | "sakura"
   | "lantern"
   | "ramen"
+  | "ramen_customer"
   | "machiya"
   | "house"
   | "village_house"
@@ -4056,79 +4057,43 @@ class Engine {
         add("subway_track", 9, 0, 0);
       }
 
-      // ---- SHIBUYA: Semua gedung, rumah ramen & gedung ikonik dari Shibuya Blocks (tanpa terkecuali) ----
-      const nearShibuyaBuildings: ShibuyaBuildingId[] = [
-        "ramen",        // Rumah Ramen-ya Shibuya Blocks dengan noren, lampion & counter
-        "shibuya109",   // Gedung Ikonik Shibuya 109
-        "qfront",       // Gedung Ikonik Q-FRONT (Layar LED & Kafe)
-        "konbini",      // Toko Konbini 24H Shibuya
-        "neon",         // Gedung Neon Center-gai
-        "station",      // Gedung Stasiun JR Shibuya
-        "izakaya",      // Kedai Nonbei Yokocho Izakaya
-        "townhouse",    // Tokyo Townhouse
-        "machiya",      // Rumah Tradisional Machiya
-        "skyscraper",   // Gedung Shibuya Tower District
-        "tokyotower",   // Menara Ikonik Tokyo Tower
-        "pagoda",       // Pagoda 5 Tingkat & Sakura
-      ];
-      const farShibuyaBuildings: ShibuyaBuildingId[] = [
-        "skyscraper",   // Gedung Pencakar Langit Shibuya Tower
-        "qfront",       // Gedung Q-FRONT
-        "shibuya109",   // Gedung Shibuya 109
-        "neon",         // Gedung Neon Center-gai
-        "station",      // Stasiun JR Shibuya
-        "ramen",        // Rumah Ramen-ya
-        "konbini",      // Konbini 24H
-        "izakaya",      // Kedai Izakaya
-        "machiya",      // Rumah Kayu Machiya
-        "townhouse",    // Tokyo Townhouse
-        "tokyotower",   // Menara Tokyo Tower
-        "pagoda",       // Pagoda 5 Tingkat
-      ];
-      const skylineBuildings: ShibuyaBuildingId[] = [
-        "tokyotower",   // Menara Ikonik Tokyo Tower
-        "skyscraper",   // Gedung Pencakar Langit
-        "pagoda",       // Pagoda 5 Tingkat & Sakura
-        "shibuya109",   // Gedung Shibuya 109
-        "neon",         // Gedung Neon Center-gai
-        "qfront",       // Menara Q-FRONT
-        "station",      // Stasiun JR Shibuya
-        "ramen",        // Rumah Ramen
-        "konbini",      // Konbini 24H
-        "izakaya",      // Kedai Izakaya
-        "machiya",      // Rumah Machiya
-        "townhouse",    // Tokyo Townhouse
-      ];
+      // ---- SHIBUYA: sumber model tunggal dari Shibuya Blocks ----
+      // Semua aset arsitektur diulang secara deterministik. Tidak ada lagi undian yang
+      // bisa melewatkan Torii, ramen, Tokyo Tower District, atau rumah pada satu run.
+      const transferIds = ALL_SHIBUYA_BUILDING_IDS;
+      const nearBld = transferIds[(Math.abs(id) * 2) % transferIds.length];
+      const farBld = transferIds[(Math.abs(id) * 2 + 1) % transferIds.length];
+      const skyBld = transferIds[(Math.abs(id) * 2 + 2) % transferIds.length];
+      const farLat = curTunnel ? 16.2 : 23.8;
 
-      // 1. Near frontage (sisi kiri jalan): deretan toko, rumah, dan gedung
-      if (Math.random() < 0.22) {
-        if (Math.random() < 0.5) add("house", 6, -10.2, 0.1, randInt(0, 1));
-        else add("village_house", 6, -10.2, 0.1, randInt(0, 2));
-      } else {
-        const nearBld = nearShibuyaBuildings[Math.abs(id) % nearShibuyaBuildings.length];
-        add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
-      }
+      const addRamenCustomers = (buildingS: number, buildingLat: number) => {
+        // The exact Shibuya Blocks Eat rig is rendered by World.tsx. Two customers
+        // sit at the frontage; the second one is the streetwear sumo requested by the user.
+        const sidewalkLat = buildingLat < 0 ? -5.35 : 13.0;
+        add("ramen_customer", buildingS - 1.05, sidewalkLat, 0.14, 0);
+        add("ramen_customer", buildingS + 1.05, sidewalkLat + (buildingLat < 0 ? 0.28 : -0.28), 0.14, 3);
+      };
 
-      // 2. Far frontage across all 6 lanes (sisi kanan jalan): deretan gedung, toko, dan rumah
-      if (Math.random() < 0.95) {
-        const farLat = curTunnel ? 16.2 : 23.8;
-        if (Math.random() < 0.22) {
-          if (Math.random() < 0.5) add("house", 6, farLat, -0.14, randInt(0, 1));
-          else add("village_house", 6, farLat, -0.14, randInt(0, 2));
-        } else {
-          const farBld = farShibuyaBuildings[Math.abs(id + 4) % farShibuyaBuildings.length];
-          add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
-        }
-      }
+      // 1. Near frontage: one exact transferred Shibuya Blocks asset every chunk.
+      add("building", 6, -10.2, 0.1, 0, makeShibuyaTowerSpec(10.5, undefined, nearBld));
+      if (nearBld === "ramen") addRamenCustomers(6, -10.2);
 
-      // 3. Second skyline row: towering background skyscrapers & landmarks (placed every 2 chunks so no clutter)
+      // 2. Far frontage: the next exact asset, visible across the full Shibuya avenue.
+      add("building", 6, farLat, -0.14, 0, makeShibuyaTowerSpec(14.0, undefined, farBld));
+      if (farBld === "ramen") addRamenCustomers(6, farLat);
+
+      // 3. Background landmark row: Tokyo Tower District brings its surrounding buildings,
+      // while the other entries preserve their original Shibuya Blocks silhouettes.
       if (id % 2 === 0) {
-        const skyBld = skylineBuildings[Math.abs(Math.floor(id / 2)) % skylineBuildings.length];
         add("building", 6, -18.5, -0.15, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
-      }
-      if (id % 2 === 1) {
-        const skyBld = skylineBuildings[Math.abs(Math.floor((id + 3) / 2)) % skylineBuildings.length];
+      } else {
         add("building", 6, 32.5, -0.28, 0, makeShibuyaTowerSpec(16.0, 14, skyBld));
+      }
+
+      // Keep a recognizable standalone house in the route in addition to Machiya and Townhouse.
+      // It is placed on the opposite skyline side so it never masks the exact transfer asset.
+      if (id % 3 === 0) {
+        add("house", 6, id % 2 === 0 ? 32.5 : -18.5, -0.12, id % 2);
       }
 
       // 4. Department store display billboards across the wide boulevard (far background only)

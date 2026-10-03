@@ -8,6 +8,7 @@ export type ShibuyaBuildingId =
   | "neon"
   | "skyscraper"
   | "station"
+  | "torii"
   | "izakaya"
   | "tokyotower"
   | "konbini"
@@ -22,6 +23,7 @@ export const SHIBUYA_FRONTAGE_BUILDING_IDS: ShibuyaBuildingId[] = [
   "neon",
   "skyscraper",
   "station",
+  "torii",
   "izakaya",
   "konbini",
   "machiya",
@@ -34,6 +36,7 @@ export const SHIBUYA_SKYLINE_BUILDING_IDS: ShibuyaBuildingId[] = [
   "qfront",
   "neon",
   "shibuya109",
+  "torii",
   "pagoda",
 ];
 
@@ -44,6 +47,7 @@ export const ALL_SHIBUYA_BUILDING_IDS: ShibuyaBuildingId[] = [
   "neon",
   "skyscraper",
   "station",
+  "torii",
   "izakaya",
   "tokyotower",
   "konbini",

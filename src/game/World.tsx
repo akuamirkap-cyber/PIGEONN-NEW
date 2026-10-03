@@ -133,6 +133,7 @@ import { getShibuyaBuildingGeoPair, type ShibuyaBuildingId } from "./shibuyaBuil
 import {
   getShibuyaAnimalGeo,
   getShibuyaCharacterGeo,
+  getShibuyaRamenCustomerGeo,
   getShibuyaMotorcycleGeo,
   getShibuyaMotorcycleLightsGeo,
   getShibuyaSalarymanGeo,
@@ -140,6 +141,7 @@ import {
 
 /* ---------- Decorations ---------- */
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
+  const groupRef = useRef<THREE.Group>(null);
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
@@ -153,6 +155,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
             "skyscraper",
             "shibuya109",
             "station",
+            "torii",
             "ramen",
             "izakaya",
             "konbini",
@@ -187,6 +190,10 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair("lantern", stoneLanternParts);
       case "ramen":
         return getShibuyaBuildingGeoPair("ramen");
+      case "ramen_customer": {
+        const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
+        return getShibuyaRamenCustomerGeo(customer);
+      }
       case "machiya":
         return getShibuyaBuildingGeoPair("machiya");
       case "house":
@@ -249,9 +256,16 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         geo.glow?.dispose();
       };
   }, [d, geo]);
+  useFrame(() => {
+    if (d.kind !== "ramen_customer" || !groupRef.current) return;
+    // Reuse the Shibuya Blocks eating pose and add a tiny seated breathing motion.
+    groupRef.current.position.y = d.pos[1] + Math.sin(engine.time * 2.2 + d.variant) * 0.018;
+  });
+
   const facing =
     d.kind === "house" ||
     d.kind === "ramen" ||
+    d.kind === "ramen_customer" ||
     d.kind === "machiya" ||
     d.kind === "building" ||
     d.kind === "village_house" ||
@@ -265,7 +279,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
   return (
-    <group position={d.pos} rotation-y={d.rotY + flip}>
+    <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip}>
       <mesh geometry={geo.lit} material={voxelMaterial} castShadow={d.kind !== "flowers"} receiveShadow />
       {geo.glow && <mesh geometry={geo.glow} material={glowMaterial} />}
     </group>

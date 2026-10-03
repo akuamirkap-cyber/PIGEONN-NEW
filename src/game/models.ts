@@ -562,8 +562,9 @@ function shibuyaTowerParts(s: BuildingSpec): Part[] {
     9: "machiya",
     10: "townhouse",
     11: "pagoda",
+    12: "torii",
   };
-  const bldId: ShibuyaBuildingId = s.shibuyaAssetId || mapping[(s.shibuyaType ?? 0) % 12] || "skyscraper";
+  const bldId: ShibuyaBuildingId = s.shibuyaAssetId || mapping[(s.shibuyaType ?? 0) % 13] || "skyscraper";
   return getShibuyaBuildingParts(bldId);
 }
 
