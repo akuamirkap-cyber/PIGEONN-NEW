@@ -118,10 +118,13 @@ export function Player() {
     const ts = torso.current;
     const hd = head.current;
     if (!r || !yg || !bk || !bd || !pg || !ts || !hd) return;
-    friendRig?.mixer.update(dt);
+    // Keep source animation deterministic on tab/frame stalls and clear any
+    // active Shift gesture before the Pigeon ragdoll takes over.
+    friendRig?.mixer.update(Math.min(dt, 0.05));
     const [legPush, legPlant] = legs;
 
     const crashed = engine.phase === "crashed" || engine.phase === "gameover";
+    if (crashed) friendRig?.setPush(-1, ROAD_Y);
     const flapping = p.wing > 0.05;
 
     // follow the track frame

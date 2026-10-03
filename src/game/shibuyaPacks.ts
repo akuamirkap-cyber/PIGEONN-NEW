@@ -345,12 +345,14 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
         ? [`animal_${id}_legR`]
         : id === "capybara"
           ? [`animal_${id}_body`]
-          : [`animal_${id}_armR`],
+          : [`animal_${id}_legR`],
   );
   const pushContactNodes = new Set<string>(
     id === "shiba" || id === "kitsune" || id === "deer"
       ? [`animal_${id}_leg-1_-1`]
-      : id === "crane" ? [`animal_${id}_legR`] : [],
+      : id === "crane" || id === "tanuki" || id === "monkey" || id === "neko"
+        ? [`animal_${id}_legR`]
+        : [],
   );
   const pushPivots = new Map<string, THREE.Group>();
   for (const node of data.nodes ?? []) {
@@ -429,11 +431,11 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
         pivot.position.y = (roadY * intensity) / group.scale.y;
         pivot.rotation.x = -0.34 * intensity;
       } else {
-        // Upright Friends do not have a separate leg node in the source rig;
-        // their own arm/body node performs an animal-specific push gesture.
+        // Capybara's source body performs its bobbing push gesture; all other
+        // upright Friends reach the road with their original source right leg.
         pivot.position.y = (-0.055 * intensity) / group.scale.y;
         pivot.rotation.x = -0.16 * intensity;
-        pivot.rotation.z = nodeName.endsWith("_armR") ? -0.42 * intensity : 0.08 * intensity;
+        pivot.rotation.z = nodeName.endsWith("_body") ? 0.08 * intensity : 0;
       }
     }
   };

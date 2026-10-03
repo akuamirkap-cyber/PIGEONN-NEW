@@ -105,7 +105,11 @@ function upright(b: Builder, id: string, p: Vec3, color: string, belly: string) 
     r.node(arm, [side * 0.46, 0.66, 0.065], 'body');
     r.box(arm, [-0.13, -0.41, -0.12], [0.26, 0.45, 0.24], color);
     r.box(arm, [-0.11, -0.45, 0.02], [0.22, 0.17, 0.18], belly);
-    r.box('root', [side * 0.24 - 0.13, 0.016, -0.19], [0.26, 0.38, 0.39], color);
+    // Keep the original foot voxel, but mount it on its source leg node so
+    // gameplay can animate the right foot without inventing replacement feet.
+    const leg = side < 0 ? 'legL' : 'legR';
+    r.node(leg, [side * 0.24, 0.016, -0.19], 'root');
+    r.box(leg, [-0.13, 0, 0], [0.26, 0.38, 0.39], color);
   }
   r.motion('Play', 'body', 'rotation', 2, 0.06, { cycles: 2 });
   r.motion('Iconic', 'body', 'rotation', 2, 0.065, { cycles: 2 });
