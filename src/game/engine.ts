@@ -635,7 +635,8 @@ function stepRagdoll(r: Ragdoll, dt: number, floor: number, friction = 4.2, boun
   const drag = Math.exp(-dt * 0.12);
   r.vs *= drag;
   r.vlat *= drag;
-  const angDrag = Math.exp(-dt * 1.5);
+  // Drag sudut lebih ringan: tubrukan tumbling tidak "nge-rem" kaku, guling berlanjut alami
+  const angDrag = Math.exp(-dt * 1.05);
   r.wx *= angDrag;
   r.wy *= angDrag;
   r.wz *= angDrag;
@@ -644,15 +645,17 @@ function stepRagdoll(r: Ragdoll, dt: number, floor: number, friction = 4.2, boun
     r.h = floor;
     if (r.vh < -0.8) {
       // Rubbery comical bounce: first bounce is high and springy, forward momentum preserved
-      const bCoeff = Math.min(0.78, (r.bounces === 0 ? 0.48 : r.bounces === 1 ? 0.35 : 0.22) * (r.bouncy ?? 1));
+      // (sedikit variasi acak tiap pantul → lintasan tidak pernah terasa "direkam"/scripted)
+      const bCoeff = Math.min(0.78, (r.bounces === 0 ? 0.48 : r.bounces === 1 ? 0.35 : 0.22) * (r.bouncy ?? 1) * rand(0.85, 1.12));
       r.vh = -r.vh * bCoeff;
       r.vs *= 0.88; // skips forward on ground impact!
       r.bounces++;
-      // Ground contact imparts a hilarious forward roll/somersault tumble from street friction
-      const rollImpulse = -Math.sign(r.vs) * Math.min(Math.abs(r.vs) * 0.42, 3.2);
+      // Ground contact imparts a hilarious forward roll/somersault tumble from street friction,
+      // plus skid lateral → barrel roll & yaw wobble: terasa seperti benda jatuh beneran, bukan animasi kaku
+      const rollImpulse = -Math.sign(r.vs) * Math.min(Math.abs(r.vs) * 0.42, 3.6) * rand(0.75, 1.25);
       r.wz = r.wz * 0.35 + rollImpulse;
-      r.wx = r.wx * 0.35 + rand(-0.8, 0.8) * bounce;
-      r.wy *= 0.35;
+      r.wx = r.wx * 0.35 + rand(-0.8, 0.8) * bounce + Math.sign(r.vlat) * Math.min(Math.abs(r.vlat) * 0.18, 1.4);
+      r.wy = r.wy * 0.35 + rand(-0.7, 0.7) * (0.35 + bounce);
     } else {
       r.vh = 0;
     }

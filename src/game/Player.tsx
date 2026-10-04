@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { buildVoxelGeometry, clamp, voxelMaterial } from "./voxel";
+import { buildVoxelGeometry, clamp, rand, voxelMaterial } from "./voxel";
 import { engine, LANE_LAT } from "./engine";
 import { useUI } from "./store";
 import { charBodyParts, charHeadParts, charTailParts, charWingParts, deckParts, getSkin, truckParts, wheelParts, HIP_Y, LEG_Z, TAIL_ROOT } from "./skins";
@@ -25,6 +25,14 @@ const K_BACK: K = [-0.15, ROAD_Y, 0.36];
 const K_UP: K = [-0.1, 0.06, 0.3];
 const smooth = (k: number) => k * k * (3 - 2 * k);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/** Spring-damper 1D: gerak sekunder ragdoll (kepala/sayap/ekor/torso) supaya lunglai
+ *  & berayun dengan inersia seperti boneka kain — bukan pose kaku hasil fungsi langsung. */
+function springStep(x: number, v: number, target: number, stiff: number, damp: number, dt: number): [number, number] {
+  v += (target - x) * stiff * dt;
+  v *= Math.exp(-damp * dt);
+  x += v * dt;
+  return [x, v];
+}
 function lerpK(a: K, b: K, k: number, out: K) {
   out[0] = a[0] + (b[0] - a[0]) * k;
   out[1] = a[1] + (b[1] - a[1]) * k;
@@ -62,6 +70,16 @@ export function Player() {
   const tail = useRef<THREE.Mesh>(null);
   const tailSway = useRef(0);
   const restBlend = useRef(0);
+  /** State spring ragdoll: posisi+kecepatan sekunder tiap anggota badan (di-reset tiap ronde) */
+  const flop = useRef({
+    hx: 0, hy: 0, hz: 0, hvx: 0, hvy: 0, hvz: 0,
+    wrx: 0, wrz: 0, wrvx: 0, wrvz: 0,
+    wlx: 0, wlz: 0, wlvx: 0, wlvz: 0,
+    tz: 0, tvz: 0, arch: 0, archv: 0,
+    prevBounces: 0,
+    seeded: false,
+    justSeeded: false,
+  });
   /** sudut kepala yang dihaluskan (low-pass): fokus ke depan + memantau situasi, santai */
   const headLook = useRef({ yaw: 0, pitch: 0 });
   const contactK = useRef(0); // 0 airborne .. 1 rolling on the ground/rail (smoothed so takeoff/landing do not pop)
@@ -185,6 +203,19 @@ export function Player() {
       restBlend.current = 0;
     }
     const rb = restBlend.current;
+    const sdt = Math.min(dt, 0.05);
+    const fl2 = flop.current;
+    fl2.justSeeded = false;
+    if (!crashed && fl2.seeded) {
+      // ronde baru: kosongkan state flop supaya crash berikutnya mulai fresh
+      fl2.seeded = false;
+      fl2.prevBounces = 0;
+      fl2.hvx = fl2.hvy = fl2.hvz = 0;
+      fl2.wrvx = fl2.wrvz = 0;
+      fl2.wlvx = fl2.wlvz = 0;
+      fl2.tvz = 0;
+      fl2.archv = 0;
+    }
 
     if (!crashed) {
       // whole rig yaws into the turn (real steering), plus trick spins and the menu turntable
@@ -392,28 +423,53 @@ export function Player() {
         const vel = Math.hypot(body.vs, body.vh, body.vlat);
         const drag = clamp(vel / 14, 0, 1) * limp;
 
+        // 0. Sekunder: waktu wobble kontinyu + whip impulse setiap pantulan aspal
+        const wob = p.limbT;
+        if (body.bounces !== fl2.prevBounces) {
+          const first = !fl2.seeded;
+          fl2.prevBounces = body.bounces;
+          if (!first) {
+            // tiap benturan: kepala/sayap/ekor "kelebat" — inersia boneka sungguhan
+            const kick = clamp(Math.abs(body.vh) * 0.5 + Math.abs(body.wz) * 0.3, 0.35, 2.6);
+            fl2.hvx += rand(-1, 1) * kick;
+            fl2.hvy += rand(-0.8, 0.8) * kick;
+            fl2.hvz += rand(-1.6, 1.6) * kick;
+            fl2.wrvx += rand(-2, 0.5) * kick;
+            fl2.wrvz += rand(1.1, 2.8) * kick;
+            fl2.wlvx += rand(-0.5, 2) * kick;
+            fl2.wlvz += rand(-2.8, -1.1) * kick;
+            fl2.tvz += rand(-1.4, 1.4) * kick;
+            fl2.archv += rand(-0.8, 0.8) * kick * 0.5;
+          }
+        }
+
         // 1. Torso: organic spine bending with inertia & air drag, smoothly settling to rest
         const dynRoll = clamp(body.wx * 0.12, -0.25, 0.25);
-        const dynArch = -0.32 * drag;
+        const dynArch = -0.32 * drag + Math.sin(wob * 9.7) * 0.06 * drag * (1 - rb);
         const dynYaw = clamp(body.wy * 0.10, -0.20, 0.20);
 
         const restRoll = 0.14 * p.impactDir;
         const restArch = -0.16;
         const restYaw = 0.08 * p.impactDir;
 
+        const archT = lerp(dynArch, restArch, rb);
+        if (!fl2.seeded) fl2.arch = archT;
+        [fl2.arch, fl2.archv] = springStep(fl2.arch, fl2.archv, archT, 100, 7.5, sdt);
+
         leanTorso(
           lerp(dynRoll, restRoll, rb),
-          lerp(dynArch, restArch, rb),
+          fl2.arch,
           0,
           -0.04 * limp,
           lerp(0, 0.05 * p.impactDir, rb),
           lerp(dynYaw, restYaw, rb)
         );
 
-        // 2. Head & Neck: loose floppy dummy neck with smooth inertia (no buzzing/seizure)
-        const dynHeadX = -0.28 * drag;
-        const dynHeadY = -0.12 * drag;
-        const dynHeadZ = -0.48 * drag;
+        // 2. Head & Neck: leher boneka kain — kepala dilempar gaya sentrifugal spin tubuh,
+        //    bergoyang dengan inersia (spring), bukan ikut kaku seperti sambungan las
+        const dynHeadX = -0.28 * drag + clamp(body.wx * 0.11, -0.42, 0.42) + Math.sin(wob * 12.7) * 0.10 * drag * (1 - rb);
+        const dynHeadY = -0.12 * drag + Math.sin(wob * 9.1 + 1.3) * 0.09 * drag * (1 - rb);
+        const dynHeadZ = -0.48 * drag + clamp(-body.wz * 0.10, -0.5, 0.5) + Math.sin(wob * 14.3 + 0.6) * 0.08 * drag * (1 - rb);
         const dynHeadPos = [0.30, 0.98 - 0.05 * drag, 0];
 
         const restHeadX = 0.50 * p.impactDir;
@@ -421,16 +477,28 @@ export function Player() {
         const restHeadZ = -0.62;
         const restHeadPos = [0.28, 0.94, 0.05 * p.impactDir];
 
+        const htx = lerp(dynHeadX, restHeadX, rb);
+        const hty = lerp(dynHeadY, restHeadY, rb);
+        const htz = lerp(dynHeadZ, restHeadZ, rb);
+        if (!fl2.seeded) {
+          fl2.hx = htx;
+          fl2.hy = hty;
+          fl2.hz = htz;
+          fl2.arch = archT;
+          fl2.justSeeded = true;
+        }
+        // leher paling kendor: overshoot & geliat halus saat badan berhenti
+        [fl2.hx, fl2.hvx] = springStep(fl2.hx, fl2.hvx, htx, 68, 5, sdt);
+        [fl2.hy, fl2.hvy] = springStep(fl2.hy, fl2.hvy, hty, 68, 5, sdt);
+        [fl2.hz, fl2.hvz] = springStep(fl2.hz, fl2.hvz, htz, 68, 5, sdt);
+
         hd.position.set(
           lerp(dynHeadPos[0], restHeadPos[0], rb),
           lerp(dynHeadPos[1], restHeadPos[1], rb),
           lerp(dynHeadPos[2], restHeadPos[2], rb)
         );
-        hd.rotation.set(
-          lerp(dynHeadX, restHeadX, rb),
-          lerp(dynHeadY, restHeadY, rb),
-          lerp(dynHeadZ, restHeadZ, rb)
-        );
+        hd.rotation.set(fl2.hx, fl2.hy, fl2.hz);
+        fl2.seeded = true;
 
         // 3. Legs: floppy cords trailing in the wind and smoothly resting on the asphalt
         const dynLegPush = [-0.14 - 0.12 * drag, -0.28, 0.06];
@@ -491,8 +559,13 @@ export function Player() {
     if (tail.current) {
       if (crashed) {
         const limp = Math.min(1, p.limbT * 3.0);
-        // Clean smooth droop down along pitch axis (Z) without jitter
-        tail.current.rotation.set(0, 0, -0.30 * limp);
+        const bodyB = p.body;
+        // Ekor = bandul kendor: terayun mengikuti spin & skid badan dengan inersia spring
+        const sway = bodyB ? clamp(bodyB.wz * 0.055, -0.32, 0.32) + clamp(bodyB.vlat * 0.02, -0.2, 0.2) : 0;
+        const tzTgt = -0.30 * limp + sway + Math.sin(p.limbT * 10.2) * 0.07 * limp * (1 - rb);
+        if (fl2.justSeeded) fl2.tz = tzTgt;
+        [fl2.tz, fl2.tvz] = springStep(fl2.tz, fl2.tvz, tzTgt, 78, 5.5, sdt);
+        tail.current.rotation.set(0, 0, fl2.tz);
       } else {
         const lvT = nm ? engine.turn.leanVis : -p.carve * 1.6; // right-positive
         const target = -lvT * 0.35 + Math.sin(t * 9) * 0.02 * Math.abs(lvT);
@@ -509,26 +582,40 @@ export function Player() {
       const body = p.body;
       const vel = body ? Math.hypot(body.vs, body.vh, body.vlat) : 0;
       const drag = clamp(vel / 14, 0, 1) * limp;
+      const wob = p.limbT;
+
+      // Gaya sentrifugal spin badan melempar sayap keluar + flutter acak-halus saat tumbling.
+      // Sayap kiri/kanan bergerak BEDA fase — organik, tidak cermin kaku seperti animasi satu sisi.
+      const flail = body ? clamp((Math.abs(body.wz) + Math.abs(body.wx)) * 0.11, 0, 0.95) * limp : 0;
+      const wrFlutter = flail * (0.55 + 0.45 * Math.sin(wob * 11.0)) + Math.sin(wob * 15.7) * 0.05 * drag * (1 - rb);
+      const wlFlutter = flail * (0.55 + 0.45 * Math.sin(wob * 13.1 + 2.2)) + Math.sin(wob * 17.3 + 1.1) * 0.05 * drag * (1 - rb);
 
       // Flight wings: trail backward naturally along body from air resistance
-      const dynWr = [-0.85 * drag, -0.35 * drag, 0.40 * drag];
-      const dynWl = [0.85 * drag, 0.35 * drag, -0.40 * drag];
+      const dynWr = [-0.85 * drag + Math.sin(wob * 9.4) * 0.09 * drag * (1 - rb), -0.35 * drag, 0.40 * drag + wrFlutter];
+      const dynWl = [0.85 * drag + Math.sin(wob * 10.6 + 0.8) * 0.09 * drag * (1 - rb), 0.35 * drag, -0.40 * drag - wlFlutter];
 
       // Rest wings: drape flat and limp on the road beside the body
       const restWr = [-0.25, -0.15 * p.impactDir, 0.65];
       const restWl = [0.25, 0.15 * p.impactDir, -0.65];
 
-      // Smooth interpolation using restBlend (rb) - zero popping or abrupt snaps
-      wr.rotation.set(
-        lerp(dynWr[0], restWr[0], rb),
-        lerp(dynWr[1], restWr[1], rb),
-        lerp(dynWr[2], restWr[2], rb)
-      );
-      wl.rotation.set(
-        lerp(dynWl[0], restWl[0], rb),
-        lerp(dynWl[1], restWl[1], rb),
-        lerp(dynWl[2], restWl[2], rb)
-      );
+      const wrxT = lerp(dynWr[0], restWr[0], rb);
+      const wrzT = lerp(dynWr[2], restWr[2], rb);
+      const wlxT = lerp(dynWl[0], restWl[0], rb);
+      const wlzT = lerp(dynWl[2], restWl[2], rb);
+      if (fl2.justSeeded) {
+        fl2.wrx = wrxT;
+        fl2.wrz = wrzT;
+        fl2.wlx = wlxT;
+        fl2.wlz = wlzT;
+      }
+      // Sendi bahu kendor: sayap berayun & overshoot alami (bukan nempel kaku di tubuh)
+      [fl2.wrx, fl2.wrvx] = springStep(fl2.wrx, fl2.wrvx, wrxT, 82, 4.6, sdt);
+      [fl2.wrz, fl2.wrvz] = springStep(fl2.wrz, fl2.wrvz, wrzT, 82, 4.6, sdt);
+      [fl2.wlx, fl2.wlvx] = springStep(fl2.wlx, fl2.wlvx, wlxT, 82, 4.6, sdt);
+      [fl2.wlz, fl2.wlvz] = springStep(fl2.wlz, fl2.wlvz, wlzT, 82, 4.6, sdt);
+
+      wr.rotation.set(fl2.wrx, lerp(dynWr[1], restWr[1], rb), fl2.wrz);
+      wl.rotation.set(fl2.wlx, lerp(dynWl[1], restWl[1], rb), fl2.wlz);
     } else if (wl && wr) {
       const tr2 = p.trick;
       const isFlap = tr2 && tr2.kind === "wingflap";
