@@ -27,6 +27,15 @@ import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
 import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
+
+/** Haptic feedback HP (getar) — diabaikan otomatis di browser tanpa dukungan. */
+function buzz(pattern: number | number[]) {
+  try {
+    (navigator as Navigator & { vibrate?: (p: number | number[]) => void }).vibrate?.(pattern);
+  } catch {
+    /* noop */
+  }
+}
 import { Track, type TrackSample } from "./track";
 import { TURN, makeTurnState, resetTurnState, stepTurn, rearOf } from "./turnModel";
 import {
@@ -1658,6 +1667,7 @@ class Engine {
     this.emit("feather", 0, p.h + 0.5, p.lat, 42);
     this.emit("dust", 0, 0.05, p.lat, 24);
     sfx.crash();
+    buzz([30, 40, 60]); // haptic HP saat tabrakan
     sfx.bonk();
     sfx.whoosh();
     useUI.getState().setPhase("crashed");
@@ -2452,6 +2462,7 @@ class Engine {
       if (Math.abs(b.h - (p.h + 0.55)) > 0.95) continue;
       b.taken = true;
       this.breadCount++;
+      buzz(14);
       this.addNos(NOS_PER_BREAD);
       this.breadFx.push({ rel: b.s - d, lat: LANE_LAT[b.lane], h: b.h, age: 0 });
       if (this.breadFx.length > 8) this.breadFx.shift();
@@ -3322,6 +3333,7 @@ class Engine {
           ) {
             rb.taken = true;
             this.breadCount++;
+      buzz(14);
             this.addNos(NOS_PER_BREAD);
             track.frame(breadS, LANE_LAT[st.lane], SUBWAY_ROOF_H + 0.35, tmpV);
             this.breadFx.push({ rel: breadS - d, lat: LANE_LAT[st.lane], h: SUBWAY_ROOF_H + 0.35, age: 0 });

@@ -298,7 +298,11 @@ function Lights() {
 }
 
 function Loop() {
-  useFrame((_, dt) => engine.update(dt), -10);
+  useFrame((_, dt) => {
+    // Auto-pause: tab disembunyikan = dunia beku penuh (HP hemat daya, balik lagi tanpa lompat waktu)
+    if (typeof document !== "undefined" && document.hidden) return;
+    engine.update(dt);
+  }, -10);
   return null;
 }
 

@@ -35,6 +35,8 @@ interface UIState {
   wallet: number;
   runs: number;
   muted: boolean;
+  tutorialSeen: boolean;
+  setTutorialSeen: () => void;
   isNewBest: boolean;
   popups: Popup[];
   combo: number;
@@ -144,6 +146,7 @@ export const useUI = create<UIState>((set, get) => ({
   wallet: load<number>("pigeon-sk8-wallet", 0) || 0,
   runs: 0,
   muted: load<boolean>("pigeon-sk8-muted", false) === true,
+  tutorialSeen: load<boolean>("pigeon-sk8-tutor", false) === true,
   isNewBest: false,
   popups: [],
   combo: 0,
@@ -289,6 +292,10 @@ export const useUI = create<UIState>((set, get) => ({
     const muted = !get().muted;
     save("pigeon-sk8-muted", muted);
     set({ muted });
+  },
+  setTutorialSeen: () => {
+    save("pigeon-sk8-tutor", true);
+    set({ tutorialSeen: true });
   },
   selectSkin: (id) => {
     if (!get().unlocked.includes(id)) return;

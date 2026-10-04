@@ -11,13 +11,14 @@ Audit dilakukan 2026-10-04 terhadap repo `arena/01a1004f-pigeonn-new`.
 - Loading screen inline + build single-file (`dist/index.html`, ±2.1 MB) — gampang di-upload di mana pun
 - Handler `orientationchange` / `resize`
 
-## 🔧 Wajib teknis (est. ½–1 hari — bisa aku kerjakan langsung)
-1. **PWA**: `manifest.webmanifest` + ikon 192/512 + apple-touch-icon + Service Worker (cache offline). Tanpa ini game tidak bisa "Add to Home Screen" & offline.
-2. **Auto-pause saat tab disembunyikan** (`visibilitychange`) + resume mulus — penting di HP (telepon masuk, ganti aplikasi).
-3. **Safe-area** notch: padding HUD pakai `env(safe-area-inset-*)` supaya skor/tombol tidak terpotong iPhone.
-4. **Tutorial 10 detik** untuk pemain baru (overlay "geser untuk pindah lajur" dll.) — krusial untuk rating store.
-5. **Haptics**: `navigator.vibrate(30-80)` saat crash / ambil koin (opsional tapi kerasa banget di HP).
-6. **`<html lang="id">`** + title/description konsisten (sekarang campur EN/ID).
+## ✅ Wajib teknis — SUDAH DIKERJAKAN (2026-10-04)
+1. **PWA lengkap**: `manifest.webmanifest` ✓ · ikon voxel 192/512 + maskable ✓ · `apple-touch-icon` ✓ · `sw.js` offline-first app shell ✓ · registrasi di `src/main.tsx` (khusus build produksi) ✓ · favicon ✓
+2. **Auto-pause**: `visibilitychange` → AudioContext suspensi/lanjut (`src/game/audio.ts`) + loop `engine.update` dibekukan saat `document.hidden` (`src/game/Scene.tsx` `Loop`) ✓
+3. **Safe-area notch**: inset `env(safe-area-inset-*)` pada root overlay HUD & Menu ✓
+4. **Tutorial sekali-tampil** (`src/ui/Tutorial.tsx`, flag `pigeon-sk8-tutor`) ✓
+5. **Haptics**: `navigator.vibrate` saat tabrakan `[30,40,60]` & ambil roti `14ms` (`src/game/engine.ts` `buzz`) ✓
+6. **`<html lang="id">`** + deskripsi ID ✓
+> Catatan deploy: naikkan `CACHE` (`pigeon-sk8-v1.0.0`) di `public/sw.js` tiap rilis supaya PWA mendapat bundle baru.
 
 ## 📦 Jalur distribusi (pilih)
 | Target | Jalan | Biaya | Catatan |

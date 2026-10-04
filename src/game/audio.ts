@@ -18,6 +18,14 @@ function ensure() {
   return ctx;
 }
 
+/** Tuduh AudioContext saat tab disembunyikan; lanjut saat kembali (hemat daya + syarat auto-pause HP). */
+export function suspendAudioForHiddenPage() {
+  if (ctx) ctx.suspend().catch(() => {});
+}
+export function resumeAudioFromHiddenPage() {
+  if (ctx && unlocked) ctx.resume().catch(() => {});
+}
+
 export function unlockAudio() {
   unlocked = true;
   ensure();

@@ -45,7 +45,10 @@ export function HUD() {
       : `TOKYO CITY ${dist} M`;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 select-none">
+    <div
+      className="pointer-events-none absolute inset-0 z-20 select-none"
+      style={{ inset: "env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)" }}
+    >
       {/* bread counter (top-left) in vibrant royal blue pill + optional small speed indicator */}
       {inRun && (
         <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex items-center gap-2">

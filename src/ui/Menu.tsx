@@ -323,7 +323,10 @@ function MainMenu() {
   };
 
   return (
-    <div className="menu-overlay pointer-events-none absolute inset-0 z-20 select-none">
+    <div
+      className="menu-overlay pointer-events-none absolute inset-0 z-20 select-none"
+      style={{ inset: "env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)" }}
+    >
       {/* ── Top Bar: compact, aligned wallet + best cards ── */}
       <div className="absolute left-[4%] top-[3.5%] flex h-11 min-w-[25%] items-center gap-2 px-1">
         <BreadIcon size={25} />
