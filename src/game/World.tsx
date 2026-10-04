@@ -53,6 +53,7 @@ import {
   isSuitVariant,
   guardFenceParts,
   sidewalkPlanterParts,
+  snowDriftParts,
   overpassParts,
   overpassCarParts,
   puddleParts,
@@ -274,6 +275,8 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getShibuyaBuildingGeoPair("machiya");
       case "house":
         return getGeometryPair(`house-${d.variant % 2}`, () => japaneseHouseParts(d.variant));
+      case "snow_drift":
+        return getGeometryPair(`snowdrift-${Math.abs(d.variant) % 4}`, () => snowDriftParts(d.variant));
       case "village_house":
         return getGeometryPair(`village_house-${Math.abs(d.variant) % 3}`, () => japaneseVillageHouseParts(d.variant));
       case "guardrail":

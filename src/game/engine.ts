@@ -294,7 +294,8 @@ export type DecorKind =
   | "subway_wall"
   | "subway_track"
   | "subway_overhead_rail"
-  | "city_bus";
+  | "city_bus"
+  | "snow_drift";
 export interface Decor {
   kind: DecorKind;
   pos: Vec3;
@@ -4040,6 +4041,28 @@ class Engine {
     return { pos: [tmpV.x, tmpV.y, tmpV.z], rotY: -th };
   }
 
+  /** Gundukan tumpukan salju di SEKITAR jalan (tepi aspal, trotoar, kaki trotoar) —
+   *  hanya saat cuaca SALJU; aspal jalan utama, perlintasan rel & perempatan tetap bersih. */
+  private addSnowDrifts(s0: number, decor: Decor[], inTunnel = false) {
+    if (useUI.getState().weather !== "snow" || inTunnel) return;
+    const n = randInt(4, 6); // 4-6 tumpukan per chunk, kedua tepi jalan
+    for (let i = 0; i < n; i++) {
+      const absS = s0 + rand(0.5, CHUNK_LEN - 0.7);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      if (
+        this.intersections.some((it) => Math.abs(absS - it.s) < (it.scramble ? 12.2 : it.wide ? 11.0 : 8.8)) ||
+        Math.abs(absS - this.nextIntersectionS) < 12.2 ||
+        this.crossings.some((cr) => Math.abs(absS - cr.s) < 7.5)
+      ) continue;
+      const big = Math.random() < 0.32; // 32% gundukan TINGGI tebal (salju "beberapa agak tebal")
+      const lat = side * (big ? rand(5.6, 7.4) : rand(4.55, 5.35)); // tepi aspal/trotoar — BUKAN di jalan
+      const dy = rand(0.02, 0.1);
+      const variant = big ? 2 : Math.random() < 0.35 ? 3 : randInt(0, 3);
+      const pl = this.place(absS, lat, dy);
+      decor.push({ kind: "snow_drift", pos: pl.pos, rotY: pl.rotY + (Math.random() * 0.5 - 0.25), variant, frontSide: lat > 0 });
+    }
+  }
+
   /**
    * Find a safe slot for a transferred Shibuya asset.
    *
@@ -4239,6 +4262,7 @@ class Engine {
         add("touge_lamp", 2, -4.4, 0.12);
       }
 
+      this.addSnowDrifts(s0, decor);
       this.chunks.push({ id, s0, kind: "haruna", decor });
       this.listVersion++;
       return;
@@ -4367,6 +4391,7 @@ class Engine {
       // 9. Planter trotoar
       if (Math.random() < 0.45) add("sidewalk_planter", rand(3.0, 9.0), -4.95, 0.12, randInt(0, 2));
 
+      this.addSnowDrifts(s0, decor, inTunnel);
       this.chunks.push({ id, s0, kind: "shibuya", decor });
       this.listVersion++;
       return;
@@ -4389,6 +4414,7 @@ class Engine {
       else if (rAve < 0.65) add("village_house", rand(3, 9), rand(-8.5, -11), -0.12, randInt(0, 3));
       else if (rAve < 0.85) add("machiya", rand(3, 9), rand(-8.5, -11), -0.12, randInt(0, 1));
       add("flowers", rand(1, 11), rand(6.4, 8), 0.08, randInt(0, 1));
+      this.addSnowDrifts(s0, decor);
       this.chunks.push({ id, s0, kind: "park", decor });
       this.listVersion++;
       return;
@@ -4454,6 +4480,7 @@ class Engine {
     if (Math.random() < 0.4) add("sakura", rand(1, 11), 5.1, 0.12, randInt(0, 3));
     for (let i = 0; i < randInt(1, 2); i++) add("bush", rand(0.5, 11.5), rand(6.6, 11), 0.05, randInt(0, 1));
     for (let i = 0; i < randInt(1, 3); i++) add("flowers", rand(0.5, 11.5), rand(6.4, 11.5), 0.08, randInt(0, 1));
+    this.addSnowDrifts(s0, decor);
     this.chunks.push({ id, s0, kind, decor });
     this.listVersion++;
   }

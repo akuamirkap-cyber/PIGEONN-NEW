@@ -1617,6 +1617,49 @@ export function sidewalkPlanterParts(variant: number): Part[] {
   return parts;
 }
 
+/** Gundukan/tumpukan salju (bendungan salju berserok di tepi jalan): 4 varian bentuk indah —
+ *  v0 gundukan landai lebar, v1 dua bongkah sandaran, v2 gundukan TINGGI tebal, v3 banket panjang berserok.
+ *  Origin di dasar tumpukan (y=0 = permukaan tanah/trotoar). */
+export function snowDriftParts(variant: number): Part[] {
+  const g0 = "#e6edf7"; // bayangan dasar (kebiruan tertimbun)
+  const g1 = "#f2f7fc"; // tengah
+  const g2 = "#ffffff"; // puncak bercahaya
+  const v = Math.abs(variant) % 4;
+  const parts: Part[] = [];
+  if (v === 0) {
+    parts.push({ x: 0, y: 0.11, z: 0, w: 2.1, h: 0.22, d: 1.5, color: g0 });
+    parts.push({ x: -0.25, y: 0.3, z: 0.1, w: 1.35, h: 0.24, d: 1.0, color: g1 });
+    parts.push({ x: 0.45, y: 0.26, z: -0.3, w: 0.85, h: 0.2, d: 0.75, color: g1 });
+    parts.push({ x: -0.2, y: 0.5, z: 0.08, w: 0.78, h: 0.2, d: 0.6, color: g2 });
+    parts.push({ x: 0.42, y: 0.42, z: -0.3, w: 0.48, h: 0.14, d: 0.42, color: g2 });
+  } else if (v === 1) {
+    parts.push({ x: -0.5, y: 0.13, z: 0, w: 1.05, h: 0.26, d: 1.1, color: g0 });
+    parts.push({ x: 0.5, y: 0.13, z: 0.05, w: 1.05, h: 0.26, d: 1.05, color: g0 });
+    parts.push({ x: 0, y: 0.1, z: 0.0, w: 0.5, h: 0.2, d: 1.1, color: g1 });
+    parts.push({ x: -0.5, y: 0.34, z: 0, w: 0.7, h: 0.2, d: 0.75, color: g1 });
+    parts.push({ x: 0.5, y: 0.34, z: 0.05, w: 0.7, h: 0.2, d: 0.7, color: g1 });
+    parts.push({ x: -0.5, y: 0.5, z: 0, w: 0.42, h: 0.14, d: 0.45, color: g2 });
+    parts.push({ x: 0.5, y: 0.5, z: 0.05, w: 0.42, h: 0.14, d: 0.42, color: g2 });
+  } else if (v === 2) {
+    // gundukan TINGGI tebal ("salju beberapa agak tebal" — tumpukan yang serius!)
+    parts.push({ x: 0, y: 0.15, z: 0, w: 1.6, h: 0.3, d: 1.35, color: g0 });
+    parts.push({ x: 0.05, y: 0.4, z: -0.02, w: 1.15, h: 0.26, d: 1.0, color: g1 });
+    parts.push({ x: -0.02, y: 0.62, z: 0.03, w: 0.75, h: 0.22, d: 0.68, color: g2 });
+    parts.push({ x: 0.02, y: 0.8, z: 0, w: 0.42, h: 0.16, d: 0.4, color: g2 });
+    parts.push({ x: 0.12, y: 0.92, z: -0.04, w: 0.2, h: 0.1, d: 0.2, color: g2 });
+  } else {
+    // banket panjang berserok (benderara salju di pinggir — khas Jakarta/negara dingin)
+    parts.push({ x: 0, y: 0.08, z: 0, w: 2.8, h: 0.16, d: 0.55, color: g0 });
+    parts.push({ x: -0.4, y: 0.2, z: 0, w: 1.9, h: 0.1, d: 0.42, color: g1 });
+    parts.push({ x: 0.5, y: 0.27, z: 0, w: 1.1, h: 0.08, d: 0.3, color: g2 });
+    parts.push({ x: -1.15, y: 0.16, z: 0, w: 0.5, h: 0.08, d: 0.4, color: g1 });
+  }
+  // keping kecipratan di kaki tumpukan
+  parts.push({ x: -(0.9 + (v % 2) * 0.35), y: 0.045, z: 0.5, w: 0.34, h: 0.09, d: 0.3, color: g1 });
+  parts.push({ x: 0.85 + (v % 3) * 0.2, y: 0.04, z: -0.45, w: 0.3, h: 0.08, d: 0.27, color: g1 });
+  return parts;
+}
+
 export const OVERPASS_H = 5.2;
 export const OVERPASS_HALF_W = 3.2;
 
