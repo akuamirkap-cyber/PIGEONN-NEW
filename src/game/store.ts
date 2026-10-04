@@ -136,12 +136,13 @@ const initialUnlocked = (() => {
   for (const f of defaultFree) set.add(f);
   return Array.from(set);
 })();
-/** Offset view kamera in-game yang tersimpan (TINGGI / SUDUT / JARAK) — default netral 0. */
+/** Default view kamera pilihan user: TINGGI -1.0, SUDUT +1.0, JARAK +2.2 (lebih dekat & sinematik). */
+const CAM_VIEW_DEFAULT = { h: -1, a: 1, d: 2.2 };
 const CAM_VIEW_INIT = (() => {
   const c = load<{ h?: number; a?: number; d?: number }>("pigeon-sk8-cam-view", {});
-  const h = typeof c?.h === "number" && isFinite(c.h) ? Math.max(-3, Math.min(7, c.h)) : 0;
-  const a = typeof c?.a === "number" && isFinite(c.a) ? Math.max(-3, Math.min(5, c.a)) : 0;
-  const d = typeof c?.d === "number" && isFinite(c.d) ? Math.max(-3, Math.min(6, c.d)) : 0;
+  const h = typeof c?.h === "number" && isFinite(c.h) ? Math.max(-3, Math.min(7, c.h)) : CAM_VIEW_DEFAULT.h;
+  const a = typeof c?.a === "number" && isFinite(c.a) ? Math.max(-3, Math.min(5, c.a)) : CAM_VIEW_DEFAULT.a;
+  const d = typeof c?.d === "number" && isFinite(c.d) ? Math.max(-3, Math.min(6, c.d)) : CAM_VIEW_DEFAULT.d;
   return { h, a, d };
 })();
 
@@ -239,8 +240,8 @@ export const useUI = create<UIState>((set, get) => ({
   },
   setCamAdjusting: (camAdjusting) => set({ camAdjusting }),
   resetCamView: () => {
-    save("pigeon-sk8-cam-view", { h: 0, a: 0, d: 0 });
-    set({ camHeight: 0, camAngle: 0, camDist: 0 });
+    save("pigeon-sk8-cam-view", { ...CAM_VIEW_DEFAULT });
+    set({ camHeight: CAM_VIEW_DEFAULT.h, camAngle: CAM_VIEW_DEFAULT.a, camDist: CAM_VIEW_DEFAULT.d });
   },
   weather: ((): "sunny" | "cloudy" | "snow" => {
     const w = load<string>("pigeon-sk8-weather", "sunny");
