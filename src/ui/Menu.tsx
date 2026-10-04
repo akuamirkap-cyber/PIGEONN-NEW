@@ -351,38 +351,6 @@ function MainMenu() {
         </div>
       </div>
 
-      {/* ── Daily Word Hunt + city entry: ikon saja, tanpa tulisan ── */}
-      <div className="absolute left-[4%] right-[4%] top-[34%] z-30 flex items-center justify-center gap-3">
-        <button
-          type="button"
-          aria-label="Daily Word Hunt"
-          onClick={() => {
-            unlockAudio();
-            sfx.click();
-            setShowMysteryBox(true);
-          }}
-          className="pointer-events-auto relative flex h-[12cqw] w-[12cqw] items-center justify-center rounded-2xl bg-white/22 text-[6.5cqw] shadow-[0_3px_0_rgba(15,20,32,0.45)] backdrop-blur-[2px] transition-transform hover:scale-105 active:scale-95"
-        >
-          🎁
-          {wordHunt.collected.some(Boolean) && (
-            <span className="absolute -bottom-1 -right-1 h-[3cqw] w-[3cqw] rounded-full bg-[#ffd451] shadow-[0_1.5px_0_#d5a92e]" />
-          )}
-        </button>
-
-        <button
-          type="button"
-          aria-label="Mode Kota Shibuya"
-          onClick={() => {
-            unlockAudio();
-            sfx.click();
-            window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
-          }}
-          className="pointer-events-auto flex h-[12cqw] w-[12cqw] items-center justify-center rounded-2xl bg-white/22 text-[6.5cqw] shadow-[0_3px_0_rgba(15,20,32,0.45)] backdrop-blur-[2px] transition-transform hover:scale-105 active:scale-95"
-        >
-          🏙️
-        </button>
-      </div>
-
       {/* ── Invisible swipe zone over the pigeon turntable ── */}
       <div
         className="pointer-events-auto absolute inset-x-0 top-[42%] bottom-[25%]"
@@ -482,9 +450,22 @@ function MainMenu() {
                 setShowSettings(false);
                 unlockAudio();
                 sfx.click();
+                setShowMysteryBox(true);
+              }}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#ffd451] to-[#ff9f1c] py-2.5 font-display text-[3.4cqw] text-[#1f405b] shadow-[0_4px_0_#d5a92e] active:translate-y-[2px]"
+            >
+              <span>🎁</span>
+              <span>DAILY WORD HUNT · {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(false);
+                unlockAudio();
+                sfx.click();
                 window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
               }}
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2ec4b6] to-[#3a86ff] py-2.5 font-display text-[3.4cqw] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px]"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2ec4b6] to-[#3a86ff] py-2.5 font-display text-[3.4cqw] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px]"
             >
               <span>🏙️</span>
               <span>PINDAH KE MODE KOTA SHIBUYA</span>
