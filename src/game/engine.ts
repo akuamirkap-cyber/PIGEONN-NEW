@@ -4423,7 +4423,7 @@ class Engine {
       // Balanced streetscape: grand city buildings, ramen shops, machiya merchant shops, houses
       const lot = (lx: number) => {
         const r = Math.random();
-        if (r < 0.32) add("building", lx, -7.5, 0.1, 0, makeBuildingSpec(rand(8.2, 11.2)));
+        if (r < 0.32) add("building", lx, -7.5, 0.1, 0, makeBuildingSpec(rand(9.0, 11.6)));
         else if (r < 0.50) add("house", lx, -7.5, 0.1, randInt(0, 1)); // traditional house
         else if (r < 0.68) add("machiya", lx, -7.5, 0.1, randInt(0, 1)); // machiya shop
         else if (r < 0.84) add("ramen", lx, -7.5, 0.1, 0); // 8.6m grand ramen shop
@@ -4450,7 +4450,7 @@ class Engine {
       // Front sidewalk buildings & houses (facing the street)
       const rFront = Math.random();
       if (rFront < 0.22) add("house", 6, 11.2, -0.1, randInt(0, 1));
-      else if (rFront < 0.45) add("building", 6, 11.2, -0.1, 0, makeBuildingSpec(rand(8.0, 10.5)));
+      else if (rFront < 0.45) add("building", 6, 11.2, -0.1, 0, makeBuildingSpec(rand(8.8, 11.0)));
       else if (rFront < 0.60) add("machiya", 6, 11.2, -0.1, randInt(0, 1));
       else if (rFront < 0.75) add("village_house", 6, 11.2, -0.1, randInt(0, 3));
     } else {

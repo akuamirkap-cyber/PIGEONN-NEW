@@ -256,7 +256,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "puddle":
         return getGeometryPair(`puddle-${d.variant}`, () => puddleParts(d.variant));
       case "sakura": {
-        const scale = (1 + (d.variant % 2) * 0.18) * (isShibuya ? 2 : 1);
+        const scale = (1.25 + (d.variant % 2) * 0.2) * (isShibuya ? 2 : 1);
         return getGeometryPair(`sakura-${d.variant}-${isShibuya ? "shibuya" : "standard"}`, () => sakuraParts(d.variant, scale));
       }
       case "lantern":

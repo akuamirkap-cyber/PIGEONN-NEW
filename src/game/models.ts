@@ -567,7 +567,7 @@ export function makeBuildingSpec(w: number): BuildingSpec {
   const color = BUILDING_COLORS[Math.floor(Math.random() * BUILDING_COLORS.length)];
   return {
     w,
-    floors: 3 + Math.floor(Math.random() * 4), // 3..6 floors
+    floors: 4 + Math.floor(Math.random() * 4), // 4..7 floors — gedung yang harusnya besar, DIBESARIN
     color,
     roof: "#5d6570",
     awning: Math.random() < 0.55,
@@ -611,8 +611,8 @@ export function buildingParts(s: BuildingSpec): Part[] {
     return shibuyaTowerParts(s);
   }
 
-  const depth = 5.8;
-  const floorH = 1.95;
+  const depth = 6.3;
+  const floorH = 2.35; // lantai tinggi — bangunan kota kelihatan GEDE & megah
   const h = s.floors * floorH + 0.8;
   const parts: Part[] = [
     { x: 0, y: h / 2, z: -depth / 2, w: s.w, h, d: depth, color: s.color },
@@ -660,31 +660,35 @@ export function buildingParts(s: BuildingSpec): Part[] {
 
 export function treeParts(variant: number): Part[] {
   const trunk = "#8b5a2b";
+  // Pohon kota yang harusnya besar, DIBESARIN: ~1.45x lebih tinggi, ~1.35x lebih lebar kanopinya.
+  const SY = 1.45, SW = 1.35;
+  const scaled = (parts: Part[]): Part[] =>
+    parts.map((p) => ({ ...p, x: p.x * SW, y: p.y * SY, z: p.z * SW, w: p.w * SW, h: p.h * SY, d: p.d * SW }));
   if (variant === 1) {
     // pine
-    return [
+    return scaled([
       { x: 0, y: 0.4, z: 0, w: 0.3, h: 0.8, d: 0.3, color: trunk },
       { x: 0, y: 1.0, z: 0, w: 1.5, h: 0.6, d: 1.5, color: "#2f855a" },
       { x: 0, y: 1.55, z: 0, w: 1.1, h: 0.55, d: 1.1, color: "#38a169" },
       { x: 0, y: 2.05, z: 0, w: 0.7, h: 0.5, d: 0.7, color: "#48bb78" },
       { x: 0, y: 2.45, z: 0, w: 0.35, h: 0.35, d: 0.35, color: "#68d391" },
-    ];
+    ]);
   }
   if (variant === 2) {
     // round
-    return [
+    return scaled([
       { x: 0, y: 0.5, z: 0, w: 0.3, h: 1.0, d: 0.3, color: trunk },
       { x: 0, y: 1.5, z: 0, w: 1.4, h: 1.1, d: 1.4, color: "#22c55e" },
       { x: 0, y: 2.25, z: 0, w: 0.9, h: 0.5, d: 0.9, color: "#34d399" },
       { x: 0.35, y: 1.3, z: 0.4, w: 0.7, h: 0.6, d: 0.7, color: "#16a34a" },
-    ];
+    ]);
   }
-  return [
+  return scaled([
     { x: 0, y: 0.45, z: 0, w: 0.3, h: 0.9, d: 0.3, color: trunk },
     { x: 0, y: 1.25, z: 0, w: 1.5, h: 0.8, d: 1.5, color: "#22c55e" },
     { x: 0, y: 1.9, z: 0, w: 1.05, h: 0.6, d: 1.05, color: "#34d399" },
     { x: 0, y: 2.35, z: 0, w: 0.55, h: 0.4, d: 0.55, color: "#4ade80" },
-  ];
+  ]);
 }
 
 export function lampParts(): Part[] {
