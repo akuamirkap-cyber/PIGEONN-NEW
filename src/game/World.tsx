@@ -485,14 +485,15 @@ const PedestrianMover = memo(function PedestrianMover({ m }: { m: Mover }) {
 
   // kakek/nenek (elderly) punya geometri sendiri: rambut putih, kacamata, cardigan, tongkat
   const isElder = !!m.elderly;
-  const pedKey = `${m.variant % 8}${isElder ? "-old" : ""}`;
-  const headNormalGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(m.variant, false, isElder)), [pedKey, m.variant, isElder]);
-  const headHitGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-hit`, () => pedestrianHeadParts(m.variant, true, isElder)), [pedKey, m.variant, isElder]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(m.variant, isElder)), [pedKey, m.variant, isElder]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(m.variant, 1, isElder, false)), [pedKey, m.variant, isElder]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(m.variant, -1, isElder, isElder)), [pedKey, m.variant, isElder]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(m.variant, 1, isElder)), [pedKey, m.variant, isElder]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(m.variant, -1, isElder)), [pedKey, m.variant, isElder]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = `${m.variant % 8}${isElder ? "-old" : ""}${snowW ? "-w" : ""}`;
+  const headNormalGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(m.variant, false, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const headHitGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-hit`, () => pedestrianHeadParts(m.variant, true, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(m.variant, isElder, false, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(m.variant, 1, isElder, false, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(m.variant, -1, isElder, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(m.variant, 1, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(m.variant, -1, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
   // tongkat kayu (cuma untuk lansia), dipegang tangan kanan dan ikut mengayun
   const caneGeo = useMemo(() => (isElder ? getGeometry("ped-cane", caneParts) : null), [isElder]);
 
@@ -1205,14 +1206,15 @@ const ScrambleWalker = memo(function ScrambleWalker({ inter, idx }: { inter: Int
   // varian 0..7: campuran kasual + salaryman berjas (5..7); idx 4 = anak sekolah ber-randoseru
   const variant = idx % 8;
   const kid = idx === 4;
-  const pedKey = `${variant}${kid ? "-kid" : ""}`;
-  const headGeo = useMemo(() => getGeometry(`ped-head-${variant}-normal`, () => pedestrianHeadParts(variant, false, false)), [variant]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, false, kid)), [pedKey, variant, kid]);
-  const caseGeo = useMemo(() => (!kid && isSuitVariant(variant) ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [variant, kid]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, false, false)), [pedKey, variant]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, false, false)), [pedKey, variant]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, false)), [pedKey, variant]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, false)), [pedKey, variant]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = `${variant}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
+  const headGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, false, snowW)), [pedKey, variant, snowW]);
+  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, false, kid, snowW)), [pedKey, variant, kid, snowW]);
+  const caseGeo = useMemo(() => (!kid && isSuitVariant(variant) && !snowW ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [variant, kid, snowW]);
+  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, false, false, snowW)), [pedKey, variant, snowW]);
+  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, false, false, snowW)), [pedKey, variant, snowW]);
+  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, false, snowW)), [pedKey, variant, snowW]);
+  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, false, snowW)), [pedKey, variant, snowW]);
   const seed = useMemo(() => {
     const slot = -4.6 + (idx + 0.5) * (9.2 / 9); // tiap penyeberang punya "jalur" x sendiri
     const dirU = (idx % 2 === 0 ? 1 : -1) as 1 | -1;
@@ -2189,13 +2191,14 @@ const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, track
   const headRef = useRef<THREE.Group>(null);
 
   // pakai cache geometri yang sama dengan pedestrian penyeberang (hemat memori)
-  const pedKey = `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}`;
-  const headGeo = useMemo(() => getGeometry(`ped-head-${variant % 8}${elderly ? "-old" : ""}-normal`, () => pedestrianHeadParts(variant, false, elderly)), [variant, elderly]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid)), [pedKey, variant, elderly, kid]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false)), [pedKey, variant, elderly]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly)), [pedKey, variant, elderly]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly)), [pedKey, variant, elderly]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly)), [pedKey, variant, elderly]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
+  const headGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, elderly, snowW)), [pedKey, variant, elderly, snowW]);
+  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid, snowW)), [pedKey, variant, elderly, kid, snowW]);
+  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false, snowW)), [pedKey, variant, elderly, snowW]);
+  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly, snowW)), [pedKey, variant, elderly, snowW]);
+  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly, snowW)), [pedKey, variant, elderly, snowW]);
+  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly, snowW)), [pedKey, variant, elderly, snowW]);
   const caneGeo = useMemo(() => (elderly ? getGeometry("ped-cane", caneParts) : null), [elderly]);
   // salaryman: tas kerja dikempit rapat di sisi badan, lengan kirinya tidak mengayun
   const caseGeo = useMemo(() => (suit ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [suit, variant]);

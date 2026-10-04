@@ -349,8 +349,9 @@ const SKY_DAY = { top: "#249bed", mid: "#55b8f5", bot: "#ccecff" };
 const SKY_NIGHT = { top: "#0b1220", mid: "#18243b", bot: "#24324d" };
 // Siang berawan yang lembut: zenith abu kebiruan turun ke horizon putih keperakan
 const SKY_CLOUDY = { top: "#7d93ab", mid: "#c9d6e0", bot: "#eaf0f5" };
-// Cuaca bersalju: langit putih kelabu lembut, horizon cerah pucat seperti hari bersalju
-const SKY_SNOW = { top: "#9fb1c4", mid: "#ccd9e5", bot: "#f2f7fc" };
+// Cuaca bersalju: gradien KHAS cantik & ceria (bukan kelabu muram) —
+// zenith biru powder lembut -> tengah periwinkle cerah -> horizon blush kemerahan hangat
+const SKY_SNOW = { top: "#6aa9ec", mid: "#b8d4f6", bot: "#ffe6dc" };
 // Shibuya pagi: biru muda dengan horizon emas lembut
 const SKY_PAGI = { top: "#4f9be0", mid: "#ffdab6", bot: "#ffedd6" };
 // Shibuya sore: senja — zenith biru tua, horizon oranye hangat

@@ -1261,6 +1261,36 @@ const ELDER_OUTFITS: PedOutfit[] = [
   { top: "#8fbf9f", pants: "#454b52", hair: "#e4e4e6", skin: "#dfbb95", gender: "male", glasses: "round" },
 ];
 
+/** Tampilan MUSIM DINGIN (mode salju): jaket padded tebal, syal, dan kupluk rajut ber-pompom. */
+interface WinterLook { jacket: string; shade: string; fold: string; scarf: string; pants: string; beanie: string }
+const WINTER_LOOKS: WinterLook[] = [
+  { jacket: "#d95745", shade: "#b54536", fold: "#f4e3c3", scarf: "#f4e3c3", pants: "#2f3640", beanie: "#f4e3c3" },
+  { jacket: "#e8a33d", shade: "#c68630", fold: "#8d5c1c", scarf: "#3d4459", pants: "#3d4459", beanie: "#3d4459" },
+  { jacket: "#3d5a80", shade: "#2e4563", fold: "#1f3a55", scarf: "#e8c57c", pants: "#463f3a", beanie: "#e8c57c" },
+  { jacket: "#47663b", shade: "#35502c", fold: "#26401e", scarf: "#f0d9b5", pants: "#2f4858", beanie: "#f0d9b5" },
+  { jacket: "#7b4b94", shade: "#5f3a73", fold: "#482a58", scarf: "#f5d0dd", pants: "#4a4e57", beanie: "#f5d0dd" },
+  { jacket: "#b08968", shade: "#8d6b4e", fold: "#6e5239", scarf: "#7a3b3b", pants: "#39424e", beanie: "#7a3b3b" },
+  { jacket: "#c2557c", shade: "#9e4462", fold: "#7d334b", scarf: "#f7ede4", pants: "#33383f", beanie: "#f7ede4" },
+  { jacket: "#2a7f7d", shade: "#206260", fold: "#174847", scarf: "#ffd9a3", pants: "#2e3a45", beanie: "#ffd9a3" },
+  { jacket: "#566573", shade: "#424d58", fold: "#2f3841", scarf: "#c9ad82", pants: "#424a52", beanie: "#c9ad82" },
+  { jacket: "#9c5b3f", shade: "#7d4730", fold: "#5f3523", scarf: "#305243", pants: "#3c4247", beanie: "#305243" },
+  { jacket: "#c24b4b", shade: "#9e3a3a", fold: "#7c2c2c", scarf: "#2f4752", pants: "#4a5568", beanie: "#f4e3c3" },
+  { jacket: "#4f6d9e", shade: "#3c557c", fold: "#2c405c", scarf: "#f2c4a0", pants: "#2f3a4a", beanie: "#f2c4a0" },
+  { jacket: "#5f7748", shade: "#4a5d38", fold: "#374529", scarf: "#d9c3a5", pants: "#504539", beanie: "#d9c3a5" },
+  { jacket: "#a54f7a", shade: "#863f61", fold: "#662f49", scarf: "#e9e2d0", pants: "#41465a", beanie: "#e9e2d0" },
+  { jacket: "#3f6f6f", shade: "#305555", fold: "#233f40", scarf: "#d3a05b", pants: "#39414d", beanie: "#d3a05b" },
+  { jacket: "#cb8b45", shade: "#a66d33", fold: "#7d5225", scarf: "#4e5d4e", pants: "#4c545e", beanie: "#4e5d4e" },
+  { jacket: "#5566a3", shade: "#414e7e", fold: "#323a5c", scarf: "#f0e6d8", pants: "#353d4c", beanie: "#f0e6d8" },
+  { jacket: "#8d6b4f", shade: "#6e5239", fold: "#543d2a", scarf: "#c75050", pants: "#48414a", beanie: "#c75050" },
+];
+const WINTER_LOOKS_ELDER: WinterLook[] = [
+  { jacket: "#6d5a7d", shade: "#554763", fold: "#3e3347", scarf: "#e8e2d4", pants: "#4a4e57", beanie: "#e8e2d4" },
+  { jacket: "#8fae9f", shade: "#71907f", fold: "#55705f", scarf: "#f4ede0", pants: "#5b5560", beanie: "#f4ede0" },
+  { jacket: "#5f7a8f", shade: "#4a6070", fold: "#37485a", scarf: "#e5d8be", pants: "#454b52", beanie: "#e5d8be" },
+];
+const winterLook = (variant: number, elderly: boolean): WinterLook =>
+  (elderly ? WINTER_LOOKS_ELDER[Math.abs(variant) % WINTER_LOOKS_ELDER.length] : WINTER_LOOKS[Math.abs(variant) % WINTER_LOOKS.length]);
+
 /** Di mana tongkat digenggam: jarak telapak tangan dari sendi bahu (pakai `pedestrianArmParts`). */
 export const CANE_GRIP_Y = -0.56;
 
@@ -1278,7 +1308,7 @@ export function caneParts(): Part[] {
 }
 
 /** Pedestrian head with facial features, hair, hats (caps, bucket hats, beanies, berets), and glasses (sunglasses, wire, round). Origin at neck level (y = 0). */
-export function pedestrianHeadParts(variant: number, isHit = false, elderly = false): Part[] {
+export function pedestrianHeadParts(variant: number, isHit = false, elderly = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
   const isFemale = o.gender === "female";
   const parts: Part[] = [
@@ -1327,6 +1357,14 @@ export function pedestrianHeadParts(variant: number, isHit = false, elderly = fa
     // Topi baret chic miring
     const beretColor = variant === 12 ? "#1a1a1a" : variant === 17 ? "#7f4f24" : "#e63946";
     parts.push({ x: -0.04, y: 0.46, z: 0.04, w: 0.46, h: 0.09, d: 0.46, rx: 0.2, color: beretColor });
+  }
+
+  // ===== MUSIM DINGIN: SEMUA pakai KUPLUK rajut tebal ber-pompom (menimpa topi harian) =====
+  if (winter) {
+    const wl = winterLook(variant, elderly);
+    parts.push({ x: -0.02, y: 0.465, z: 0, w: 0.45, h: 0.19, d: 0.45, color: wl.beanie });   // mahkota kupluk
+    parts.push({ x: -0.02, y: 0.385, z: 0, w: 0.48, h: 0.09, d: 0.48, color: wl.fold });      // lipatan rajut
+    parts.push({ x: -0.02, y: 0.595, z: 0, w: 0.13, h: 0.11, d: 0.13, color: wl.scarf });     // pom-pom gumpil
   }
 
   if (isHit) {
@@ -1394,8 +1432,31 @@ export function pedestrianHeadParts(variant: number, isHit = false, elderly = fa
 }
 
 /** Pedestrian torso. Origin at torso center (y = 0). Mendukung rok wanita & tas randoseru sekolah. */
-export function pedestrianTorsoParts(variant: number, elderly = false, kid = false): Part[] {
+export function pedestrianTorsoParts(variant: number, elderly = false, kid = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    // JAKET TEBAL MUSIM DINGIN: bodi mengembang + garis quilt + hem + kerah + resleting + syal tebal
+    const wl = winterLook(variant, elderly);
+    const parts: Part[] = [
+      { x: 0, y: 0, z: 0, w: 0.5, h: 0.7, d: 0.6, color: wl.jacket },
+      { x: 0, y: 0.14, z: 0, w: 0.505, h: 0.045, d: 0.605, color: wl.shade },   // jahitan quilt atas
+      { x: 0, y: -0.1, z: 0, w: 0.505, h: 0.045, d: 0.605, color: wl.shade },   // jahitan quilt bawah
+      { x: 0, y: -0.33, z: 0, w: 0.52, h: 0.09, d: 0.62, color: wl.fold },      // hem rajutan
+      { x: 0.02, y: 0.34, z: 0, w: 0.46, h: 0.12, d: 0.52, color: wl.fold },    // kerah tebal
+      { x: 0.252, y: 0.0, z: 0, w: 0.015, h: 0.62, d: 0.05, color: wl.fold },   // resleting
+      { x: 0.0, y: 0.41, z: 0, w: 0.46, h: 0.13, d: 0.54, color: wl.scarf },    // syal menggulung
+      { x: 0.19, y: 0.13, z: 0.14, w: 0.1, h: 0.46, d: 0.15, color: wl.scarf }, // ujung syal menjuntai di dada
+    ];
+    if (kid) {
+      // randoseru tetap dibawa, digeser sedikit supaya tidak tenggelam di jaket tebal
+      const rc = variant % 2 ? "#b5323c" : "#262b33";
+      parts.push({ x: -0.36, y: 0.0, z: 0, w: 0.17, h: 0.46, d: 0.4, color: rc });
+      parts.push({ x: -0.39, y: 0.25, z: 0, w: 0.13, h: 0.07, d: 0.42, color: rc });
+      parts.push({ x: -0.27, y: 0.1, z: 0.2, w: 0.045, h: 0.34, d: 0.07, color: "#3a3f47" });
+      parts.push({ x: -0.27, y: 0.1, z: -0.2, w: 0.045, h: 0.34, d: 0.07, color: "#3a3f47" });
+    }
+    return parts;
+  }
   const parts: Part[] = [
     { x: 0, y: 0, z: 0, w: 0.42, h: 0.68, d: 0.52, color: o.top },
     { x: 0.12, y: 0.31, z: 0, w: 0.18, h: 0.08, d: 0.22, color: o.skin },
@@ -1428,8 +1489,20 @@ export function pedestrianTorsoParts(variant: number, elderly = false, kid = fal
 }
 
 /** Pedestrian arm. Origin at shoulder joint (y = 0), extends downward along -y. */
-export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly = false, holdsCane = false): Part[] {
+export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly = false, holdsCane = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    // lengan jaket penuh sampai pergelangan (kulit tidak kelihatan) + cuff rajut + sarung tangan bebuk
+    const wl = winterLook(variant, elderly);
+    const armw: Part[] = [
+      { x: 0, y: -0.11, z: 0, w: 0.18, h: 0.26, d: 0.18, color: wl.jacket },   // lengan atas tebal
+      { x: 0, y: -0.36, z: 0, w: 0.155, h: 0.3, d: 0.155, color: wl.jacket },  // lengan bawah tebal
+      { x: 0, y: -0.51, z: 0, w: 0.165, h: 0.09, d: 0.165, color: wl.fold },   // cuff rajutan
+      { x: 0, y: -0.63, z: 0, w: 0.15, h: 0.14, d: 0.15, color: wl.scarf },    // sarung tangan bebuk
+    ];
+    if (holdsCane) armw.push({ x: 0.01, y: -0.6, z: 0.02, w: 0.17, h: 0.13, d: 0.17, color: wl.scarf });
+    return armw;
+  }
   const arm: Part[] = [
     { x: 0, y: -0.12, z: 0, w: 0.15, h: 0.24, d: 0.15, color: o.top },
     { x: 0, y: -0.38, z: 0, w: 0.13, h: 0.32, d: 0.13, color: o.skin },
@@ -1442,8 +1515,16 @@ export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly =
 }
 
 /** Pedestrian leg. Origin at hip joint (y = 0), extends downward along -y. */
-export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly = false): Part[] {
+export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    const wl = winterLook(variant, elderly);
+    return [
+      { x: 0, y: -0.24, z: 0, w: 0.19, h: 0.48, d: 0.17, color: wl.pants },      // celana panjang hangat
+      { x: 0, y: -0.52, z: 0, w: 0.21, h: 0.16, d: 0.18, color: "#4a3a2c" },     // shaft boot salju
+      { x: 0.04, y: -0.6, z: 0, w: 0.26, h: 0.14, d: 0.19, color: "#2e2620" },   // sol boot tebal
+    ];
+  }
   return [
     { x: 0, y: -0.26, z: 0, w: 0.18, h: 0.52, d: 0.16, color: o.pants },
     { x: 0.03, y: -0.58, z: 0, w: 0.24, h: 0.12, d: 0.16, color: "#1f2430" },

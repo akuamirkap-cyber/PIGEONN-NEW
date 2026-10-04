@@ -92,24 +92,29 @@ const fragmentHaze = /* glsl */ `
   hz = hz * hz * ( 3.0 - 2.0 * hz );
   gl_FragColor.rgb = mix( gl_FragColor.rgb, uHazeColor, hz * 0.92 );
 
-  // ---- SALJU: tutup 10-40% tiap permukaan yang menghadap ke atas ----
+  // ---- SALJU: TUMPUKAN tebal di bangunan & sekitarnya — JALAN UTAMA tetap bersih ----
   #ifdef SNOW_NORMALS
   {
     // dekor tiap ketinggian supaya pola tidak identik antar lantai bertumpuk
     vec2 snowP = vSnowWorld.xz + vec2( vSnowWorld.y * 13.73, vSnowWorld.y * 7.31 );
     float upness = clamp( vSnowNormal.y, 0.0, 1.0 );
     float atop = smoothstep( 0.38, 0.72, upness );
+    // Aspal jalan utama (permukaan terendah di tiap mesh: y < ~0.16) disapu bersih —
+    // salju mulai menumpuk di trotoar/kanal (y ~0.3+) dan tebal di atap/atap mobil/pohon.
+    float roadGate = smoothstep( 0.10, 0.55, vSnowWorld.y );
     if ( atop > 0.001 && uSnowAmount > 0.001 ) {
-      // pemilih area: sebagian permukaan tertutup tebal (40%), sebagian tipis (10%)
+      // pemilih area: sebagian permukaan tertutup tebal (~65%), sebagian tipis (~20%)
       float region = pigeonSnowNoise( snowP * 0.33 + 7.3 );
-      float cover = 0.40 + 0.30 * region;          // ambang rimbunnya tambalan (lebih rendah = salju LEBIH BANYAK)
+      float cover = mix( 0.62, 0.30, roadGate ) + 0.24 * region; // rendah = aspal; tebal = tumpukan
       float n = pigeonSnowNoise( snowP * 1.15 ) * 0.62 + pigeonSnowNoise( snowP * 5.5 ) * 0.38;
       float k = atop * smoothstep( cover - 0.14, cover + 0.14, n );
       k *= 0.80 + 0.20 * pigeonSnowNoise( snowP * 23.0 ); // tekstur butiran salju
-      float sparkle = step( 0.975, pigeonSnowNoise( snowP * 41.0 ) ) * 0.10;
+      float sparkle = step( 0.970, pigeonSnowNoise( snowP * 41.0 ) ) * 0.12;
       gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.93, 0.955, 1.0 ) + sparkle, k * uSnowAmount );
       // cahaya dingin tipis merata di semua top-face supaya "herek" bersalju terasa
       gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.88, 0.91, 0.97 ), atop * uSnowAmount * 0.16 );
+      // film slush sangat tipis di aspal (jalan tetap gelap & jelas dibaca, cuma terasa beku)
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.80, 0.84, 0.92 ), atop * ( 1.0 - roadGate ) * uSnowAmount * 0.14 );
     }
     // debu salju tipis di dinding vertikal (menempel di garis horizontalnya)
     float wally = ( 1.0 - upness ) * uSnowAmount;
@@ -117,6 +122,11 @@ const fragmentHaze = /* glsl */ `
       float stick = pigeonSnowNoise( snowP * 2.4 + vec2( 0.0, vSnowWorld.y * 4.1 ) );
       float dust = smoothstep( 0.60, 0.93, stick ) * 0.22 + pigeonSnowNoise( snowP * 14.0 ) * 0.07;
       gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.90, 0.93, 0.99 ), dust * wally );
+      // TUMPUKAN KHAS: pita salju "mendersak" di kaki dinding/pagar/trotoar (bendungan salju berserok)
+      float drift = smoothstep( 1.35, 0.14, vSnowWorld.y );
+      drift *= 0.45 + 0.55 * pigeonSnowNoise( snowP * 6.0 + 3.3 );
+      drift *= smoothstep( 0.55, 0.90, pigeonSnowNoise( snowP * 0.9 + 11.7 ) ) * 0.5 + 0.5; // bertitik-titik per lokasi
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.92, 0.945, 1.0 ), drift * wally * 0.42 );
     }
   }
   #endif
