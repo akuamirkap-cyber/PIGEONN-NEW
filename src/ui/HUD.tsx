@@ -36,8 +36,10 @@ export function HUD() {
   const camAdjusting = useUI((s) => s.camAdjusting);
   const camHeight = useUI((s) => s.camHeight);
   const camAngle = useUI((s) => s.camAngle);
+  const camDist = useUI((s) => s.camDist);
   const setCamHeight = useUI((s) => s.setCamHeight);
   const setCamAngle = useUI((s) => s.setCamAngle);
+  const setCamDist = useUI((s) => s.setCamDist);
   const setCamAdjusting = useUI((s) => s.setCamAdjusting);
   const resetCamView = useUI((s) => s.resetCamView);
   const inRun = phase === "playing" || phase === "crashed";
@@ -280,6 +282,22 @@ export function HUD() {
               />
               <span className="w-[8.5cqw] shrink-0 text-right font-display text-[2.9cqw] leading-none text-[#2ec4b6]">
                 {camAngle > 0 ? `+${camAngle.toFixed(1)}` : camAngle.toFixed(1)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-[14cqw] shrink-0 font-display text-[2.9cqw] leading-none text-white/95">🔍 JARAK</span>
+              <input
+                type="range"
+                min={-3}
+                max={6}
+                step={0.1}
+                value={camDist}
+                onChange={(e) => setCamDist(parseFloat(e.target.value))}
+                className="h-2.5 flex-1 cursor-pointer accent-[#ff9500]"
+                aria-label="Jarak kamera (zoom dekat-jauh)"
+              />
+              <span className="w-[8.5cqw] shrink-0 text-right font-display text-[2.9cqw] leading-none text-[#ff9500]">
+                {camDist > 0 ? `+${camDist.toFixed(1)}` : camDist.toFixed(1)}
               </span>
             </div>
             <div className="mt-0.5 flex gap-2">

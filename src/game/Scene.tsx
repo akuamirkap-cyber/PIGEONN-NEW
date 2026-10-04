@@ -140,10 +140,11 @@ function CameraRig() {
       v.target.copy(v.base).addScaledVector(v.fwd, c.lookAhead).addScaledVector(v.side, camLat.current * 0.6);
       v.target.y += c.lookUp + hFollow * 0.8 + gAhead * 0.85;
 
-      // Penyetelan kamera in-game (panel adjust): offset tinggi & sudut pandang pemain.
-      if (phase === "playing" && (ui.camHeight !== 0 || ui.camAngle !== 0)) {
+      // Penyetelan kamera in-game (panel adjust): offset tinggi, sudut & jarak zoom pemain.
+      if (phase === "playing") {
         v.pos.y += ui.camHeight;
         v.target.y -= ui.camAngle;
+        if (ui.camDist !== 0) v.pos.addScaledVector(v.fwd, ui.camDist); // + = kamera lebih DEKAT merpati
       }
     }
 

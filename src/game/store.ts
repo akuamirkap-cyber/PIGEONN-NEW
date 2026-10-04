@@ -66,12 +66,14 @@ interface UIState {
   /** Crossy Road = elevated, readable follow camera; chase = original low action camera. */
   cameraMode: CameraMode;
   setCameraMode: (m: CameraMode) => void;
-  /** Penyetelan kamera in-game: offset ketinggian & sudut pandang (tersimpan), plus status panel adjust (game dijeda) */
+  /** Penyetelan kamera in-game: offset ketinggian, sudut & jarak zoom (tersimpan), plus status panel adjust (game dijeda) */
   camHeight: number;
   camAngle: number;
+  camDist: number;
   camAdjusting: boolean;
   setCamHeight: (v: number) => void;
   setCamAngle: (v: number) => void;
+  setCamDist: (v: number) => void;
   setCamAdjusting: (v: boolean) => void;
   resetCamView: () => void;
   /** cuaca mode siang: cerah / berawan indah */
@@ -134,12 +136,13 @@ const initialUnlocked = (() => {
   for (const f of defaultFree) set.add(f);
   return Array.from(set);
 })();
-/** Offset view kamera in-game yang tersimpan (TINGGI / SUDUT) — default netral 0. */
+/** Offset view kamera in-game yang tersimpan (TINGGI / SUDUT / JARAK) — default netral 0. */
 const CAM_VIEW_INIT = (() => {
-  const c = load<{ h?: number; a?: number }>("pigeon-sk8-cam-view", {});
+  const c = load<{ h?: number; a?: number; d?: number }>("pigeon-sk8-cam-view", {});
   const h = typeof c?.h === "number" && isFinite(c.h) ? Math.max(-3, Math.min(7, c.h)) : 0;
   const a = typeof c?.a === "number" && isFinite(c.a) ? Math.max(-3, Math.min(5, c.a)) : 0;
-  return { h, a };
+  const d = typeof c?.d === "number" && isFinite(c.d) ? Math.max(-3, Math.min(6, c.d)) : 0;
+  return { h, a, d };
 })();
 
 const initialSkin = (() => {
@@ -217,21 +220,27 @@ export const useUI = create<UIState>((set, get) => ({
   },
   camHeight: CAM_VIEW_INIT.h,
   camAngle: CAM_VIEW_INIT.a,
+  camDist: CAM_VIEW_INIT.d,
   camAdjusting: false,
   setCamHeight: (v) => {
     const camHeight = Math.max(-3, Math.min(7, Math.round(v * 10) / 10));
-    save("pigeon-sk8-cam-view", { h: camHeight, a: get().camAngle });
+    save("pigeon-sk8-cam-view", { h: camHeight, a: get().camAngle, d: get().camDist });
     set({ camHeight });
   },
   setCamAngle: (v) => {
     const camAngle = Math.max(-3, Math.min(5, Math.round(v * 10) / 10));
-    save("pigeon-sk8-cam-view", { h: get().camHeight, a: camAngle });
+    save("pigeon-sk8-cam-view", { h: get().camHeight, a: camAngle, d: get().camDist });
     set({ camAngle });
+  },
+  setCamDist: (v) => {
+    const camDist = Math.max(-3, Math.min(6, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: get().camHeight, a: get().camAngle, d: camDist });
+    set({ camDist });
   },
   setCamAdjusting: (camAdjusting) => set({ camAdjusting }),
   resetCamView: () => {
-    save("pigeon-sk8-cam-view", { h: 0, a: 0 });
-    set({ camHeight: 0, camAngle: 0 });
+    save("pigeon-sk8-cam-view", { h: 0, a: 0, d: 0 });
+    set({ camHeight: 0, camAngle: 0, camDist: 0 });
   },
   weather: ((): "sunny" | "cloudy" | "snow" => {
     const w = load<string>("pigeon-sk8-weather", "sunny");
