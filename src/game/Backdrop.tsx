@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { engine } from "./engine";
 import { useUI } from "./store";
 import { BACK, FUJI, FUJI_CY, buildClouds } from "./backdrop";
-import { PANO, paintFuji, paintHills, paintCityNight, paintCityDay } from "./backdropPaint";
+import { PANO, paintFuji, paintHills, paintCityNight, paintScenicDay } from "./backdropPaint";
 
 /**
  * Distant scenery that travels with the camera (so it sits at "infinity"): a painted Mount Fuji billboard,
@@ -40,15 +40,15 @@ export function Backdrop() {
       return t;
     };
     const fujiTex = mk(paintFuji(), false);
-    // Shibuya: kejauhan selalu berupa kota Tokyo — malam skyline neon, siang hari
-    // skyline putih/kaca biru + kota rendah (sesuai foto asli); mode lain tetap bukit.
+    // Shibuya: malam = skyline neon Tokyo; SIANG = panorama perbukitan & pemandangan
+    // (bukan "tembok" kota) — gaya ilustratifnya selaras dengan Gunung Fuji. Mode lain tetap bukit.
     const dayTod = tod === "malam" ? "siang" : tod;
     const dayMist = snowW && !night ? "#e6eef6" : cloudy ? "#dfe7ee" : dayTod === "pagi" ? "#ffe7cd" : dayTod === "sore" ? "#f7cda4" : "#dbeeff";
     const hillsTex = mk(
       mode === "shibuya"
         ? night
           ? paintCityNight(hillsW, hillsW / 8)
-          : paintCityDay(hillsW, hillsW / 8, dayTod, dayMist)
+          : paintScenicDay(hillsW, hillsW / 8, dayTod, dayMist)
         : paintHills(hillsW, hillsW / 8),
       true,
     );

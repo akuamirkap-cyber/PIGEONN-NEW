@@ -410,7 +410,7 @@ function Snowfall() {
   const ref = useRef<THREE.Points>(null);
   const fade = useRef(0);
   const { geo, mat } = useMemo(() => {
-    const COUNT = 1500;
+    const COUNT = 4000;
     const pos = new Float32Array(COUNT * 3);
     const seed = new Float32Array(COUNT * 3);
     for (let i = 0; i < COUNT; i++) {
@@ -445,15 +445,15 @@ function Snowfall() {
         varying float vS;
         void main() {
           vec3 p = position;
-          float t = uTime * ( 0.75 + aSeed.y * 0.5 );
-          p.x = mod( p.x + t * ( 0.9 + aSeed.x * 0.7 ) + sin( uTime * 0.6 + aSeed.z * 6.2831 ) * 0.7, 96.0 );
-          p.z = mod( p.z + t * ( 0.55 + aSeed.y * 0.5 ) + cos( uTime * 0.5 + aSeed.x * 6.2831 ) * 0.7, 96.0 );
-          p.y = mod( p.y - t * ( 2.3 + aSeed.x * 1.4 ), 26.0 );
+          float t = uTime * ( 0.85 + aSeed.y * 0.6 );
+          p.x = mod( p.x + t * ( 1.35 + aSeed.x * 0.95 ) + sin( uTime * 0.75 + aSeed.z * 6.2831 ) * 0.9, 96.0 );
+          p.z = mod( p.z + t * ( 0.8 + aSeed.y * 0.6 ) + cos( uTime * 0.6 + aSeed.x * 6.2831 ) * 0.9, 96.0 );
+          p.y = mod( p.y - t * ( 3.4 + aSeed.x * 2.1 ), 26.0 );
           vec3 wp = uAnchor + p - vec3( 48.0, 7.0, 48.0 );
           vec4 mv = modelViewMatrix * vec4( wp, 1.0 );
           gl_Position = projectionMatrix * mv;
           float dist = max( -mv.z, 0.5 );
-          gl_PointSize = clamp( ( 0.16 + aSeed.z * 0.14 ) * uPx / dist, 1.0, 10.0 );
+          gl_PointSize = clamp( ( 0.21 + aSeed.z * 0.17 ) * uPx / dist, 1.3, 13.0 );
           vA = smoothstep( 70.0, 26.0, dist );            // pudar pelan di kejauhan (ikut kabut)
           vA *= smoothstep( 0.5, 2.5, dist );             // jangan menutupi lensa
           vS = aSeed.y;
@@ -465,7 +465,7 @@ function Snowfall() {
         void main() {
           vec2 q = gl_PointCoord - 0.5;
           float d = length( q );
-          float a = smoothstep( 0.5, 0.10, d ) * vA * uFade * ( 0.55 + 0.45 * vS );
+          float a = smoothstep( 0.5, 0.10, d ) * vA * uFade * ( 0.72 + 0.28 * vS );
           if ( a < 0.004 ) discard;
           gl_FragColor = vec4( vec3( 0.965, 0.98, 1.0 ), a );
         }`,

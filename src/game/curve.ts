@@ -102,20 +102,20 @@ const fragmentHaze = /* glsl */ `
     if ( atop > 0.001 && uSnowAmount > 0.001 ) {
       // pemilih area: sebagian permukaan tertutup tebal (40%), sebagian tipis (10%)
       float region = pigeonSnowNoise( snowP * 0.33 + 7.3 );
-      float cover = 0.58 + 0.30 * region;          // ambang rimbunnya tambalan
+      float cover = 0.40 + 0.30 * region;          // ambang rimbunnya tambalan (lebih rendah = salju LEBIH BANYAK)
       float n = pigeonSnowNoise( snowP * 1.15 ) * 0.62 + pigeonSnowNoise( snowP * 5.5 ) * 0.38;
       float k = atop * smoothstep( cover - 0.14, cover + 0.14, n );
-      k *= 0.72 + 0.28 * pigeonSnowNoise( snowP * 23.0 ); // tekstur butiran salju
+      k *= 0.80 + 0.20 * pigeonSnowNoise( snowP * 23.0 ); // tekstur butiran salju
       float sparkle = step( 0.975, pigeonSnowNoise( snowP * 41.0 ) ) * 0.10;
       gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.93, 0.955, 1.0 ) + sparkle, k * uSnowAmount );
       // cahaya dingin tipis merata di semua top-face supaya "herek" bersalju terasa
-      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.88, 0.91, 0.97 ), atop * uSnowAmount * 0.10 );
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.88, 0.91, 0.97 ), atop * uSnowAmount * 0.16 );
     }
     // debu salju tipis di dinding vertikal (menempel di garis horizontalnya)
     float wally = ( 1.0 - upness ) * uSnowAmount;
     if ( wally > 0.001 ) {
       float stick = pigeonSnowNoise( snowP * 2.4 + vec2( 0.0, vSnowWorld.y * 4.1 ) );
-      float dust = smoothstep( 0.62, 0.95, stick ) * 0.16 + pigeonSnowNoise( snowP * 14.0 ) * 0.05;
+      float dust = smoothstep( 0.60, 0.93, stick ) * 0.22 + pigeonSnowNoise( snowP * 14.0 ) * 0.07;
       gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.90, 0.93, 0.99 ), dust * wally );
     }
   }
