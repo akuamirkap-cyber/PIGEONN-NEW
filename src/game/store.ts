@@ -66,6 +66,14 @@ interface UIState {
   /** Crossy Road = elevated, readable follow camera; chase = original low action camera. */
   cameraMode: CameraMode;
   setCameraMode: (m: CameraMode) => void;
+  /** Penyetelan kamera in-game: offset ketinggian & sudut pandang (tersimpan), plus status panel adjust (game dijeda) */
+  camHeight: number;
+  camAngle: number;
+  camAdjusting: boolean;
+  setCamHeight: (v: number) => void;
+  setCamAngle: (v: number) => void;
+  setCamAdjusting: (v: boolean) => void;
+  resetCamView: () => void;
   /** cuaca mode siang: cerah / berawan indah */
   weather: "sunny" | "cloudy" | "snow";
   toggleWeather: () => void;
@@ -126,6 +134,14 @@ const initialUnlocked = (() => {
   for (const f of defaultFree) set.add(f);
   return Array.from(set);
 })();
+/** Offset view kamera in-game yang tersimpan (TINGGI / SUDUT) — default netral 0. */
+const CAM_VIEW_INIT = (() => {
+  const c = load<{ h?: number; a?: number }>("pigeon-sk8-cam-view", {});
+  const h = typeof c?.h === "number" && isFinite(c.h) ? Math.max(-3, Math.min(7, c.h)) : 0;
+  const a = typeof c?.a === "number" && isFinite(c.a) ? Math.max(-3, Math.min(5, c.a)) : 0;
+  return { h, a };
+})();
+
 const initialSkin = (() => {
   const id = load<string>("pigeon-sk8-skin", "classic");
   return initialUnlocked.includes(id) ? id : "classic";
@@ -198,6 +214,24 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-camera-v2", cameraMode);
     save("pigeon-sk8-camera", cameraMode);
     set({ cameraMode });
+  },
+  camHeight: CAM_VIEW_INIT.h,
+  camAngle: CAM_VIEW_INIT.a,
+  camAdjusting: false,
+  setCamHeight: (v) => {
+    const camHeight = Math.max(-3, Math.min(7, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: camHeight, a: get().camAngle });
+    set({ camHeight });
+  },
+  setCamAngle: (v) => {
+    const camAngle = Math.max(-3, Math.min(5, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: get().camHeight, a: camAngle });
+    set({ camAngle });
+  },
+  setCamAdjusting: (camAdjusting) => set({ camAdjusting }),
+  resetCamView: () => {
+    save("pigeon-sk8-cam-view", { h: 0, a: 0 });
+    set({ camHeight: 0, camAngle: 0 });
   },
   weather: ((): "sunny" | "cloudy" | "snow" => {
     const w = load<string>("pigeon-sk8-weather", "sunny");

@@ -139,6 +139,12 @@ function CameraRig() {
 
       v.target.copy(v.base).addScaledVector(v.fwd, c.lookAhead).addScaledVector(v.side, camLat.current * 0.6);
       v.target.y += c.lookUp + hFollow * 0.8 + gAhead * 0.85;
+
+      // Penyetelan kamera in-game (panel adjust): offset tinggi & sudut pandang pemain.
+      if (phase === "playing" && (ui.camHeight !== 0 || ui.camAngle !== 0)) {
+        v.pos.y += ui.camHeight;
+        v.target.y -= ui.camAngle;
+      }
     }
 
     const s = phase === "crashed" || phase === "gameover" ? Math.min(engine.shake, 0.35) : engine.shake;
@@ -301,6 +307,9 @@ function Loop() {
   useFrame((_, dt) => {
     // Auto-pause: tab disembunyikan = dunia beku penuh (HP hemat daya, balik lagi tanpa lompat waktu)
     if (typeof document !== "undefined" && document.hidden) return;
+    // Panel adjust kamera terbuka = game BERHENTI total, tapi render jalan terus
+    // (CameraRig tetap responsif sehingga slider menggerakkan kamera secara live).
+    if (useUI.getState().camAdjusting) return;
     engine.update(dt);
   }, -10);
   return null;
