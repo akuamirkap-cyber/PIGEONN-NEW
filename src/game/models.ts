@@ -1535,6 +1535,231 @@ export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly =
   ];
 }
 
+/* ================= KAMEN RIDER (easter egg pejalan kaki) =================
+ * Pahlawan bertopeng klasik ala Showa Rider: helm hitam-hijau dengan MATA MAJEMUK
+ * merah menyala, antena perak, SYAL MERAH berkibar, typhoon belt, sarung tangan &
+ * sepatu boot perak. Proporsi mengikuti pedestrian biasa supaya anim jalan cocok. */
+const KR = {
+  helmet: "#10130f",
+  helmShade: "#1c231c",
+  suit: "#1d6b4a",
+  suitShade: "#15503a",
+  eye: "#ff2b2b",
+  silver: "#dfe3ea",
+  silverDark: "#aeb6c2",
+  scarf: "#d62828",
+  belt: "#14161b",
+};
+
+export function kamenRiderHeadParts(): Part[] {
+  return [
+    // HELM PENUH: bola helm gelap menutup seluruh kepala
+    { x: 0, y: 0.18, z: 0, w: 0.4, h: 0.42, d: 0.42, color: KR.helmet },
+    { x: -0.02, y: 0.42, z: 0, w: 0.34, h: 0.1, d: 0.36, color: KR.helmShade }, // ridge atas
+    // MATA MAJEMUK MERAH MENYALA (khas Kamen Rider) — besar menyamping
+    { x: 0.2, y: 0.22, z: 0.11, w: 0.03, h: 0.15, d: 0.15, color: KR.eye, glow: true },
+    { x: 0.2, y: 0.22, z: -0.11, w: 0.03, h: 0.15, d: 0.15, color: KR.eye, glow: true },
+    { x: 0.21, y: 0.22, z: 0.11, w: 0.02, h: 0.05, d: 0.16, color: "#ff8d8d" }, // kilau mata
+    { x: 0.21, y: 0.22, z: -0.11, w: 0.02, h: 0.05, d: 0.16, color: "#ff8d8d" },
+    // Grille mulut perak dengan dua sirip horizontal
+    { x: 0.205, y: 0.04, z: 0, w: 0.025, h: 0.1, d: 0.2, color: KR.silver },
+    { x: 0.215, y: 0.055, z: 0, w: 0.012, h: 0.02, d: 0.18, color: KR.helmet },
+    { x: 0.215, y: 0.0, z: 0, w: 0.012, h: 0.02, d: 0.18, color: KR.helmet },
+    // ANTENA V perak di dahi (khas rider Showa)
+    { x: 0.1, y: 0.46, z: 0.045, w: 0.04, h: 0.18, d: 0.03, rx: -0.38, color: KR.silver },
+    { x: 0.1, y: 0.46, z: -0.045, w: 0.04, h: 0.18, d: 0.03, rx: 0.38, color: KR.silver },
+    // Garis emas kecil di tengah dahi (typhoon crest)
+    { x: 0.16, y: 0.34, z: 0, w: 0.05, h: 0.12, d: 0.03, color: "#ffd23f" },
+  ];
+}
+
+export function kamenRiderTorsoParts(): Part[] {
+  return [
+    // Kostum pahlawan hijau metalik
+    { x: 0, y: 0, z: 0, w: 0.42, h: 0.68, d: 0.52, color: KR.suit },
+    { x: 0.03, y: 0.14, z: 0, w: 0.38, h: 0.3, d: 0.54, color: KR.suitShade }, // dada armor
+    { x: 0.215, y: 0.16, z: 0, w: 0.02, h: 0.22, d: 0.34, color: KR.suit },     // kilau dada
+    // TYPHOON BELT: sabuk hitam + gesper perak dengan pusaran merah
+    { x: 0, y: -0.26, z: 0, w: 0.44, h: 0.1, d: 0.54, color: KR.belt },
+    { x: 0.225, y: -0.26, z: 0, w: 0.03, h: 0.12, d: 0.16, color: KR.silver },
+    { x: 0.235, y: -0.26, z: 0, w: 0.015, h: 0.06, d: 0.07, color: KR.eye, glow: true },
+    { x: 0.225, y: -0.26, z: 0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark }, // turbin samping
+    { x: 0.225, y: -0.26, z: -0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark },
+    // SYAL MERAH mengalir ke belakang (ciri khas!)
+    { x: 0, y: 0.36, z: 0, w: 0.44, h: 0.1, d: 0.5, color: KR.scarf },
+    { x: -0.26, y: 0.3, z: 0.04, w: 0.26, h: 0.09, d: 0.2, rz: 0.28, color: KR.scarf },
+    { x: -0.44, y: 0.22, z: 0.02, w: 0.26, h: 0.08, d: 0.16, rz: 0.42, color: "#b51f1f" }, // ujung syal
+  ];
+}
+
+export function kamenRiderArmParts(): Part[] {
+  return [
+    { x: 0, y: -0.12, z: 0, w: 0.16, h: 0.24, d: 0.16, color: KR.suit },
+    { x: 0, y: -0.36, z: 0, w: 0.14, h: 0.28, d: 0.14, color: KR.suitShade },
+    // Sarung tangan perak penutup lengan bawah (finisher glove)
+    { x: 0, y: -0.54, z: 0, w: 0.17, h: 0.14, d: 0.17, color: KR.silver },
+    { x: 0.01, y: -0.64, z: 0, w: 0.16, h: 0.08, d: 0.16, color: KR.silverDark },
+  ];
+}
+
+export function kamenRiderLegParts(): Part[] {
+  return [
+    { x: 0, y: -0.24, z: 0, w: 0.18, h: 0.48, d: 0.16, color: KR.suit },
+    // BOOT PERAK panjang khas rider
+    { x: 0, y: -0.52, z: 0, w: 0.2, h: 0.18, d: 0.18, color: KR.silver },
+    { x: 0.04, y: -0.62, z: 0, w: 0.26, h: 0.1, d: 0.18, color: KR.silverDark },
+  ];
+}
+
+/* ================= MOBIL SPORT LEGENDARIS PARKIR (kadang muncul) =================
+ * 3 model × 4 warna. variant: model = variant % 3 (0 RWB, 1 Skyline R34, 2 AE86),
+ * warna = floor(variant/3) % 4. Menghadap +x sepanjang trotoar, skala mobil game. */
+
+/** Porsche 911 RWB: widebody baut keling, ban ceper, SAYAP GT RAKSASA. */
+export function rwbParts(colorIdx: number): Part[] {
+  const paint = ["#e63946", "#f5f6f7", "#56cfe1", "#ffd23f"][colorIdx % 4]; // merah / putih / biru miami / kuning
+  const tire = "#1c1e22", rim = "#e8c766", glass = "#a9c8de";
+  return [
+    // Sasis ceper LEBAR (ciri khas RWB) + bumper dalam
+    { x: 0, y: 0.5, z: 0, w: 3.0, h: 0.55, d: 1.9, color: paint },
+    { x: 0, y: 0.26, z: 0, w: 2.9, h: 0.14, d: 1.7, color: "#22242a" }, // skirt bawah gelap
+    // Kap depan melandai (2 tahap ala hidung 911)
+    { x: 1.15, y: 0.78, z: 0, w: 0.85, h: 0.22, d: 1.7, color: paint },
+    { x: 0.42, y: 0.84, z: 0, w: 0.7, h: 0.3, d: 1.7, color: paint },
+    // FENDER FLARE baut keling di atas tiap roda (overfender RWB!)
+    { x: 1.02, y: 0.62, z: 0.93, w: 0.72, h: 0.34, d: 0.12, color: paint },
+    { x: 1.02, y: 0.62, z: -0.93, w: 0.72, h: 0.34, d: 0.12, color: paint },
+    { x: -1.02, y: 0.62, z: 0.95, w: 0.78, h: 0.38, d: 0.14, color: paint },
+    { x: -1.02, y: 0.62, z: -0.95, w: 0.78, h: 0.38, d: 0.14, color: paint },
+    // Kabin bubble coupe mungil + kaca
+    { x: -0.28, y: 1.12, z: 0, w: 1.15, h: 0.5, d: 1.35, color: paint },
+    { x: 0.28, y: 1.1, z: 0, w: 0.08, h: 0.36, d: 1.15, color: glass },
+    { x: -0.88, y: 1.02, z: 0, w: 0.3, h: 0.3, d: 1.2, rx: 0.5, color: glass }, // kaca belakang fastback
+    { x: -0.28, y: 1.1, z: 0.68, w: 0.8, h: 0.3, d: 0.05, color: glass },
+    { x: -0.28, y: 1.1, z: -0.68, w: 0.8, h: 0.3, d: 0.05, color: glass },
+    // SAYAP GT RAKSASA RWB + 2 strut hitam
+    { x: -1.28, y: 1.52, z: 0, w: 0.55, h: 0.06, d: 2.0, rx: -0.12, color: "#22242a" },
+    { x: -1.15, y: 1.2, z: 0.62, w: 0.08, h: 0.6, d: 0.08, rx: -0.2, color: "#22242a" },
+    { x: -1.15, y: 1.2, z: -0.62, w: 0.08, h: 0.6, d: 0.08, rx: -0.2, color: "#22242a" },
+    // Roda ceper: ban hitam + velg deep-dish emas
+    { x: 1.02, y: 0.34, z: 0.86, w: 0.62, h: 0.62, d: 0.3, color: tire },
+    { x: 1.02, y: 0.34, z: -0.86, w: 0.62, h: 0.62, d: 0.3, color: tire },
+    { x: -1.02, y: 0.34, z: 0.88, w: 0.66, h: 0.66, d: 0.32, color: tire },
+    { x: -1.02, y: 0.34, z: -0.88, w: 0.66, h: 0.66, d: 0.32, color: tire },
+    { x: 1.02, y: 0.34, z: 1.02, w: 0.3, h: 0.3, d: 0.02, color: rim },
+    { x: -1.02, y: 0.34, z: 1.05, w: 0.32, h: 0.32, d: 0.02, color: rim },
+    // Lampu bulat 911 + strip belakang merah menyala + knalpot ganda
+    { x: 1.45, y: 0.62, z: 0.55, w: 0.07, h: 0.18, d: 0.24, color: "#fff7c2" },
+    { x: 1.45, y: 0.62, z: -0.55, w: 0.07, h: 0.18, d: 0.24, color: "#fff7c2" },
+    { x: -1.5, y: 0.68, z: 0, w: 0.05, h: 0.14, d: 1.5, color: "#ff3b3b", glow: true }, // full-width light bar
+    { x: -1.53, y: 0.34, z: 0.5, w: 0.08, h: 0.1, d: 0.1, color: "#9aa2ae" },
+    { x: -1.53, y: 0.34, z: -0.5, w: 0.08, h: 0.1, d: 0.1, color: "#9aa2ae" },
+  ];
+}
+
+/** Nissan Skyline GT-R R34: coupe kotak legendaris, 4 lampu belakang bulat. */
+export function skylineR34Parts(colorIdx: number): Part[] {
+  const paint = ["#2a6fdb", "#c9d1d9", "#181c22", "#f4f6f8"][colorIdx % 4]; // bayside blue / silver / black / white
+  const tire = "#1c1e22", rim = "#b9c0ca", glass = "#a9c8de";
+  return [
+    // Bodi kotak berotot coupe
+    { x: 0, y: 0.55, z: 0, w: 3.2, h: 0.62, d: 1.7, color: paint },
+    { x: 0.95, y: 0.88, z: 0, w: 1.15, h: 0.14, d: 1.5, color: paint }, // kap dengan power bulge
+    { x: 0.95, y: 0.96, z: 0, w: 0.5, h: 0.06, d: 0.5, color: paint },
+    // Kabin 2-door dengan pilar tebal
+    { x: -0.2, y: 1.16, z: 0, w: 1.5, h: 0.52, d: 1.42, color: paint },
+    { x: 0.56, y: 1.14, z: 0, w: 0.1, h: 0.4, d: 1.24, color: glass },
+    { x: -0.95, y: 1.12, z: 0, w: 0.14, h: 0.38, d: 1.24, rx: 0.35, color: glass },
+    { x: -0.05, y: 1.14, z: 0.72, w: 1.15, h: 0.34, d: 0.05, color: glass },
+    { x: -0.05, y: 1.14, z: -0.72, w: 1.15, h: 0.34, d: 0.05, color: glass },
+    // Grille depan gelap + lampu depan tajam
+    { x: 1.62, y: 0.66, z: 0, w: 0.05, h: 0.16, d: 0.82, color: "#1c1e22" },
+    { x: 1.62, y: 0.66, z: 0.62, w: 0.06, h: 0.2, d: 0.3, color: "#fff7c2" },
+    { x: 1.62, y: 0.66, z: -0.62, w: 0.06, h: 0.2, d: 0.3, color: "#fff7c2" },
+    // 4 LAMPU BELAKANG BULAT (ikonik GT-R!)
+    { x: -1.62, y: 0.66, z: 0.55, w: 0.05, h: 0.2, d: 0.2, color: "#ff2b3d", glow: true },
+    { x: -1.62, y: 0.66, z: 0.28, w: 0.05, h: 0.2, d: 0.2, color: "#ff6b4a", glow: true },
+    { x: -1.62, y: 0.66, z: -0.28, w: 0.05, h: 0.2, d: 0.2, color: "#ff6b4a", glow: true },
+    { x: -1.62, y: 0.66, z: -0.55, w: 0.05, h: 0.2, d: 0.2, color: "#ff2b3d", glow: true },
+    // Spoiler GT-R di pilar belakang
+    { x: -1.35, y: 1.3, z: 0, w: 0.5, h: 0.05, d: 1.5, rx: -0.1, color: paint },
+    { x: -1.3, y: 1.02, z: 0.55, w: 0.08, h: 0.5, d: 0.07, rx: -0.15, color: "#22242a" },
+    { x: -1.3, y: 1.02, z: -0.55, w: 0.08, h: 0.5, d: 0.07, rx: -0.15, color: "#22242a" },
+    // Side skirt + knalpot besar tunggal
+    { x: 0, y: 0.28, z: 0.88, w: 2.2, h: 0.14, d: 0.08, color: "#22242a" },
+    { x: 0, y: 0.28, z: -0.88, w: 2.2, h: 0.14, d: 0.08, color: "#22242a" },
+    { x: -1.64, y: 0.32, z: 0.4, w: 0.1, h: 0.14, d: 0.14, color: "#d8dde4" },
+    // Roda + velg gunmetal
+    { x: 1.05, y: 0.33, z: 0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: 1.05, y: 0.33, z: -0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: -0.95, y: 0.33, z: 0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: -0.95, y: 0.33, z: -0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: 1.05, y: 0.33, z: 0.93, w: 0.3, h: 0.3, d: 0.02, color: rim },
+    { x: -0.95, y: 0.33, z: 0.93, w: 0.3, h: 0.3, d: 0.02, color: rim },
+  ];
+}
+
+/** Toyota AE86 Trueno ala Initial D: hatchback panda putih-hitam, lampu pop-up tertutup. */
+export function ae86Parts(colorIdx: number): Part[] {
+  // 0 = panda klasik (putih, kap hitam, rocker hitam) — sisanya warna solid 80s
+  const panda = colorIdx % 4 === 0;
+  const paint = panda ? "#f6f6f4" : ["#f6f6f4", "#d53a3a", "#f4f4f4", "#8f9aa6"][colorIdx % 4];
+  const dark = "#1b1d22";
+  const hood = panda ? dark : paint;
+  const lower = panda ? dark : paint;
+  const tire = "#1c1e22", rim = "#d9c98f", glass = "#b7cfe0";
+  return [
+    // Bodi hatchback 80-an (2 warna ala panda bila colorIdx 0)
+    { x: 0, y: 0.55, z: 0, w: 2.9, h: 0.5, d: 1.6, color: paint },
+    { x: 0, y: 0.34, z: 0, w: 2.9, h: 0.18, d: 1.62, color: lower }, // rocker bawah
+    { x: 0.85, y: 0.84, z: 0, w: 1.0, h: 0.14, d: 1.4, color: hood }, // kap (HITAM pada panda!)
+    // Kabin hatchback: kabin + atap rata + pilar C miring khas liftback
+    { x: -0.1, y: 1.1, z: 0, w: 1.3, h: 0.44, d: 1.34, color: paint },
+    { x: 0.55, y: 1.08, z: 0, w: 0.1, h: 0.34, d: 1.16, color: glass },
+    { x: -0.75, y: 0.98, z: 0, w: 0.28, h: 0.34, d: 1.16, rx: 0.45, color: glass }, // jendela hatch miring
+    { x: -0.1, y: 1.08, z: 0.68, w: 1.0, h: 0.28, d: 0.05, color: glass },
+    { x: -0.1, y: 1.08, z: -0.68, w: 1.0, h: 0.28, d: 0.05, color: glass },
+    // LAMPU POP-UP TERTUTUP: moncong halus rata (ciri Trueno!)
+    { x: 1.46, y: 0.66, z: 0, w: 0.06, h: 0.2, d: 1.36, color: paint },
+    { x: 1.43, y: 0.78, z: 0.4, w: 0.08, h: 0.06, d: 0.3, color: "#2a2d33" }, // tutup pop-up
+    { x: 1.43, y: 0.78, z: -0.4, w: 0.08, h: 0.06, d: 0.3, color: "#2a2d33" },
+    // Grill tipis + lampu sein oranye kecil di bumper
+    { x: 1.47, y: 0.5, z: 0, w: 0.04, h: 0.12, d: 0.9, color: "#22242a" },
+    { x: 1.47, y: 0.56, z: 0.58, w: 0.04, h: 0.08, d: 0.2, color: "#ff9f1c" },
+    { x: 1.47, y: 0.56, z: -0.58, w: 0.04, h: 0.08, d: 0.2, color: "#ff9f1c" },
+    // Buritan + lip spoiler mungil + lampu belakang oranye-merah 80-an
+    { x: -1.42, y: 1.02, z: 0, w: 0.3, h: 0.05, d: 1.5, rx: -0.08, color: panda ? dark : paint },
+    { x: -1.46, y: 0.62, z: 0.5, w: 0.05, h: 0.14, d: 0.5, color: "#ff3b3b" },
+    { x: -1.46, y: 0.62, z: -0.5, w: 0.05, h: 0.14, d: 0.5, color: "#ff8046" },
+    // Strip samping + stiker pintu tofu (putih kecil) — hanya pada livery panda
+    ...(panda
+      ? [
+          { x: 0, y: 0.78, z: 0.81, w: 1.7, h: 0.09, d: 0.02, color: dark },
+          { x: 0, y: 0.78, z: -0.81, w: 1.7, h: 0.09, d: 0.02, color: dark },
+          { x: 0.1, y: 0.55, z: 0.82, w: 0.5, h: 0.18, d: 0.02, color: "#f6f6f4" },
+          { x: 0.1, y: 0.55, z: 0.835, w: 0.4, h: 0.1, d: 0.01, color: "#22242a" },
+        ]
+      : []),
+    // Roda + velg hitam-watanabe krem khas 86
+    { x: 0.95, y: 0.32, z: 0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: 0.95, y: 0.32, z: -0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: -0.9, y: 0.32, z: 0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: -0.9, y: 0.32, z: -0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: 0.95, y: 0.32, z: 0.85, w: 0.28, h: 0.28, d: 0.02, color: rim },
+    { x: -0.9, y: 0.32, z: 0.85, w: 0.28, h: 0.28, d: 0.02, color: rim },
+  ];
+}
+
+/** Mobil sport spesial yang PARKIR di bahu/trotoar (jarang muncul — surprise!). */
+export function specialCarParts(variant: number): Part[] {
+  const model = Math.abs(variant) % 3;
+  const colorIdx = Math.floor(Math.abs(variant) / 3) % 4;
+  if (model === 0) return rwbParts(colorIdx);
+  if (model === 1) return skylineR34Parts(colorIdx);
+  return ae86Parts(colorIdx);
+}
+
+
 /** Pedestrian with tote bag / umbrella variants, facing +x. */
 export function pedestrianParts(variant: number, isHit = false, elderly = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];

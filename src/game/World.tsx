@@ -49,6 +49,11 @@ import {
   pedestrianTorsoParts,
   pedestrianArmParts,
   pedestrianLegParts,
+  kamenRiderHeadParts,
+  kamenRiderTorsoParts,
+  kamenRiderArmParts,
+  kamenRiderLegParts,
+  specialCarParts,
   briefcaseParts,
   isSuitVariant,
   guardFenceParts,
@@ -303,6 +308,9 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair(`billboard-${d.variant % 3}`, () => billboardParts(d.variant));
       case "jam_car":
         return getGeometryPair(`jam-car-${d.variant % 5}`, () => jamCarParts(d.variant));
+      case "special_car":
+        // RWB / Skyline R34 / AE86 parkir — livery warna dienkode di variant
+        return getGeometryPair(`special-car-${Math.abs(d.variant) % 12}`, () => specialCarParts(d.variant));
       case "tower109":
         return getShibuyaBuildingGeoPair("shibuya109");
       case "avenue_lamp":
@@ -2179,12 +2187,14 @@ function crowdLat(mode: TrackMode, side: 1 | -1, dir: 1 | -1): number {
   return pick(farLanes) + (Math.random() - 0.5) * 0.25;
 }
 
-type WalkerKind = "adult" | "elder" | "suit" | "kid";
+type WalkerKind = "adult" | "elder" | "suit" | "kid" | "kamen";
 
 const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, trackMode }: { w: Walker; all: Walker[]; variant: number; kind: WalkerKind; trackMode: TrackMode }) {
   const elderly = kind === "elder";
   const kid = kind === "kid";
   const suit = kind === "suit";
+  // EASTER EGG: Kamen Rider kadang ikutan jalan santai di trotoar (tanpa topi kupluk saat salju)
+  const kamen = kind === "kamen";
   const rootRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
   const armLRef = useRef<THREE.Group>(null);
@@ -2195,13 +2205,31 @@ const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, track
 
   // pakai cache geometri yang sama dengan pedestrian penyeberang (hemat memori)
   const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
-  const pedKey = `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
-  const headGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, elderly, snowW)), [pedKey, variant, elderly, snowW]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid, snowW)), [pedKey, variant, elderly, kid, snowW]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false, snowW)), [pedKey, variant, elderly, snowW]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly, snowW)), [pedKey, variant, elderly, snowW]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly, snowW)), [pedKey, variant, elderly, snowW]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly, snowW)), [pedKey, variant, elderly, snowW]);
+  const pedKey = kamen ? "kamen" : `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
+  const headGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-head", kamenRiderHeadParts) : getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const torsoGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-torso", kamenRiderTorsoParts) : getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const armLGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-arm", kamenRiderArmParts) : getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const armRGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-arm", kamenRiderArmParts) : getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const legLGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-leg", kamenRiderLegParts) : getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const legRGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-leg", kamenRiderLegParts) : getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
   const caneGeo = useMemo(() => (elderly ? getGeometry("ped-cane", caneParts) : null), [elderly]);
   // salaryman: tas kerja dikempit rapat di sisi badan, lengan kirinya tidak mengayun
   const caseGeo = useMemo(() => (suit ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [suit, variant]);
@@ -2300,7 +2328,8 @@ function UrbanCrowd() {
   const walkers = useMemo<Walker[]>(
     () =>
       Array.from({ length: URBAN_CROWD_N }, (_, i) => {
-        const kind = CROWD_KINDS[i % CROWD_KINDS.length];
+        // SATU Kamen Rider menyamar di keramaian (easter egg — jarang kelihatan, nggak tiap detik ada)
+        const kind: WalkerKind = i === 13 ? "kamen" : CROWD_KINDS[i % CROWD_KINDS.length];
         const elderly = kind === "elder";
         const kid = kind === "kid";
         return {
@@ -2323,8 +2352,8 @@ function UrbanCrowd() {
   return (
     <>
       {walkers.map((w, i) => {
-        // Mix salarymen, children, elders, and casual walkers on both city sidewalks.
-        const kind = CROWD_KINDS[i % CROWD_KINDS.length];
+        // Mix salarymen, children, elders, casual walkers — dan SATU Kamen Rider easter egg.
+        const kind: WalkerKind = i === 13 ? "kamen" : CROWD_KINDS[i % CROWD_KINDS.length];
         return <AmbientWalker key={i} w={w} all={walkers} variant={kind === "suit" ? 5 + (i % 3) : i % 5} kind={kind} trackMode={trackMode} />;
       })}
     </>

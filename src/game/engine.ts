@@ -304,6 +304,7 @@ export type DecorKind =
   | "subway_track"
   | "subway_overhead_rail"
   | "city_bus"
+  | "special_car"
   | "snow_drift";
 export interface Decor {
   kind: DecorKind;
@@ -4457,6 +4458,12 @@ class Engine {
       // Mamachari commuter bicycles parked along sidewalks
       if (Math.random() < 0.4) add("mamachari", rand(2.5, 9.5), -4.55, 0.12, randInt(0, 3));
       if (Math.random() < 0.25) add("mamachari", rand(2.5, 9.5), 4.55, 0.12, randInt(0, 3));
+
+      // MOBIL SPORT LEGENDARIS parkir di bahu jalan: RWB Porsche / Nissan Skyline R34 / Initial D AE86.
+      // JARANG (≈5.5% per chunk, 12 livery kombinasi) — surprise car-spotting, tidak selalu ada.
+      if (Math.random() < 0.055) {
+        add("special_car", rand(1.5, 10), Math.random() < 0.5 ? -4.62 : 4.62, 0.1, randInt(0, 11));
+      }
 
       // Illuminated sidewalk neon / ramen lantern signboards
       if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.4, 0.12, randInt(0, 2));
