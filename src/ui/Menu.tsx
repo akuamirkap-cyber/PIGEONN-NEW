@@ -334,12 +334,15 @@ function MainMenu() {
       </div>
 
       <div className="absolute right-[4%] top-[3.5%] flex h-11 min-w-[28%] items-center justify-center gap-1.5 px-1">
-        <span className="font-display text-[3.9cqw] leading-none text-[#ffe04b] txt-outline-sm">BEST</span>
+        <span className="font-display text-[3.9cqw] leading-none text-[#ffe04b]" style={{ textShadow: "0 2px 7px rgba(15,20,32,0.45)" }}>BEST</span>
         <span className="crossy-ui-number font-display text-[4.4cqw] leading-none text-white">{best}</span>
       </div>
 
       {/* ── Title: clear two-line lockup with breathing room below it ── */}
-      <div className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center">
+      <div
+        className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center"
+        style={{ transform: "perspective(520px) rotateY(-12deg) rotateZ(-4deg)", transformStyle: "preserve-3d" }}
+      >
         <div className="crossy-title crossy-title-white font-display text-[10.8cqw] leading-[0.9] tracking-[-0.03em] text-white">
           PIGEON
         </div>

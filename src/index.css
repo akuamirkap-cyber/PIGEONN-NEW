@@ -51,12 +51,14 @@ body,
     0 2px 0 #1f2430;
 }
 
-/* Crossy Road-style title: chunky outlined letters with a clean offset extrusion,
-   without putting the logo inside a dark panel. */
+/* Crossy Road-style title lockup (miring + outline tebal), tanpa panel gelap di belakang logo. */
+/* Crossy Road-style title: outline LEBIH TEBAL -> lihat request, plus lockupnya miring ala logo Crossy Road. */
 .crossy-title {
   paint-order: stroke fill;
-  -webkit-text-stroke: 0.032em #1f2430;
-  text-shadow: 0 0.065em 0 #1f2430;
+  -webkit-text-stroke: 0.062em #1f2430;
+  text-shadow:
+    0 0.105em 0 #1f2430,
+    0 0.16em 0 rgba(0, 0, 0, 0.18);
 }
 .crossy-title-white {
   color: #fffdf2;
@@ -65,12 +67,10 @@ body,
   color: #ffd23f;
   -webkit-text-stroke-color: #1f2430;
 }
+/* Angka pill atas (koin kiri / best kanan): TANPA outline hitam —
+   hanya bayangan lembut biar tetap kebaca di atas langit terang. */
 .crossy-ui-number {
-  text-shadow:
-    2px 3px 0 #1f2430,
-    -1px -1px 0 #1f2430,
-    1px -1px 0 #1f2430,
-    -1px 1px 0 #1f2430;
+  text-shadow: 0 2px 7px rgba(15, 20, 32, 0.45);
 }
 
 .popup {
