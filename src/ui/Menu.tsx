@@ -338,63 +338,48 @@ function MainMenu() {
         <span className="crossy-ui-number font-display text-[4.4cqw] leading-none text-white">{best}</span>
       </div>
 
-      {/* ── Title: clear two-line lockup with breathing room below it ── */}
+      {/* ── Title: lockup miring ringan ala logo Crossy Road ── */}
       <div
         className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center"
-        style={{ transform: "perspective(520px) rotateY(-12deg) rotateZ(-4deg)", transformStyle: "preserve-3d" }}
+        style={{ transform: "rotate(-4deg)" }}
       >
-        <div className="crossy-title crossy-title-white font-display text-[10.8cqw] leading-[0.9] tracking-[-0.03em] text-white">
+        <div className="crossy-title crossy-title-white font-display text-[11.8cqw] leading-[0.88] tracking-[-0.03em] text-white">
           PIGEON
         </div>
-        <div className="crossy-title crossy-title-yellow font-display text-[14.5cqw] leading-[0.86] tracking-[-0.04em] text-[#ffd23f]">
+        <div className="crossy-title crossy-title-yellow font-display text-[15.5cqw] leading-[0.84] tracking-[-0.04em] text-[#ffd23f]">
           SK8
         </div>
       </div>
 
-      {/* ── Daily Word Hunt + city entry: one clean stack below the logo ── */}
-      <div className="absolute left-[4%] right-[4%] top-[34%] z-30 flex flex-col items-center gap-2">
+      {/* ── Daily Word Hunt + city entry: ikon saja, tanpa tulisan ── */}
+      <div className="absolute left-[4%] right-[4%] top-[34%] z-30 flex items-center justify-center gap-3">
         <button
           type="button"
+          aria-label="Daily Word Hunt"
           onClick={() => {
             unlockAudio();
             sfx.click();
             setShowMysteryBox(true);
           }}
-          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 px-3.5 py-1.5 transition-transform hover:scale-[1.02] active:scale-95"
+          className="pointer-events-auto relative flex h-[12cqw] w-[12cqw] items-center justify-center rounded-2xl bg-white/22 text-[6.5cqw] shadow-[0_3px_0_rgba(15,20,32,0.45)] backdrop-blur-[2px] transition-transform hover:scale-105 active:scale-95"
         >
-          <span className="text-xl">🎁</span>
-          <div className="flex flex-col items-start leading-none">
-            <span className="txt-outline-sm font-body text-[2.2cqw] font-extrabold tracking-wider text-[#fff4c7]">
-              DAILY WORD HUNT
-            </span>
-            <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-[#1f405b]">
-              {wordHunt.word.split("").map((ch, idx) => (
-                <span
-                  key={idx}
-                  className={wordHunt.collected[idx] ? "text-[#e19a16] font-bold" : "text-[#1f405b]/35"}
-                >
-                  {ch}
-                </span>
-              ))}
-            </div>
-          </div>
-          <span className="rounded-full bg-[#ffd451] px-2 py-0.5 font-display text-[2.4cqw] text-[#1f405b] shadow-[0_2px_0_#d5a92e]">
-            {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}
-          </span>
+          🎁
+          {wordHunt.collected.some(Boolean) && (
+            <span className="absolute -bottom-1 -right-1 h-[3cqw] w-[3cqw] rounded-full bg-[#ffd451] shadow-[0_1.5px_0_#d5a92e]" />
+          )}
         </button>
 
         <button
           type="button"
+          aria-label="Mode Kota Shibuya"
           onClick={() => {
             unlockAudio();
             sfx.click();
             window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
           }}
-          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-white whitespace-nowrap transition-all active:scale-95"
+          className="pointer-events-auto flex h-[12cqw] w-[12cqw] items-center justify-center rounded-2xl bg-white/22 text-[6.5cqw] shadow-[0_3px_0_rgba(15,20,32,0.45)] backdrop-blur-[2px] transition-transform hover:scale-105 active:scale-95"
         >
-          <span>🏙️</span>
-          <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
-          <span className="text-white/90">→</span>
+          🏙️
         </button>
       </div>
 
