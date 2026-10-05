@@ -7,6 +7,7 @@ import { BreadIcon } from "./BreadIcon";
 import { SkinsPanel } from "./SkinsPanel";
 import { TricksPanel } from "./TricksPanel";
 import { PigeonIcon } from "./PigeonIcon";
+import { AchievementsPanel } from "./AchievementsPanel";
 
 function ShirtIcon() {
   return (
@@ -24,6 +25,22 @@ function SkateboardIcon() {
       {/* Wheels */}
       <circle cx="6" cy="17" r="2.2" />
       <circle cx="18" cy="17" r="2.2" />
+    </svg>
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="60%" height="60%" fill="currentColor" aria-hidden="true" className="drop-shadow-sm">
+      {/* Badan piala */}
+      <path d="M6.5 2h11a1 1 0 0 1 1 1v5.2a6.5 6.5 0 0 1-13 0V3a1 1 0 0 1 1-1z" />
+      {/* Gagang kiri-kanan */}
+      <path d="M5.5 3.5H3A1.5 1.5 0 0 0 1.5 5v1A4.5 4.5 0 0 0 6 10.5h.6A8 8 0 0 1 5.5 7V3.5zM3.5 5.5h2V7a6 6 0 0 0 .5 2.4A2.5 2.5 0 0 1 3.5 6v-.5z" />
+      <path d="M18.5 3.5H21A1.5 1.5 0 0 1 22.5 5v1a4.5 4.5 0 0 1-4.5 4.5h-.6a8 8 0 0 0 1.1-3.5V3.5zm2 2h-2V7a6 6 0 0 1-.5 2.4A2.5 2.5 0 0 0 20.5 6v-.5z" />
+      {/* Batang + alas */}
+      <path d="M11 13h2v4h3.2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H7.8a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1H11v-4z" />
+      {/* Bintang kecil di piala */}
+      <path d="M12 4.2l.9 1.8 2 .3-1.45 1.4.35 2L12 8.75 10.2 9.7l.35-2L9.1 6.3l2-.3.9-1.8z" fill="#ffd23f" />
     </svg>
   );
 }
@@ -267,6 +284,8 @@ function MainMenu() {
   const setMenuView = useUI((s) => s.setMenuView);
   const [shakeKey, setShakeKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAch, setShowAch] = useState(false);
+  const unseenAch = useUI((s) => s.unseenAch);
   const skin = getSkin(previewId);
   const isUnlocked = unlocked.includes(skin.id);
   const affordable = wallet >= skin.cost;
@@ -414,7 +433,27 @@ function MainMenu() {
             <SkateboardIcon />
           </button>
 
-          {/* 3. Settings button (NAVY GELAP dengan ikon gear/pengaturan) */}
+          {/* 3. Achievement button (UNG dengan ikon piala + badge merah kalau ada yang belum dilihat) */}
+          <button
+            type="button"
+            onClick={() => {
+              unlockAudio();
+              sfx.click();
+              setShowAch(true);
+            }}
+            aria-label="Pencapaian"
+            title="Pencapaian (Achievements)"
+            className="pointer-events-auto relative flex aspect-square w-[20cqw] max-w-[74px] items-center justify-center rounded-2xl bg-[#a855f7] text-white shadow-[0_5px_0_#7e22ce] active:translate-y-[2px] active:shadow-none"
+          >
+            <TrophyIcon />
+            {unseenAch > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-[6cqw] max-h-6 min-w-[6cqw] items-center justify-center rounded-full border-2 border-white bg-[#ef4b4b] px-1 font-display text-[2.6cqw] leading-none text-white shadow-md">
+                {unseenAch}
+              </span>
+            )}
+          </button>
+
+          {/* 4. Settings button (NAVY GELAP dengan ikon gear/pengaturan) */}
           <button
             type="button"
             onClick={() => setShowSettings(true)}
@@ -426,6 +465,9 @@ function MainMenu() {
           </button>
         </div>
       </div>
+
+      {/* ── Achievement Panel (badge merah di tombol hilang saat panel ditutup) ── */}
+      {showAch && <AchievementsPanel onClose={() => setShowAch(false)} />}
 
       {/* ── Settings Modal Overlay (Diakses lewat tombol gear agar main menu tetap bersih) ── */}
       {showSettings && (

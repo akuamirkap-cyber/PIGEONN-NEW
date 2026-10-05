@@ -44,6 +44,7 @@ export function GameOver() {
   const cause = useUI((s) => s.crashCause);
   const wordHunt = useUI((s) => s.wordHunt);
   const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
+  const newAch = useUI((s) => s.newAch);
   if (phase !== "gameover") return null;
   const list = QUIPS[cause] ?? QUIPS.obstacle;
   const quip = list[runs % list.length];
@@ -66,6 +67,12 @@ export function GameOver() {
               <div className="absolute -right-2 -top-2.5 rotate-6 rounded-full bg-[#ffd60a] px-2.5 py-0.5 font-display text-[3cqw] leading-none text-[#1f2430] shadow"
               >
                 NEW BEST!
+              </div>
+            )}
+            {newAch.length > 0 && (
+              <div className="absolute -left-2 -top-2.5 -rotate-6 rounded-full bg-[#a855f7] px-2.5 py-0.5 font-display text-[3cqw] leading-none text-white shadow"
+              >
+                🏆 {newAch.length > 1 ? `${newAch.length} ACH BARU!` : "ACH BARU!"}
               </div>
             )}
             <div className="font-body text-[2.3cqw] font-extrabold tracking-[0.3em] text-white/55">SCORE</div>

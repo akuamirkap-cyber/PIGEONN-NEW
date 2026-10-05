@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { SKINS, getSkin } from "./skins";
 import { TRICKS, type TrickKind } from "./tricks";
 import { loadWordHunt, saveWordHunt, type WordHuntData } from "./wordHunt";
+import { evaluate, markAllSeen, unseenCount, getAch } from "./achievements";
 
 export type Phase = "menu" | "playing" | "crashed" | "gameover";
 export type TurnMode = "old" | "new";
@@ -108,6 +109,11 @@ interface UIState {
   setShowMysteryBox: (show: boolean) => void;
   collectWordLetter: (index: number) => { completed: boolean; char: string; remaining: number };
   claimMysteryBox: () => { bread: number; score: number; title: string };
+  /** achievement: jumlah yang terbuka tapi belum dilihat (badge merah tombol) + id yang baru terbuka sesi ini */
+  unseenAch: number;
+  newAch: string[];
+  recheckAchievements: () => void;
+  markAchSeen: () => void;
 }
 
 let popupId = 0;
@@ -305,11 +311,13 @@ export const useUI = create<UIState>((set, get) => ({
     const tricksOn = { ...get().tricksOn, [k]: !get().tricksOn[k] };
     save("pigeon-sk8-tricks", tricksOn);
     set({ tricksOn });
+    get().recheckAchievements();
   },
   setAllTricks: (on) => {
     const tricksOn = Object.fromEntries(TRICKS.map((t) => [t.kind, on])) as Record<TrickKind, boolean>;
     save("pigeon-sk8-tricks", tricksOn);
     set({ tricksOn });
+    get().recheckAchievements();
   },
   setPhase: (phase) => set({ phase }),
   setMenuView: (menuView) => set({ menuView }),
@@ -330,7 +338,8 @@ export const useUI = create<UIState>((set, get) => ({
     const wallet = s.wallet + bread;
     save("pigeon-sk8-best", best);
     save("pigeon-sk8-wallet", wallet);
-    set({ score, bread, best, wallet, isNewBest, phase: "gameover", runs: s.runs + 1, crashCause: cause });
+    set({ score, bread, best, wallet, isNewBest, phase: "gameover", runs: s.runs + 1, crashCause: cause, newAch: [] });
+    get().recheckAchievements();
   },
   toggleMute: () => {
     const muted = !get().muted;
@@ -368,6 +377,7 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-wallet", wallet);
     save("pigeon-sk8-skin", id);
     set({ unlocked, wallet, skin: id, preview: id });
+    get().recheckAchievements();
     return true;
   },
   wordHunt: loadWordHunt(),
@@ -415,10 +425,36 @@ export const useUI = create<UIState>((set, get) => ({
       wallet: newWallet,
       wordHunt: updated,
     });
+    get().recheckAchievements(); // achievement 🎁 Pemburu Kata & wallet total
     return {
       bread: breadReward,
       score: scoreReward,
       title: "HADIAH PETI MISTERI!",
     };
+  },
+  unseenAch: unseenCount(),
+  newAch: [],
+  /**
+   * Evaluasi ulang semua achievement dari state terkini. Yang baru tercapai
+   * langsung memberi hadiah roti ke wallet + menambah badge merah di tombol 🏆.
+   */
+  recheckAchievements: () => {
+    const s = get();
+    const newly = evaluate({
+      best: s.best,
+      wallet: s.wallet,
+      skinsUnlocked: s.unlocked.length,
+      tricksAllOn: TRICKS.every((t) => s.tricksOn[t.kind]),
+      wordDone: s.wordHunt.claimed,
+    });
+    if (!newly.length) return;
+    const bonus = newly.reduce((sum, id) => sum + (getAch(id)?.reward ?? 0), 0);
+    const wallet = s.wallet + bonus;
+    save("pigeon-sk8-wallet", wallet);
+    set({ wallet, newAch: [...s.newAch, ...newly], unseenAch: unseenCount() });
+  },
+  markAchSeen: () => {
+    markAllSeen();
+    set({ unseenAch: 0, newAch: [] });
   },
 }));

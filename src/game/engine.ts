@@ -25,6 +25,7 @@ import {
 } from "./shibuyaPacks";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
+import { recordRun, recordShibuyaRun } from "./stats";
 import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
 
@@ -1087,6 +1088,7 @@ class Engine {
       this.phase = "playing";
       this.reset();
     }
+    if (useUI.getState().trackMode === "shibuya") recordShibuyaRun(); // statistik achievement 🌆
     this.phase = "playing";
     this.runTime = 0;
     this.runDistance = 0;
@@ -1781,6 +1783,7 @@ class Engine {
       if (this.phase === "crashed" && this.crashT > 3.8) {
         this.phase = "gameover";
         this.overT = 0;
+        recordRun(this.distance, this.rocketTaken); // statistik seumur hidup untuk achievement
         useUI.getState().finishRun(this.score, this.breadCount, this.crashCause);
         sfx.coo();
       }
