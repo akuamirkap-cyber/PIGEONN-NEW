@@ -153,8 +153,7 @@ body,
   .go-numpop,
   .go-badge,
   .go-fade,
-  .go-glow,
-  .go-rays,
+  .go-twinkle,
   .go-confetti-piece {
     animation: none;
   }
@@ -171,15 +170,49 @@ body,
 }
 
 /* ---------- GAME OVER hypercasual juice ---------- */
-/* Sinar sunburst lembut berputar pelan di belakang kartu */
-.go-rays {
-  inset: -65%;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 10, 0.09) 0deg 9deg, transparent 9deg 18deg);
-  animation: go-spin 16s linear infinite;
+/* Badge NEW BEST model STARBURST gigi bintang (tanpa glow) */
+.go-starburst {
+  position: absolute;
+  background: #ffd60a;
+  border-radius: 6px;
+  box-shadow: 0 2.5px 0 rgba(90, 50, 0, 0.45);
 }
-@keyframes go-spin {
-  to {
-    transform: rotate(360deg);
+.go-starburst::before,
+.go-starburst::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffd60a;
+  border-radius: 6px;
+}
+.go-starburst::before {
+  transform: rotate(45deg);
+}
+.go-starburst::after {
+  transform: rotate(22.5deg);
+}
+
+/* Percikan ✦ kecil berkedip di sekitar angka skor sesudah perhitungan */
+.go-twinkle {
+  position: absolute;
+  pointer-events: none;
+  color: rgba(255, 224, 120, 0.9);
+  text-shadow: 0 0 6px rgba(255, 214, 10, 0.5);
+  animation: go-twinkle 1.6s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.go-twinkle::before {
+  content: "✦";
+}
+@keyframes go-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(22deg);
   }
 }
 
@@ -251,20 +284,6 @@ body,
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-/* Tombol RETRY siap: cincin cahaya berdenyut mengundang tap */
-.go-glow {
-  box-shadow: 0 5px 0 #1f9a8f;
-  animation: go-glow 1.35s ease-out infinite;
-}
-@keyframes go-glow {
-  0% {
-    box-shadow: 0 5px 0 #1f9a8f, 0 0 0 0 rgba(46, 196, 182, 0.55);
-  }
-  100% {
-    box-shadow: 0 5px 0 #1f9a8f, 0 0 0 14px rgba(46, 196, 182, 0);
   }
 }
 

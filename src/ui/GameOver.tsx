@@ -123,9 +123,12 @@ export function GameOver() {
   const confetti = done && isNewBest;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex select-none items-center justify-center overflow-hidden bg-black/30">
-      {/* sunburst hidup di belakang kartu */}
-      <div className="go-rays pointer-events-none absolute" />
+    <div className="pointer-events-none absolute inset-0 z-20 flex select-none items-center justify-center overflow-hidden bg-black/45">
+      {/* spotlight lembut statis di belakang kartu — fokus & rapi, tanpa sinar berputar */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(52% 42% at 50% 46%, rgba(255,255,255,0.1), transparent 70%)" }}
+      />
 
       <div className="card-in w-[84%] max-w-[400px] overflow-hidden rounded-[26px] bg-white text-center shadow-[0_10px_0_rgba(0,0,0,0.22)]">
         {/* header: judul ber-goyang + guyon dalam satu blok ramping */}
@@ -164,10 +167,10 @@ export function GameOver() {
             )}
             {isNewBest && (
               <div
-                className={`${done ? "go-badge" : "opacity-0"} absolute -right-2 -top-2.5 rotate-6 rounded-full bg-[#ffd60a] px-2.5 py-0.5 font-display text-[3cqw] leading-none text-[#1f2430] shadow`}
-                style={{ ["--tilt" as string]: "6deg" }}
+                className={`${done ? "go-badge" : "opacity-0"} go-starburst absolute -right-2.5 -top-4 px-3 py-1.5 font-display text-[3.2cqw] leading-none text-[#5b3a00]`}
+                style={{ ["--tilt" as string]: "8deg" }}
               >
-                NEW BEST!
+                <span className="relative z-[1]">NEW BEST!</span>
               </div>
             )}
             {newAch.length > 0 && (
@@ -179,6 +182,13 @@ export function GameOver() {
               </div>
             )}
             <div className="font-body text-[2.3cqw] font-extrabold tracking-[0.3em] text-white/55">SCORE</div>
+            {done && score > 0 && (
+              <>
+                <span className="go-twinkle left-[14%] top-[22%] text-[11px]" />
+                <span className="go-twinkle right-[16%] top-[40%] text-[9px]" style={{ ["--d" as string]: "0.5s" }} />
+                <span className="go-twinkle left-[20%] bottom-[26%] text-[8px]" style={{ ["--d" as string]: "1s" }} />
+              </>
+            )}
             <div key={done ? "d" : "c"} className={`${done && score > 0 ? "go-numpop" : ""} font-display text-[12.5cqw] leading-[1.02] text-[#ffd60a] [text-shadow:0_3px_0_rgba(120,72,0,0.55),0_0_18px_rgba(255,214,10,0.35)]`}>
               {disp}
             </div>
@@ -234,9 +244,11 @@ export function GameOver() {
             <button
               type="button"
               onClick={() => engine.input("tap")}
-              className={`pointer-events-auto mt-3.5 w-full rounded-2xl bg-gradient-to-b from-[#3ad6c8] to-[#25b3a5] py-3.5 font-display text-[5.4cqw] leading-none text-white active:translate-y-[3px] ${bDone ? "go-glow" : "shadow-[0_5px_0_#1f9a8f]"}`}
+              className="pointer-events-auto relative mt-3.5 w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#3ad6c8] to-[#25b3a5] py-3.5 font-display text-[5.4cqw] leading-none text-white shadow-[0_5px_0_#1f9a8f] active:translate-y-[3px] active:shadow-[0_2px_0_#1f9a8f]"
             >
               TAP TO RETRY
+              {/* sapuan kilau lembut (bukan glow) supaya tombol terasa hidup */}
+              <span className="shine pointer-events-none absolute inset-y-0 w-[22%] -rotate-12 bg-white/30 blur-[2px]" />
             </button>
           ) : (
             <div className="mt-3.5 w-full rounded-2xl border-2 border-dashed border-[#dfe3e8] py-3.5 font-body text-[3.4cqw] font-extrabold tracking-[0.2em] text-[#aab2bd]">
