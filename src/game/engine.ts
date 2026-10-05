@@ -804,6 +804,8 @@ class Engine {
   /** index into the enabled-trick list for the sequential "S" freestyle cycle */
   cycleIndex = 0;
   menuTrickPending = false;
+  /** trick yang sedang diantre untuk didemokan di podium (dari toggle ON panel TRICKS) */
+  menuPreview: TrickKind | null = null;
 
   obstacles: Obstacle[] = [];
   breads: Bread[] = [];
@@ -969,6 +971,7 @@ class Engine {
     this.overT = 0;
     this.menuT = 0;
     this.menuTrickPending = false;
+    this.menuPreview = null;
     this.obstacles = [];
     this.breads = [];
     this.chunks = [];
@@ -1133,6 +1136,7 @@ class Engine {
   skinPop() {
     if (this.phase !== "menu") return;
     const p = this.player;
+
     p.showYaw = FRONT_YAW;
     p.squash = 1;
     this.menuT = 0;
@@ -1142,6 +1146,24 @@ class Engine {
       this.jump(5);
     }
     this.emit("dust", 0, PODIUM_H + 0.05, 0, 8);
+  }
+
+  /**
+   * Demokan satu trick tertentu di podium menu — dipanggil panel TRICKS saat
+   * pemain mengaktifkan (toggle ON) sebuah trick. Merpati melompat lalu
+   * memainkan animasi trick itu sekali, kamera bebas menonton.
+   */
+  previewTrick(kind: TrickKind) {
+    if (this.phase !== "menu") return;
+    const p = this.player;
+    this.menuT = 0; // tunda idle showcase berikutnya
+    this.menuPreview = kind;
+    if (p.grounded) {
+      p.trick = null;
+      p.flip = 0;
+      this.menuTrickPending = false;
+      this.jump(7.5);
+    }
   }
 
   toMenu() {
@@ -1874,6 +1896,14 @@ class Engine {
         this.menuT = 0;
         this.jump(7.5);
         this.menuTrickPending = true;
+      }
+      // Demo trick dari panel TRICKS: begitu merpati meninggalkan tanah, mainkan
+      // trick yang baru saja diaktifkan pemain (bukan acak seperti idle showcase).
+      if (this.menuPreview && !p.grounded && p.airT > 0.06) {
+        const kind = this.menuPreview;
+        this.menuPreview = null;
+        this.menuTrickPending = false;
+        this.startTrick(kind, 0.45);
       }
       if (this.menuTrickPending && !p.grounded && p.airT > 0.06) {
         this.menuTrickPending = false;

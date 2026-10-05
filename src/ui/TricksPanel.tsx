@@ -1,6 +1,7 @@
 import { useUI } from "../game/store";
 import { INPUT_LABEL, TRICKS, type TrickDef } from "../game/tricks";
 import { sfx } from "../game/audio";
+import { engine } from "../game/engine";
 import { TrickIcon } from "./TrickIcon";
 
 function Toggle({ on }: { on: boolean }) {
@@ -20,6 +21,8 @@ function TrickRow({ t, order }: { t: TrickDef; order: number }) {
       onClick={() => {
         sfx.click();
         toggle(t.kind);
+        // toggle ON → demokan animasi trick-nya di podium (kamera menonton)
+        if (useUI.getState().tricksOn[t.kind]) engine.previewTrick(t.kind);
       }}
       className={`relative flex w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-left shadow-[0_3px_0_rgba(0,0,0,0.08)] active:translate-y-[1px] active:shadow-none ${on ? "bg-white" : "bg-white/60"}`}
     >
