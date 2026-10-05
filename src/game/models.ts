@@ -1539,37 +1539,42 @@ export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly =
  * Pahlawan bertopeng klasik ala Showa Rider: helm hitam-hijau dengan MATA MAJEMUK
  * merah menyala, antena perak, SYAL MERAH berkibar, typhoon belt, sarung tangan &
  * sepatu boot perak. Proporsi mengikuti pedestrian biasa supaya anim jalan cocok. */
+// Palet Kamen Rider versi CUTE-HEROIC: hijau teal cerah (bukan hitam pekat),
+// mata jingga hangat besar ala kartun (bukan merah menyala yang serem).
 const KR = {
-  helmet: "#10130f",
-  helmShade: "#1c231c",
-  suit: "#1d6b4a",
-  suitShade: "#15503a",
-  eye: "#ff2b2b",
-  silver: "#dfe3ea",
-  silverDark: "#aeb6c2",
-  scarf: "#d62828",
-  belt: "#14161b",
+  helmet: "#1fae6e",
+  helmShade: "#158552",
+  suit: "#26a06b",
+  suitShade: "#1a7a50",
+  eye: "#ff9a3d",
+  silver: "#e8ecf2",
+  silverDark: "#b8c0cc",
+  scarf: "#ef3b2d",
+  belt: "#1c1f26",
 };
 
 export function kamenRiderHeadParts(): Part[] {
   return [
-    // HELM PENUH: bola helm gelap menutup seluruh kepala
-    { x: 0, y: 0.18, z: 0, w: 0.4, h: 0.42, d: 0.42, color: KR.helmet },
-    { x: -0.02, y: 0.42, z: 0, w: 0.34, h: 0.1, d: 0.36, color: KR.helmShade }, // ridge atas
-    // MATA MAJEMUK MERAH MENYALA (khas Kamen Rider) — besar menyamping
-    { x: 0.2, y: 0.22, z: 0.11, w: 0.03, h: 0.15, d: 0.15, color: KR.eye, glow: true },
-    { x: 0.2, y: 0.22, z: -0.11, w: 0.03, h: 0.15, d: 0.15, color: KR.eye, glow: true },
-    { x: 0.21, y: 0.22, z: 0.11, w: 0.02, h: 0.05, d: 0.16, color: "#ff8d8d" }, // kilau mata
-    { x: 0.21, y: 0.22, z: -0.11, w: 0.02, h: 0.05, d: 0.16, color: "#ff8d8d" },
-    // Grille mulut perak dengan dua sirip horizontal
-    { x: 0.205, y: 0.04, z: 0, w: 0.025, h: 0.1, d: 0.2, color: KR.silver },
-    { x: 0.215, y: 0.055, z: 0, w: 0.012, h: 0.02, d: 0.18, color: KR.helmet },
-    { x: 0.215, y: 0.0, z: 0, w: 0.012, h: 0.02, d: 0.18, color: KR.helmet },
-    // ANTENA V perak di dahi (khas rider Showa)
-    { x: 0.1, y: 0.46, z: 0.045, w: 0.04, h: 0.18, d: 0.03, rx: -0.38, color: KR.silver },
-    { x: 0.1, y: 0.46, z: -0.045, w: 0.04, h: 0.18, d: 0.03, rx: 0.38, color: KR.silver },
-    // Garis emas kecil di tengah dahi (typhoon crest)
-    { x: 0.16, y: 0.34, z: 0, w: 0.05, h: 0.12, d: 0.03, color: "#ffd23f" },
+    // HELM PENUH membulat ramah: hijau teal cerah menutup seluruh kepala
+    { x: 0, y: 0.18, z: 0, w: 0.42, h: 0.44, d: 0.44, color: KR.helmet },
+    { x: -0.02, y: 0.43, z: 0, w: 0.36, h: 0.1, d: 0.38, color: KR.helmShade }, // ridge atas
+    // Pipi bawah perak membulat (face-plate topeng classic tapi chubby)
+    { x: 0.14, y: 0.03, z: 0, w: 0.16, h: 0.14, d: 0.34, color: KR.silver },
+    // MATA MAJEMUK JINGGA BESAR & BULAT (khas Kamen Rider tapi ramah kartun)
+    { x: 0.2, y: 0.23, z: 0.12, w: 0.035, h: 0.17, d: 0.15, color: KR.eye, glow: true },
+    { x: 0.2, y: 0.23, z: -0.12, w: 0.035, h: 0.17, d: 0.15, color: KR.eye, glow: true },
+    // sparkle putih besar di tiap mata → kesan kawaii, tidak serem
+    { x: 0.215, y: 0.28, z: 0.1, w: 0.02, h: 0.07, d: 0.06, color: "#fff6dc" },
+    { x: 0.215, y: 0.28, z: -0.14, w: 0.02, h: 0.07, d: 0.06, color: "#fff6dc" },
+    // Grille mulut perak mungil (senyum kecil)
+    { x: 0.22, y: 0.02, z: 0, w: 0.02, h: 0.07, d: 0.16, color: KR.silverDark },
+    { x: 0.225, y: 0.04, z: 0, w: 0.015, h: 0.015, d: 0.12, color: "#8d95a1" },
+    // ANTENA V perak pendek & lebar (gemas, khas rider Showa)
+    { x: 0.08, y: 0.46, z: 0.07, w: 0.045, h: 0.16, d: 0.035, rx: -0.52, color: KR.silver },
+    { x: 0.08, y: 0.46, z: -0.07, w: 0.045, h: 0.16, d: 0.035, rx: 0.52, color: KR.silver },
+    // Crest bintang emas di dahi
+    { x: 0.17, y: 0.37, z: 0, w: 0.05, h: 0.11, d: 0.05, color: "#ffd23f" },
+    { x: 0.19, y: 0.41, z: 0, w: 0.03, h: 0.05, d: 0.03, color: "#ffe89a" },
   ];
 }
 
@@ -1579,16 +1584,19 @@ export function kamenRiderTorsoParts(): Part[] {
     { x: 0, y: 0, z: 0, w: 0.42, h: 0.68, d: 0.52, color: KR.suit },
     { x: 0.03, y: 0.14, z: 0, w: 0.38, h: 0.3, d: 0.54, color: KR.suitShade }, // dada armor
     { x: 0.215, y: 0.16, z: 0, w: 0.02, h: 0.22, d: 0.34, color: KR.suit },     // kilau dada
-    // TYPHOON BELT: sabuk hitam + gesper perak dengan pusaran merah
+    // TYPHOON BELT: sabuk + gesper perak dengan inti kuning keemasan ceria
     { x: 0, y: -0.26, z: 0, w: 0.44, h: 0.1, d: 0.54, color: KR.belt },
     { x: 0.225, y: -0.26, z: 0, w: 0.03, h: 0.12, d: 0.16, color: KR.silver },
-    { x: 0.235, y: -0.26, z: 0, w: 0.015, h: 0.06, d: 0.07, color: KR.eye, glow: true },
+    { x: 0.235, y: -0.26, z: 0, w: 0.015, h: 0.06, d: 0.07, color: "#ffd23f", glow: true },
     { x: 0.225, y: -0.26, z: 0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark }, // turbin samping
     { x: 0.225, y: -0.26, z: -0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark },
-    // SYAL MERAH mengalir ke belakang (ciri khas!)
+    // Badge bintang emas kecil di dada (pahlawan cilik!)
+    { x: 0.22, y: 0.2, z: 0, w: 0.025, h: 0.09, d: 0.09, color: "#ffd23f" },
+    { x: 0.225, y: 0.2, z: 0, w: 0.02, h: 0.045, d: 0.045, color: "#ffe89a" },
+    // SYAL MERAH CERAH mengalir ke belakang (ciri khas!)
     { x: 0, y: 0.36, z: 0, w: 0.44, h: 0.1, d: 0.5, color: KR.scarf },
     { x: -0.26, y: 0.3, z: 0.04, w: 0.26, h: 0.09, d: 0.2, rz: 0.28, color: KR.scarf },
-    { x: -0.44, y: 0.22, z: 0.02, w: 0.26, h: 0.08, d: 0.16, rz: 0.42, color: "#b51f1f" }, // ujung syal
+    { x: -0.44, y: 0.22, z: 0.02, w: 0.26, h: 0.08, d: 0.16, rz: 0.42, color: "#c22a20" }, // ujung syal
   ];
 }
 
@@ -2001,13 +2009,19 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
   for (const sz of [-CROSS_STREET_MID, CROSS_STREET_MID]) {
     // Roadbed asphalt (38m long each side, 8.4m wide)
     parts.push({ x: 0, y: 0.145, z: sz, w: W, h: 0.06, d: CROSS_STREET_LEN, color: asphalt });
-    // Underneath skirt foundation down to y = -0.3 to prevent any floating seams
-    parts.push({ x: 0, y: -0.05, z: sz, w: W + 0.1, h: 0.35, d: CROSS_STREET_LEN, color: "#2d3139" });
+    // Dinding fondasi di bawahnya — warna beton kurb netral (bukan hitam pekat)
+    // supaya tepi platform terbaca sebagai kerb rapi, bukan meja hitam melayang
+    parts.push({ x: 0, y: -0.05, z: sz, w: W + 0.1, h: 0.35, d: CROSS_STREET_LEN, color: "#79847c" });
+    // Garis noda jalan di dinding fondasi (bayangan teralis supaya tidak flat)
+    parts.push({ x: 0, y: 0.1, z: sz - Math.sign(sz) * (CROSS_STREET_LEN / 2 - 0.05), w: W + 0.12, h: 0.12, d: 0.06, color: "#6b7972" });
   }
 
-  // Smooth curb-cut ramp connecting main street (y = 0) to cross street (y = 0.145)
+  // Ramp akses dua-tingkat yang halus dari main street (y = 0) ke dek cross street.
+  // Seluruh ramp selesai TEPAT di tepi dek (|z| = 4.0) — tidak menyusup ke bawah plat
+  // (selaras physics crossCarH: tanjakan 3.6 → 4.0 selesai di tepi dek).
   for (const dir of [-1, 1]) {
-    parts.push({ x: 0, y: 0.08, z: dir * 4.0, w: W, h: 0.09, d: 0.8, color: asphalt });
+    parts.push({ x: 0, y: 0.03, z: dir * 3.5, w: W, h: 0.06, d: 0.4, color: asphalt });
+    parts.push({ x: 0, y: 0.085, z: dir * 3.85, w: W, h: 0.1, d: 0.3, color: asphalt });
   }
 
   // 3. Sidewalks along both sides of the Cross-Street (x = -halfW - 0.7 and x = +halfW + 0.7)
@@ -2034,21 +2048,27 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
     }
   }
 
-  // 5. White Stop Lines before the intersection (di belakang zebra, seperti aturan Jepang)
-  for (const sz of [-7.0, 7.0]) {
-    parts.push({ x: 0, y: 0.18, z: sz, w: W - 1.2, h: 0.022, d: 0.45, color: white });
+  // 5. White Stop Lines sebelum zebra (hanya di lajur mendekat — kiri ala Jepang —
+  //    bukan membentang penuh menyeberangi garis kuning tengah)
+  for (const dir of [-1, 1]) {
+    const stopZ = dir * 7.0;
+    // Jepang = kiri-jalan: mobil yang mendekat dari +z melaju ke -z di lajur x<0, dan sebaliknya
+    const laneCx = -dir * (halfW / 2 + 0.1);
+    parts.push({ x: laneCx, y: 0.18, z: stopZ, w: halfW - 0.8, h: 0.022, d: 0.45, color: white });
   }
 
   // 6. Double Solid Yellow Center Dividing Lines on the Cross-Street
+  //    (mulai SETELAH zebra cross selesai di |z|=6.9 → marka tidak saling tumpuk)
   for (const dir of [-1, 1]) {
-    for (let z = 5.2; z <= CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 1; z += 1.8) {
+    for (let z = 6.95; z <= CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 1; z += 1.8) {
       const cz = dir * z;
       parts.push({ x: -0.15, y: 0.18, z: cz, w: 0.14, h: 0.022, d: 1.3, color: yellow });
       parts.push({ x: 0.15, y: 0.18, z: cz, w: 0.14, h: 0.022, d: 1.3, color: yellow });
     }
-    // Solid white shoulder edge lines on the cross street
+    // Solid white shoulder edge lines — juga mulai rapi setelah zebra
     for (const sx of [-halfW + 0.5, halfW - 0.5]) {
-      parts.push({ x: sx, y: 0.178, z: dir * CROSS_STREET_MID, w: 0.16, h: 0.022, d: CROSS_STREET_LEN - 3, color: white });
+      const cz = dir * (6.95 + (CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 6.95) / 2);
+      parts.push({ x: sx, y: 0.178, z: cz, w: 0.16, h: 0.022, d: CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 6.95, color: white });
     }
     // Painted directional arrows on the cross-street lanes
     const arrowZ = dir * 11;
@@ -2060,55 +2080,62 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
     }
   }
 
-  // 7. ZEBRA CROSS 4 ARAH — desain benar ala Jepang:
-  // pita selebar ~2.3 m; tiap garis MEMANJANG searah laju mobil dan berulang
-  // searah langkah pejalan kaki, jadi terbaca sebagai zebra sungguhan.
+  // 7. ZEBRA CROSS 4 ARAH — desain benar ala Jepang, rapat & presisi:
+  // pita selebar ~2.2 m; tiap garis MEMANJANG searah laju mobil dan berulang
+  // searah langkah pejalan kaki. Ujung tiap pita PAS di tepi plat/aspal — tidak ada
+  // setrip yang mencuat melewati kurb atau melayang di luar badan jalan.
   // A. Menyeberangi main street (pejalan jalan sepanjang z; garis memanjang di x)
-  for (const sx of [-(halfW + 1.5), halfW + 1.5]) {
+  //    Pita mulai tepat di tepi plat junction (|x| = halfW) dan merentang 2.2 m ke luar.
+  for (const sx of [-(halfW + 1.1), halfW + 1.1]) {
     for (let zi = -4; zi <= 4; zi++) {
-      parts.push({ x: sx, y: 0.025, z: zi * 0.82, w: 2.3, h: 0.022, d: 0.46, color: white });
+      parts.push({ x: sx, y: 0.028, z: zi * 0.82, w: 2.2, h: 0.022, d: 0.46, color: white });
     }
   }
   // B. Menyeberangi cross-street kiri/kanan (pejalan jalan sepanjang x; garis memanjang di z)
-  for (const sz of [-5.5, 5.5]) {
+  //    Pita di |z| 4.55..6.65 — bersih dari tepi dek (4.0) dan garis kuning (mulai 6.95).
+  for (const sz of [-5.6, 5.6]) {
     const nx = Math.floor((W - 1.6) / 0.82);
     for (let xi = 0; xi < nx; xi++) {
       const x = -((nx - 1) * 0.82) / 2 + xi * 0.82;
-      parts.push({ x, y: 0.182, z: sz, w: 0.46, h: 0.022, d: 2.2, color: white });
+      parts.push({ x, y: 0.182, z: sz, w: 0.46, h: 0.022, d: 2.1, color: white });
     }
   }
 
   // 8. Overhead Highway / Cross-Street Directional Gantry Sign
-  // Steel gantry columns on both sides of main street at x = 0, z = -4.8 and +4.8
+  // Kolom baja berdiri di TROTOAR main street sisi pendekat (bukan di tengah zebra!):
+  // gantryX menempatkan seluruh gantry SEBELUM zebra A — persis gantry jalan tol asli
+  // yang menyambut pengemudi sebelum masuk perempatan.
+  const gantryX = -(halfW + 2.6);
   for (const gz of [-4.8, 4.8]) {
-    parts.push({ x: 0, y: 2.8, z: gz, w: 0.25, h: 5.6, d: 0.25, color: metal });
-    parts.push({ x: 0, y: 0.15, z: gz, w: 0.5, h: 0.3, d: 0.5, color: curb });
+    parts.push({ x: gantryX, y: 2.8, z: gz, w: 0.25, h: 5.6, d: 0.25, color: metal });
+    parts.push({ x: gantryX, y: 0.15, z: gz, w: 0.5, h: 0.3, d: 0.5, color: curb });
   }
   // Overhead truss beam spanning across at y = 5.2
-  parts.push({ x: 0, y: 5.3, z: 0, w: 0.28, h: 0.35, d: 9.8, color: metal });
-  // Japanese Overhead Directional Signs:
-  // Sign 1 (facing incoming player on -x side): Blue sign "渋谷 SHIBUYA ➔"
-  parts.push({ x: -0.16, y: 4.8, z: -1.8, w: 0.06, h: 1.1, d: 2.4, color: signBlue });
-  parts.push({ x: -0.20, y: 4.8, z: -1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
-  parts.push({ x: -0.22, y: 4.8, z: -1.8, w: 0.02, h: 0.7, d: 1.95, color: signBlue });
+  parts.push({ x: gantryX, y: 5.3, z: 0, w: 0.28, h: 0.35, d: 9.8, color: metal });
+  // Japanese Overhead Directional Signs (menghadap pemain yang datang dari -x):
+  // Sign 1: Blue sign "渋谷 SHIBUYA ➔"
+  parts.push({ x: gantryX - 0.16, y: 4.8, z: -1.8, w: 0.06, h: 1.1, d: 2.4, color: signBlue });
+  parts.push({ x: gantryX - 0.20, y: 4.8, z: -1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.22, y: 4.8, z: -1.8, w: 0.02, h: 0.7, d: 1.95, color: signBlue });
   // Route 246 badge
-  parts.push({ x: -0.24, y: 5.0, z: -2.3, w: 0.02, h: 0.4, d: 0.45, color: "#ffffff" });
-  parts.push({ x: -0.25, y: 5.0, z: -2.3, w: 0.02, h: 0.32, d: 0.36, color: signBlue });
+  parts.push({ x: gantryX - 0.24, y: 5.0, z: -2.3, w: 0.02, h: 0.4, d: 0.45, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.25, y: 5.0, z: -2.3, w: 0.02, h: 0.32, d: 0.36, color: signBlue });
   // Arrow on sign
-  parts.push({ x: -0.24, y: 4.8, z: -1.1, w: 0.02, h: 0.2, d: 0.45, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.8, z: -1.1, w: 0.02, h: 0.2, d: 0.45, color: "#ffffff" });
 
   // Sign 2: Green sign "CROSSROAD / 交差点"
-  parts.push({ x: -0.16, y: 4.8, z: 1.8, w: 0.06, h: 1.1, d: 2.4, color: signGreen });
-  parts.push({ x: -0.20, y: 4.8, z: 1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
-  parts.push({ x: -0.22, y: 4.8, z: 1.8, w: 0.02, h: 0.7, d: 1.95, color: signGreen });
+  parts.push({ x: gantryX - 0.16, y: 4.8, z: 1.8, w: 0.06, h: 1.1, d: 2.4, color: signGreen });
+  parts.push({ x: gantryX - 0.20, y: 4.8, z: 1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.22, y: 4.8, z: 1.8, w: 0.02, h: 0.7, d: 1.95, color: signGreen });
   // Street name glyph blocks on green sign
-  parts.push({ x: -0.24, y: 4.85, z: 1.8, w: 0.02, h: 0.3, d: 1.5, color: "#ffffff" });
-  parts.push({ x: -0.24, y: 4.6, z: 1.8, w: 0.02, h: 0.15, d: 1.2, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.85, z: 1.8, w: 0.02, h: 0.3, d: 1.5, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.6, z: 1.8, w: 0.02, h: 0.15, d: 1.2, color: "#ffffff" });
 
   // 9. Curbside Storm Drain Grates in the road gutters
+  //    (di main street |z| = 3.55 — TEPAT sebelum mulut ramp; tidak terkubur plat cross-street)
   for (const dx of [-3.5, 3.5]) {
-    for (const dz of [-4.2, 4.2]) {
-      parts.push({ x: dx, y: 0.02, z: dz, w: 0.8, h: 0.015, d: 0.4, color: "#1f2329" });
+    for (const dz of [-3.55, 3.55]) {
+      parts.push({ x: dx, y: 0.012, z: dz, w: 0.8, h: 0.015, d: 0.35, color: "#1f2329" });
     }
   }
 

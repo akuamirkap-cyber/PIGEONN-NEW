@@ -1,6 +1,6 @@
 /* Pigeon SK8 service worker — app shell offline-first.
  * Naikkan CACHE_VERSION tiap rilis supaya pengguna dapat versi baru. */
-const CACHE = "pigeon-sk8-v1.0.0";
+const CACHE = "pigeon-sk8-v1.1.0";
 const SHELL = ["./", "manifest.webmanifest", "icon-192.png", "icon-512.png", "8-BIT WONDER.TTF", "8-bit-wonder.ttf"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
