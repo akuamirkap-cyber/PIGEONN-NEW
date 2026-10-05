@@ -70,8 +70,8 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
           </span>
         </div>
 
-        {/* Daftar achievement (scroll) */}
-        <div className="flex flex-col gap-1.5 overflow-y-auto pr-0.5">
+        {/* Daftar achievement (scroll) — judul & hadiah di baris atas, info+progres menyusur di bawah */}
+        <div className="flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-0.5">
           {ACHIEVEMENTS.map((a) => {
             const done = st.done.includes(a.id);
             const isNew = done && !st.seen.includes(a.id);
@@ -81,52 +81,51 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
             return (
               <div
                 key={a.id}
-                className={`relative flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${
+                className={`relative flex gap-2.5 rounded-2xl border px-2.5 py-2 ${
                   done
                     ? "border-[#ffd23f]/45 bg-gradient-to-r from-[#ffd23f]/15 to-transparent"
                     : "border-white/8 bg-white/[0.045]"
                 }`}
               >
-                {/* Ikon lencana TANPA kotak — simbol sebesar area kotaknya dulu */}
+                {/* Ikon lencana TANPA kotak */}
                 <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center text-[9.5cqw] leading-none"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center pt-0.5 text-[8cqw] leading-none"
                   style={done ? { filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))" } : { filter: "grayscale(1) opacity(0.6)" }}
                 >
                   {a.icon}
                 </div>
-                {/* Judul + deskripsi + progress (tidak ada yang kepotong) */}
+                {/* Kolom teks: baris judul+hadiah, lalu info, lalu progres */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`whitespace-nowrap font-display text-[5cqw] leading-tight ${done ? "text-[#ffe89a]" : "text-white/85"}`}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`whitespace-nowrap font-display text-[4.4cqw] leading-tight ${done ? "text-[#ffe89a]" : "text-white/85"}`}>
                       {a.title}
                     </span>
                     {isNew && (
-                      <span className="shrink-0 animate-pulse rounded-md bg-[#ffd60a] px-1.5 py-0.5 font-display text-[3cqw] leading-none text-[#1f2430]">
+                      <span className="shrink-0 animate-pulse rounded-md bg-[#ffd60a] px-1.5 py-0.5 font-display text-[2.8cqw] leading-none text-[#1f2430]">
                         BARU
                       </span>
                     )}
+                    <span className="ml-auto shrink-0">
+                      {done ? (
+                        <span className="whitespace-nowrap font-display text-[3cqw] leading-tight text-[#2ecc71]">✓ TERBUKA</span>
+                      ) : (
+                        <span className="flex items-center gap-1 whitespace-nowrap rounded-lg bg-white/8 px-1.5 py-0.5 font-display text-[3.2cqw] text-[#ffd60a]">
+                          +{a.reward}
+                          <BreadIcon size={12} />
+                        </span>
+                      )}
+                    </span>
                   </div>
-                  <div className="font-body text-[5cqw] font-bold leading-snug text-white/60">{a.desc}</div>
+                  <div className="font-body text-[3.6cqw] font-semibold leading-snug text-white/60">{a.desc}</div>
                   {!done && (
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                         <div className="h-full rounded-full bg-[#38bdf8]" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="font-display text-[3.4cqw] text-white/55">
+                      <span className="shrink-0 font-display text-[3cqw] text-white/55">
                         {value}/{a.target}
                       </span>
                     </div>
-                  )}
-                </div>
-                {/* Kanan: status terbuka / hadiah */}
-                <div className="flex w-16 shrink-0 flex-col items-center justify-center">
-                  {done ? (
-                    <span className="font-display text-[3.4cqw] leading-tight text-[#2ecc71]">✓ TERBUKA</span>
-                  ) : (
-                    <span className="flex items-center gap-1 rounded-lg bg-white/8 px-1.5 py-1 font-display text-[3.4cqw] text-[#ffd60a]">
-                      +{a.reward}
-                      <BreadIcon size={14} />
-                    </span>
                   )}
                 </div>
               </div>
