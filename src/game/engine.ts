@@ -1907,7 +1907,10 @@ class Engine {
       }
       if (this.menuTrickPending && !p.grounded && p.airT > 0.06) {
         this.menuTrickPending = false;
-        this.startTrick(pick(["kickflip", "heelflip", "spinL", "spinR", "shuvit", "method", "impossible"] as TrickKind[]), 0.45);
+        this.startTrick(
+          pick(["kickflip", "heelflip", "spinL", "spinR", "shuvit", "method", "impossible", "varial", "treflip", "shifty", "melon", "hardflip"] as TrickKind[]),
+          0.45,
+        );
       }
     } else {
       // un-spin after leaving the podium
@@ -2255,6 +2258,89 @@ class Engine {
           break;
         case "coo540":
           yaw = this.trickDir * e * Math.PI * 3;
+          break;
+        /* ===== 20 GAYA BARU ===== */
+        // Flip & shuv family — papan berputar di sumbu flip (x) dan/atau yaw (y)
+        case "varial":
+          flip = e * Math.PI * 2;
+          boardYaw = e * Math.PI;
+          break;
+        case "inward":
+          flip = -e * Math.PI * 2;
+          boardYaw = e * Math.PI;
+          break;
+        case "hardflip":
+          flip = e * Math.PI * 2;
+          boardYaw = -e * Math.PI;
+          break;
+        case "fingerflip":
+          flip = e * Math.PI * 2;
+          grab = -hump * 0.5; // jari ikut "menyentil" (sedikit tuck)
+          break;
+        case "pressure":
+          flip = -e * Math.PI * 2;
+          boardYaw = -e * Math.PI * 2;
+          break;
+        case "dblflip":
+          flip = e * Math.PI * 4; // dua putaran flip penuh!
+          break;
+        case "hospital":
+          // out-and-back: papan berputar maju lalu BERBALIK ke posisi semula
+          flip = hump * Math.PI * 2;
+          boardYaw = hump * Math.PI;
+          break;
+        case "treflip":
+          flip = e * Math.PI * 2;
+          boardYaw = e * Math.PI * 2;
+          break;
+        case "laser":
+          flip = -e * Math.PI * 4;
+          boardYaw = e * Math.PI * 2;
+          break;
+        // Spin family
+        case "shifty":
+          yaw = hump * Math.PI * 0.75; // putar lalu kembali ke depan
+          break;
+        case "bigspin":
+          yaw = e * Math.PI;
+          boardYaw = e * Math.PI * 2;
+          break;
+        case "gazelle":
+          yaw = e * Math.PI;
+          boardYaw = -e * Math.PI * 2; // papan kontra-putar dengan badan
+          break;
+        case "air720":
+          yaw = this.trickDir * e * Math.PI * 4; // dua putaran penuh badan!
+          break;
+        // Grab & style family
+        case "melon":
+          yaw = e * Math.PI;
+          grab = -hump;
+          break;
+        case "nosegrab":
+          grab = hump * 0.55;
+          boardYaw = hump * 0.3;
+          break;
+        case "tailgrab":
+          grab = -hump * 0.75;
+          boardYaw = -hump * 0.3;
+          break;
+        case "stalefish":
+          grab = -hump;
+          boardYaw = -hump * 0.2;
+          yaw = hump * 0.3;
+          break;
+        case "benihana":
+          grab = hump * 0.5;
+          yaw = -hump * 0.4;
+          break;
+        case "rocket":
+          grab = -hump * 0.9;
+          boardYaw = hump * 0.15;
+          break;
+        case "christ":
+          grab = hump * 0.25; // badan tegak, papan sedikit terangkat (lengan T di Player)
+          boardYaw = hump * 0.2;
           break;
       }
     }

@@ -242,7 +242,12 @@ export function Player() {
       bd.rotation.set(p.flip + (g > 0 ? g * 0.9 : 0) + airTilt, p.boardYaw + p.boardTwist, p.pitch + (g < 0 ? g * 0.35 : 0));
 
       let hop = 0;
-      if (tr && (tr.kind === "kickflip" || tr.kind === "heelflip" || tr.kind === "shuvit" || tr.kind === "impossible")) hop = Math.sin(Math.PI * Math.min(1, tr.t / tr.dur)) * 0.28;
+      // semua trick flip/shuv-family mendapat "pop" papan naik-turun ala ollie
+      const FLIP_HOP: readonly string[] = [
+        "kickflip", "heelflip", "shuvit", "impossible",
+        "varial", "inward", "hardflip", "fingerflip", "pressure", "dblflip", "hospital", "treflip", "laser", "bigspin",
+      ];
+      if (tr && FLIP_HOP.includes(tr.kind)) hop = Math.sin(Math.PI * Math.min(1, tr.t / tr.dur)) * 0.28;
       const idle = engine.phase === "menu" ? Math.sin(t * 6) * 0.02 : 0;
       const grounded = p.grounded || p.grinding;
       const airborne = !grounded;
@@ -290,13 +295,18 @@ export function Player() {
         // stance santai: bahu sedikit ke belakang, lengan renggang tipis menjaga balance
         let rxL = -0.24, rxR = -0.24;
         let spL = 0.16 + breathe, spR = 0.16 + breathe;
-        const grabbing = Math.abs(g) > 0.05;
+        const grabbing = Math.abs(g) > 0.05 && tr?.kind !== "christ";
         const flapTrick = tr?.kind === "wingflap";
+        const christTrick = tr?.kind === "christ";
         if (u >= 0) {
           // ayunan balik mengikuti hentakan kaki (mirroring pushSwing sayap merpati)
           const swing = 0.4 * (1 + 0.8 * spr) * Math.sin(Math.PI * Math.min(1, u));
           rxL -= swing;
           rxR -= swing * 0.7;
+        } else if (christTrick) {
+          // CHRIST AIR: kedua lengan terbentang lurus membentuk huruf T!
+          rxL = -0.02; rxR = -0.02;
+          spL = 1.05; spR = 1.05;
         } else if (grabbing) {
           // GRAB (method/indy): tangan kanan menjangkau papan, kiri membuka lebar
           rxR = g > 0 ? 0.95 : 0.8;
