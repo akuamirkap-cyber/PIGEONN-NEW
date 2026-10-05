@@ -221,8 +221,11 @@ export function Player() {
       // whole rig yaws into the turn (real steering), plus trick spins and the menu turntable
       yg.rotation.y = p.yaw + p.showYaw + p.steer;
       // bank the whole rig about the wheel contact line (the bank group's origin sits at road level),
-      // so the outside wheels lift and the inside edge digs in like a real carve
-      bk.rotation.x = p.roll;
+      // so the outside wheels lift and the inside edge digs in like a real carve.
+      // Kanal trick baru: trickRoll (cartwheel/cork di sumbu-x) & trickPitch (front/back flip di
+      // sumbu-z) ikut diputar di grup bank ini → seluruh rider (merpati+papan) roll/balik dgn sudut benar.
+      bk.rotation.x = p.roll + p.trickRoll;
+      bk.rotation.z = p.trickPitch;
       // NEW: lift the whole rig a hair while carving (the outer wheels ride higher; keeps the inner ones out of the road)
       const lv = nm ? engine.turn.leanVis : 0; // right-positive lean
       // Bank about the wheel CONTACT EDGE instead of the board centre, otherwise the inside wheels sink into the
@@ -239,7 +242,7 @@ export function Player() {
       // board yaws into the carve (nose points where the pigeon is going) on top of any trick rotation
       // NEW: in the air the feet steer the board, so it tilts a little MORE than the body (lean * 0.2)
       const airTilt = nm ? lv * 0.2 * p.airBlend : 0;
-      bd.rotation.set(p.flip + (g > 0 ? g * 0.9 : 0) + airTilt, p.boardYaw + p.boardTwist, p.pitch + (g < 0 ? g * 0.35 : 0));
+      bd.rotation.set(p.flip + (g > 0 ? g * 0.9 : 0) + airTilt, p.boardYaw + p.boardTwist, p.pitch + (g < 0 ? g * 0.35 : 0) + p.boardPitch);
 
       let hop = 0;
       // semua trick flip/shuv-family mendapat "pop" papan naik-turun ala ollie
@@ -411,6 +414,7 @@ export function Player() {
       const body = p.body;
       yg.rotation.y = 0;
       bk.rotation.x = 0;
+      bk.rotation.z = 0;
       bk.position.set(0, 0, 0);
       pg.scale.set(PS, PS, PS);
       if (friendModel.current && friendRig) {

@@ -930,6 +930,12 @@ class Engine {
     boardYaw: 0,
     pitch: 0,
     roll: 0,
+    /** kanal trick BARU: roll seluruh rider (cartwheel/cork, sumbu-x di grup bank) */
+    trickRoll: 0,
+    /** kanal trick BARU: pitch seluruh rider (front/back flip, sumbu-z di grup bank) */
+    trickPitch: 0,
+    /** kanal trick BARU: hidung papan naik/turun INDEPENDEN dari badan (wrap/rocket/pressure) */
+    boardPitch: 0,
     wing: 0,
     crashVx: 0,
     crashVy: 0,
@@ -1439,6 +1445,9 @@ class Engine {
     if (!tr) return;
     p.trick = null;
     p.flip = 0;
+    p.trickRoll = 0;
+    p.trickPitch = 0;
+    p.boardPitch = 0;
     if (this.phase !== "playing") return;
     const info = TRICK_INFO[tr.kind];
     p.tricksThisAir++;
@@ -2223,6 +2232,9 @@ class Engine {
     let yaw = 0;
     let grab = 0;
     let boardYaw = 0;
+    let trickRoll = 0;
+    let trickPitch = 0;
+    let boardPitch = 0;
     if (tr) {
       const u = clamp(tr.t / tr.dur, 0, 1);
       const e = easeInOut(u);
@@ -2259,88 +2271,114 @@ class Engine {
         case "coo540":
           yaw = this.trickDir * e * Math.PI * 3;
           break;
-        /* ===== 20 GAYA BARU ===== */
-        // Flip & shuv family — papan berputar di sumbu flip (x) dan/atau yaw (y)
+        /* ===== 20 GAYA BARU — tiap trick punya SIGNATURE gerak sendiri:
+           selain flip/boardYaw/yaw/grab, kini ada PITCH papan (boardPitch),
+           ROLL rider (trickRoll: cartwheel/cork), dan PITCH rider (front/back). ===== */
+        // —— FLIP & SHUV FAMILY (papan yang unjuk gigi; tiap beda sumbu & sudut) ——
         case "varial":
           flip = e * Math.PI * 2;
           boardYaw = e * Math.PI;
+          boardPitch = hump * 0.25; // sendok kecil ke depan
           break;
         case "inward":
           flip = -e * Math.PI * 2;
           boardYaw = e * Math.PI;
+          boardPitch = -hump * 0.3; // sendok ke belakang (lawan varial)
           break;
         case "hardflip":
           flip = e * Math.PI * 2;
           boardYaw = -e * Math.PI;
+          boardPitch = hump * 0.75; // SIGNATURE: hidung papan mencelat curam (wrap-around)
           break;
         case "fingerflip":
           flip = e * Math.PI * 2;
-          grab = -hump * 0.5; // jari ikut "menyentil" (sedikit tuck)
+          grab = -hump * 0.55; // jari ikut menyentil (tuck)
+          boardPitch = hump * 0.15;
+          trickPitch = hump * 0.2; // badan merunduk mengikuti sentilan
           break;
         case "pressure":
           flip = -e * Math.PI * 2;
-          boardYaw = -e * Math.PI * 2;
+          boardYaw = -e * Math.PI;
+          boardPitch = hump * 0.85; // SIGNATURE: papan berputar DIAGONAL sekaligus
           break;
         case "dblflip":
           flip = e * Math.PI * 4; // dua putaran flip penuh!
+          boardPitch = hump * 0.12;
           break;
         case "hospital":
           // out-and-back: papan berputar maju lalu BERBALIK ke posisi semula
           flip = hump * Math.PI * 2;
           boardYaw = hump * Math.PI;
+          boardPitch = hump * 0.2;
           break;
         case "treflip":
           flip = e * Math.PI * 2;
           boardYaw = e * Math.PI * 2;
+          boardPitch = hump * 0.3;
           break;
         case "laser":
           flip = -e * Math.PI * 4;
           boardYaw = e * Math.PI * 2;
+          boardPitch = hump * 0.25;
           break;
-        // Spin family
+        // —— SPIN FAMILY (badan yang unjuk gigi; sudut tubuh = identitas) ——
         case "shifty":
-          yaw = hump * Math.PI * 0.75; // putar lalu kembali ke depan
+          yaw = hump * Math.PI * 0.75; // twist lalu kembali ke depan
+          trickRoll = hump * 0.25; // bahu ikut membanking ke dalam twist
           break;
         case "bigspin":
           yaw = e * Math.PI;
           boardYaw = e * Math.PI * 2;
+          trickPitch = hump * 0.2; // dorongan badan ke depan
           break;
         case "gazelle":
+          // BARREL ROLL PENUH: badan mengguling satu putaran sempurna,
+          // papan kontra-berputar mengimbangi — showstopper!
+          trickRoll = e * Math.PI * 2;
           yaw = e * Math.PI;
-          boardYaw = -e * Math.PI * 2; // papan kontra-putar dengan badan
+          boardYaw = -e * Math.PI * 2;
           break;
         case "air720":
-          yaw = this.trickDir * e * Math.PI * 4; // dua putaran penuh badan!
+          // CORK 720: dua putaran badan dengan bahu terjun ke samping (cork sesungguhnya)
+          yaw = this.trickDir * e * Math.PI * 4;
+          trickRoll = this.trickDir * hump * 0.85;
           break;
-        // Grab & style family
+        // —— GRAB & STYLE FAMILY (pose badan = karakter; bukan sekadar grab) ——
         case "melon":
           yaw = e * Math.PI;
           grab = -hump;
+          trickRoll = hump * 0.35; // miring menyilang ala melon
           break;
         case "nosegrab":
-          grab = hump * 0.55;
-          boardYaw = hump * 0.3;
+          grab = hump * 0.6;
+          boardPitch = hump * 0.55; // hidung papan turun ke tangan
+          trickPitch = hump * 0.4; // badan MERUNDUK maju meraih hidung
           break;
         case "tailgrab":
           grab = -hump * 0.75;
-          boardYaw = -hump * 0.3;
+          boardPitch = -hump * 0.55; // ekor papan naik ke tangan
+          trickPitch = -hump * 0.4; // badan MERUNDUK mundur (cermin nose grab)
           break;
         case "stalefish":
           grab = -hump;
           boardYaw = -hump * 0.2;
           yaw = hump * 0.3;
+          trickRoll = -hump * 0.45; // miring ke samping belakang — "stale" sesungguhnya
           break;
         case "benihana":
           grab = hump * 0.5;
           yaw = -hump * 0.4;
+          trickPitch = hump * 0.55; // SIGNATURE: badan menukik maju dalam!
           break;
         case "rocket":
           grab = -hump * 0.9;
-          boardYaw = hump * 0.15;
+          boardPitch = -hump * 0.8; // SIGNATURE: papan menunjuk LURUS ke depan-bawah
+          trickPitch = -hump * 0.25; // badan tetap tegak (efek roket!)
           break;
         case "christ":
           grab = hump * 0.25; // badan tegak, papan sedikit terangkat (lengan T di Player)
-          boardYaw = hump * 0.2;
+          boardPitch = hump * 0.25;
+          trickRoll = hump * 0.08; // goyang kecil mengambang
           break;
       }
     }
@@ -2348,6 +2386,9 @@ class Engine {
     p.yaw = yaw;
     p.grab = grab;
     p.boardYaw = boardYaw;
+    p.trickRoll = trickRoll;
+    p.trickPitch = trickPitch;
+    p.boardPitch = boardPitch;
     let pitch = 0;
     if (!p.grounded && !p.grinding) pitch = clamp(p.vh / JUMP_V, -0.5, 1) * 0.45;
     else if (p.onRamp) pitch = 0.39;
