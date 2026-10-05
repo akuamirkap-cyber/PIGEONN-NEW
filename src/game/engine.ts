@@ -118,6 +118,15 @@ export const ONCOMING_MOTORCYCLE_SPEED_MULT = 1.3;
 export const ARM_S = -2.0; // arm position relative to the rails
 export const ARM_HIT = 0.8;
 export const CROSSING_RAMP_S = -4.8;
+/** Jarak minimum dari perlintasan rel KE perempatan berikutnya, supaya lompatan ramp rel
+ *  SELALU mendarat DULU di aspal biasa sebelum masuk zona perempatan.
+ *  Fisika: takeoff di 3.6 m sebelum rel (CROSSING_RAMP_S + halfLen ramp 1.2), waktu udara
+ *  ≈1.126 s (y = 1 + 16t − 15t², RAMP_V 16 / GRAVITY 30). Jarak landing = −3.6 + 1.126 × v.
+ *  Margin +14 m untuk tepi deck perempatan (clearance scramble 12.2 m) + jarak reaksi.
+ *  Mengikuti speed mode menu (2×/3× → papan dua/tiga kali lebih jauh melompat). */
+export function railLandClear(speedMult: number) {
+  return Math.ceil(-3.6 + 1.126 * MAX_SPEED * speedMult + 14); // 25 m (1×) / 39 m (2×) / 54 m (3×)
+}
 /** Run distance (m) of the first railway crossing; later ones follow every CROSSING_GAP. */
 export const FIRST_CROSSING_M = 50;
 export const CROSSING_GAP: [number, number] = [150, 260];
@@ -4336,6 +4345,11 @@ class Engine {
         crossing = this.addCrossing(cs);
         // Shibuya nights are busier: railway crossings come around more often
         this.nextCrossingS = cs + (isShibuya ? rand(110, 190) : rand(CROSSING_GAP[0], CROSSING_GAP[1]));
+        // Beri ruang mendarat SEBELUM perempatan: ramp rel melempar pemain jauh ke depan
+        // (takeoff −3.6 m dari rel, udara ≈1.126 s) — menarik perempatan berikutnya ke
+        // depan track secukupnya agar pendaratan jatuh di aspal biasa, bukan di tengah
+        // zebra cross / arus lintas kendaraan.
+        this.nextIntersectionS = Math.max(this.nextIntersectionS, cs + railLandClear(this.speedMult));
       } else {
         this.nextCrossingS = this.isInSubwayTunnel(cs, 32) ? Math.max(this.nextCrossingS, s0 + CHUNK_LEN + 30) : s0 + CHUNK_LEN + 2;
       }
