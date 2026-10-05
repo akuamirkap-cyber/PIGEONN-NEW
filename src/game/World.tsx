@@ -218,6 +218,8 @@ const RamenCustomerView = memo(function RamenCustomerView({
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   const groupRef = useRef<THREE.Group>(null);
   const isShibuya = useUI((state) => state.trackMode === "shibuya");
+  // true saat panel karakter/trick sedang dibuka dari menu (kamera preview podium)
+  const previewFocus = useUI((s) => s.phase === "menu" && (s.menuView === "skins" || s.menuView === "tricks"));
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
@@ -369,6 +371,13 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   if (d.kind === "ramen_customer") {
     const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
     return <RamenCustomerView d={d} customer={customer} rotationY={d.rotY + flip} />;
+  }
+  // Saat panel karakter/trick terbuka di menu: kamera menyorot podium — pepohonan
+  // di dekat podium disembunyikan supaya tidak menutupi pandangan ke merpati.
+  if (previewFocus && (d.kind === "tree" || d.kind === "sakura" || d.kind === "bush")) {
+    const dx = d.pos[0] - engine.player.wx;
+    const dz = d.pos[2] - engine.player.wz;
+    if (dx * dx + dz * dz < 15 * 15) return null;
   }
   return (
     <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip} scale={d.spec?.assetScale ?? 1}>

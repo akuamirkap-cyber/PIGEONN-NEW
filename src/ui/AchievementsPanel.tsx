@@ -5,9 +5,11 @@ import { BreadIcon } from "./BreadIcon";
 import { sfx } from "../game/audio";
 
 /**
- * Panel PENCAPAIAN: daftar 16 lencana dengan progress bar, hadiah roti,
- * dan penanda BARU untuk yang belum dilihat. Menutup panel memanggil
- * markAchSeen() di store (badge merah di tombol trophy hilang).
+ * Panel PENCAPAIAN — bottom sheet TERANG dengan gaya yang sama seperti panel
+ * Karakter & Tricks: kartu putih, pill hadiah kuning roti, aksen teal.
+ * Baris: emoji besar tanpa kotak + judul lebar penuh (anti kepotong),
+ * pill status/hadiah melayang di pojok kanan-bawah kartu.
+ * Menutup panel memanggil markAchSeen() (badge merah di tombol trophy hilang).
  */
 export function AchievementsPanel({ onClose }: { onClose: () => void }) {
   const best = useUI((s) => s.best);
@@ -44,40 +46,45 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-40 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm card-in">
-      {/* container-type membuat semua satuan cqw di dalam RELATIF TERHADAP PANEL,
-          bukan menu overlay — jadi ukuran teks konsisten di layar apa pun */}
+    <div className="pointer-events-none absolute inset-0 z-40 select-none">
+      {/* container-type membuat semua cqw relatif panel — tinggi disamakan panel Karakter (56%) */}
       <div
-        className="flex max-h-[82%] w-full max-w-sm flex-col gap-2 rounded-3xl border border-white/10 bg-[#1c2230] p-4 text-white shadow-2xl"
+        className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[56%] flex-col rounded-t-[22px] bg-[#fff8ea] shadow-[0_-5px_0_rgba(0,0,0,0.1)]"
         style={{ containerType: "inline-size" }}
       >
-        {/* Header + progres total */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-          <span className="font-display text-[5cqw] text-[#ffd23f]">🏆 PENCAPAIAN</span>
+        {/* Header: judul + tombol tutup (gaya panel Tricks) */}
+        <div className="flex items-center justify-between px-4 pb-1.5 pt-3.5">
+          <div className="min-w-0">
+            <div className="font-display text-[5.6cqw] leading-none text-[#1f2430]">🏆 PENCAPAIAN</div>
+            <div className="mt-1 font-body text-[3.1cqw] font-bold leading-snug text-[#8a8f99]">
+              {doneCount}/{total} terbuka · tiap misi berhadiah roti
+            </div>
+          </div>
           <button
             type="button"
             onClick={close}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-display text-sm text-white active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f2430] font-display text-[4.6cqw] text-white shadow-[0_4px_0_rgba(0,0,0,0.2)] active:translate-y-[2px] active:shadow-none"
             aria-label="Tutup pencapaian"
           >
             ✕
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/10">
+
+        {/* Progress total */}
+        <div className="flex items-center gap-2 px-4 pb-2">
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/10">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#ffd23f] to-[#ff9f1c] transition-all"
               style={{ width: `${Math.round((doneCount / total) * 100)}%` }}
             />
           </div>
-          <span className="shrink-0 font-display text-[3.4cqw] text-white/85">
+          <span className="shrink-0 font-display text-[3.4cqw] text-[#8a8f99]">
             {doneCount}/{total}
           </span>
         </div>
 
-        {/* Daftar achievement (scroll) — pill hadiah melayang di pojok kanan-bawah
-            kartu, sehingga judul & info memakai lebar penuh dan tidak terpotong */}
-        <div className="flex flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-0.5">
+        {/* Daftar achievement (scroll) */}
+        <div className="flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden px-4 pb-4" style={{ touchAction: "pan-y" }}>
           {ACHIEVEMENTS.map((a) => {
             const done = st.done.includes(a.id);
             const isNew = done && !st.seen.includes(a.id);
@@ -87,47 +94,47 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
             return (
               <div
                 key={a.id}
-                className={`relative flex gap-2.5 rounded-2xl border px-2.5 py-2 ${
+                className={`relative flex gap-2.5 rounded-2xl px-3 py-2.5 ${
                   done
-                    ? "border-[#ffd23f]/45 bg-gradient-to-r from-[#ffd23f]/15 to-transparent"
-                    : "border-white/8 bg-white/[0.045]"
+                    ? "bg-[#fff2db] shadow-[0_3px_0_rgba(0,0,0,0.08)] ring-2 ring-[#f59e0b]/40"
+                    : "bg-white shadow-[0_3px_0_rgba(0,0,0,0.08)]"
                 }`}
               >
-                {/* Ikon lencana TANPA kotak */}
+                {/* Ikon lencana TANPA kotak — besar seperti area kotak dulu */}
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center pt-1 text-[8cqw] leading-none"
-                  style={done ? { filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))" } : { filter: "grayscale(1) opacity(0.6)" }}
+                  style={done ? { filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.35))" } : { filter: "grayscale(1) opacity(0.55)" }}
                 >
                   {a.icon}
                 </div>
-                {/* Kolom teks: judul lebar penuh (anti kepotong), info, lalu progres */}
+                {/* Kolom teks: judul lebar penuh, info, lalu progres */}
                 <div className="min-w-0 flex-1">
-                  <div className={`whitespace-nowrap font-display text-[3.9cqw] leading-tight ${done ? "text-[#ffe89a]" : "text-white/85"}`}>
+                  <div className={`whitespace-nowrap font-display text-[3.9cqw] leading-tight ${done ? "text-[#b45309]" : "text-[#1f2430]"}`}>
                     {a.title}
                   </div>
-                  <div className="pr-[5.5em] font-body text-[3.6cqw] font-semibold leading-snug text-white/60">{a.desc}</div>
+                  <div className="mt-0.5 pr-[5.5em] font-body text-[3.4cqw] font-bold leading-snug text-[#8a8f99]">{a.desc}</div>
                   {!done && (
-                    <div className="mt-0.5 flex items-center gap-1.5 pr-[5.5em]">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-1 flex items-center gap-1.5 pr-[5.5em]">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
                         <div className="h-full rounded-full bg-[#38bdf8]" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="shrink-0 font-display text-[3cqw] text-white/55">
+                      <span className="shrink-0 font-display text-[3cqw] text-[#8a8f99]">
                         {value}/{a.target}
                       </span>
                     </div>
                   )}
                 </div>
                 {/* Pill status/hadiah — melayang di pojok kanan-bawah kartu */}
-                <div className="absolute bottom-1.5 right-2 flex flex-col items-end gap-1">
+                <div className="absolute bottom-1.5 right-2.5 flex flex-col items-end gap-1">
                   {isNew && (
-                    <span className="animate-pulse rounded-md bg-[#ffd60a] px-1.5 py-0.5 font-display text-[2.9cqw] leading-none text-[#1f2430]">
+                    <span className="animate-pulse rounded-full bg-[#ffd60a] px-1.5 py-0.5 font-display text-[2.9cqw] leading-none text-[#1f2430] shadow">
                       BARU
                     </span>
                   )}
                   {done ? (
-                    <span className="whitespace-nowrap font-display text-[3cqw] leading-none text-[#2ecc71]">✓ TERBUKA</span>
+                    <span className="whitespace-nowrap font-display text-[3cqw] leading-none text-[#2ec4b6]">✓ TERBUKA</span>
                   ) : (
-                    <span className="flex items-center gap-1 whitespace-nowrap rounded-lg bg-white/8 px-1.5 py-0.5 font-display text-[3.2cqw] text-[#ffd60a]">
+                    <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-[#fff4d6] px-1.5 py-0.5 font-display text-[3.2cqw] leading-none text-[#8a5a12]">
                       +{a.reward}
                       <BreadIcon size={12} />
                     </span>
@@ -136,10 +143,10 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
               </div>
             );
           })}
-        </div>
-
-        <div className="pt-1 text-center font-body text-[3.4cqw] font-bold text-white/45">
-          Selesaikan misi di atas & panen hadiah rotinya! 🍞
+          {/* Footer tips — kotak navy seperti panel Tricks */}
+          <div className="mt-1 rounded-2xl bg-[#1f2430]/85 px-3 py-2 font-body text-[3cqw] font-bold leading-snug text-white/85">
+            Tips: selesaikan misi di atas untuk memanen hadiah rotinya 🍞 — achievement baru akan menandai tombol 🏆 dengan badge merah di menu utama!
+          </div>
         </div>
       </div>
     </div>

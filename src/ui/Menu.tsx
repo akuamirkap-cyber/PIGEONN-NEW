@@ -439,6 +439,7 @@ function MainMenu() {
             onClick={() => {
               unlockAudio();
               sfx.click();
+              engine.faceCamera();
               setShowAch(true);
             }}
             aria-label="Pencapaian"

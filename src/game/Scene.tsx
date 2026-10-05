@@ -38,8 +38,8 @@ const CROSSY: Framing = { back: 8.2, up: 9.2, lookAhead: 6.0, lookUp: 0.45, fov:
 const CROSSY_NOS: Framing = { ...CROSSY, back: 9.0, up: 9.6, fov: 51 };
 // Subway Surfers signature pre-game action angle: Low-Angle Dutch Hero Shot (sudut rendah miring dinamis)
 const MENU: Framing = { back: 3.3, up: 0.86, lookAhead: 0.12, lookUp: 0.95, fov: 54, latFollow: 1, orbit: -0.78, roll: -0.095, curveDown: 0.0008, curveSide: 0.0003, hazeNear: 90, hazeFar: 175 };
-const SKINS: Framing = { back: 7.6, up: 1.8, lookAhead: 0.15, lookUp: -0.5, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
-const TRICKS_F: Framing = { back: 9.8, up: 1.8, lookAhead: 0.15, lookUp: -1.4, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
+const SKINS: Framing = { back: 5.0, up: 1.6, lookAhead: 0.15, lookUp: -0.5, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
+const TRICKS_F: Framing = { back: 6.2, up: 1.6, lookAhead: 0.15, lookUp: -1.4, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
 const CRASH: Framing = { back: 5.6, up: 3.6, lookAhead: 0, lookUp: 0.35, fov: 56, latFollow: 0.25, orbit: 0, roll: 0, curveDown: 0.0006, curveSide: 0, hazeNear: 85, hazeFar: 165 };
 
 function CameraRig() {

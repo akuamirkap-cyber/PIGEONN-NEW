@@ -62,9 +62,10 @@ export function TricksPanel() {
         FREESTYLE SETUP
       </div>
 
-      {/* container-type membuat semua cqw di dalam relatif panel → rapi di layar apa pun */}
+      {/* container-type membuat semua cqw di dalam relatif panel → rapi di layar apa pun.
+          Tinggi panel disamakan dengan panel Karakter (56%). */}
       <div
-        className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[74%] flex-col rounded-t-[28px] bg-[#fff8ea] shadow-[0_-8px_0_rgba(0,0,0,0.12)]"
+        className="card-in pointer-events-auto absolute bottom-0 left-0 right-0 flex h-[56%] flex-col rounded-t-[22px] bg-[#fff8ea] shadow-[0_-5px_0_rgba(0,0,0,0.1)]"
         style={{ containerType: "inline-size" }}
       >
         <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3.5">
