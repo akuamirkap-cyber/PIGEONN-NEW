@@ -81,53 +81,51 @@ export function AchievementsPanel({ onClose }: { onClose: () => void }) {
             return (
               <div
                 key={a.id}
-                className={`relative flex items-center gap-2.5 rounded-2xl border px-2.5 py-2 ${
+                className={`relative flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${
                   done
                     ? "border-[#ffd23f]/45 bg-gradient-to-r from-[#ffd23f]/15 to-transparent"
                     : "border-white/8 bg-white/[0.045]"
                 }`}
               >
-                {/* Ikon lencana */}
+                {/* Ikon lencana TANPA kotak — simbol sebesar area kotaknya dulu */}
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl ${
-                    done ? "bg-gradient-to-b from-[#ffe89a] to-[#f5b71f] shadow-[0_2px_0_#a67c00]" : "bg-white/10 grayscale"
-                  }`}
-                  style={done ? undefined : { filter: "grayscale(1) opacity(0.55)" }}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center text-[9.5cqw] leading-none"
+                  style={done ? { filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.5))" } : { filter: "grayscale(1) opacity(0.6)" }}
                 >
                   {a.icon}
                 </div>
-                {/* Judul + deskripsi + progress */}
+                {/* Judul + deskripsi + progress (tidak ada yang kepotong) */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className={`truncate font-display text-[3.1cqw] leading-tight ${done ? "text-[#ffe89a]" : "text-white/85"}`}>
+                    <span className={`whitespace-nowrap font-display text-[5cqw] leading-tight ${done ? "text-[#ffe89a]" : "text-white/85"}`}>
                       {a.title}
                     </span>
                     {isNew && (
-                      <span className="shrink-0 animate-pulse rounded-md bg-[#ffd60a] px-1 py-0.5 font-display text-[2cqw] leading-none text-[#1f2430]">
+                      <span className="shrink-0 animate-pulse rounded-md bg-[#ffd60a] px-1.5 py-0.5 font-display text-[3cqw] leading-none text-[#1f2430]">
                         BARU
                       </span>
                     )}
                   </div>
-                  <div className="truncate font-body text-[2.5cqw] leading-snug text-white/55">{a.desc}</div>
+                  <div className="font-body text-[5cqw] font-bold leading-snug text-white/60">{a.desc}</div>
                   {!done && (
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
                         <div className="h-full rounded-full bg-[#38bdf8]" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="font-display text-[2.3cqw] text-white/50">
+                      <span className="font-display text-[3.4cqw] text-white/55">
                         {value}/{a.target}
                       </span>
                     </div>
                   )}
                 </div>
                 {/* Kanan: status terbuka / hadiah */}
-                <div className="flex w-14 shrink-0 flex-col items-center justify-center">
+                <div className="flex w-16 shrink-0 flex-col items-center justify-center">
                   {done ? (
-                    <span className="font-display text-[2.6cqw] leading-tight text-[#2ecc71]">✓ TERBUKA</span>
+                    <span className="font-display text-[3.4cqw] leading-tight text-[#2ecc71]">✓ TERBUKA</span>
                   ) : (
-                    <span className="flex items-center gap-1 rounded-lg bg-white/8 px-1.5 py-1 font-display text-[2.5cqw] text-[#ffd60a]">
+                    <span className="flex items-center gap-1 rounded-lg bg-white/8 px-1.5 py-1 font-display text-[3.4cqw] text-[#ffd60a]">
                       +{a.reward}
-                      <BreadIcon size={11} />
+                      <BreadIcon size={14} />
                     </span>
                   )}
                 </div>
