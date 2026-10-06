@@ -5,6 +5,8 @@ import { HUD } from "./ui/HUD";
 import { Menu } from "./ui/Menu";
 import { GameOver } from "./ui/GameOver";
 import { MysteryBoxModal } from "./ui/MysteryBoxModal";
+import { Tutorial } from "./ui/Tutorial";
+import { suspendAudioForHiddenPage, resumeAudioFromHiddenPage } from "./game/audio";
 import { engine, track } from "./game/engine";
 import { useUI } from "./game/store";
 import { ensureThumbs } from "./game/thumbs";
@@ -58,6 +60,16 @@ export default function App() {
   const stage = useStageSize();
   const inputRef = useRef<HTMLDivElement>(null);
   useInput(inputRef);
+  // Auto-pause & hemat daya HP: AudioContext disuspensi saat tab disembunyikan, dilanjut saat kembali.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) suspendAudioForHiddenPage();
+      else resumeAudioFromHiddenPage();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   const [glKey, setGlKey] = useState(0);
   const [glLost, setGlLost] = useState(false);
   const [gameMode, setGameMode] = useState<"pigeon" | "shibuya">(() => {
@@ -65,7 +77,7 @@ export default function App() {
       const saved = localStorage.getItem("preferred_game_mode");
       if (saved === "pigeon" || saved === "shibuya") return saved;
     }
-    return "pigeon"; // Default ke Shibuya Pigeon Game sesuai permintaan pengguna
+    return "pigeon"; // Default ke Pigeon Game
   });
 
   const switchGameMode = (mode: "pigeon" | "shibuya") => {
@@ -171,6 +183,7 @@ export default function App() {
             <Menu />
             <GameOver />
             <MysteryBoxModal />
+            <Tutorial />
           </div>
           {!stage.fullscreen && (
             <div className="mt-5 font-body text-sm font-bold tracking-wide text-white/50">

@@ -1,8 +1,16 @@
 import type { Part } from "./voxel";
+import { bustGeometryCache } from "./voxel";
 import {
   type ShibuyaBuildingId,
   getShibuyaBuildingParts,
 } from "./shibuyaBuildingModels";
+
+/** HMR: saat file model diganti, memori geometri HARUS dibuang —
+ *  kalau tidak, mesh motor/mobil lama (cache `getGeometry`) tetap dipakai
+ *  meskipun source parts-nya sudah baru. */
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => bustGeometryCache());
+}
 
 export type { ShibuyaBuildingId };
 
@@ -313,7 +321,7 @@ export function motorcycleParts(variant: number): Part[] {
     { x: 0.14, y: 0.44, z: -0.25, w: 0.11, h: 0.05, d: 0.16, color: chrome },
     // ================= PENGENDARA =================
     // Duduk straddle di jok: pinggul di jok (atas 0.73), paha maju, betis turun ke footpeg,
-    // badan sedikit membungkuk ke depan, kedua tangan benar-benar menggenggam grip setang.
+    // badan TEGAK LURUS (bukan membungkuk), kedua tangan benar-benar menggenggam grip setang.
     { x: -0.28, y: 0.83, z: 0, w: 0.26, h: 0.2, d: 0.4, color: pants }, // pinggul
     { x: -0.06, y: 0.78, z: 0.2, w: 0.38, h: 0.16, d: 0.16, color: pants }, // paha kiri
     { x: -0.06, y: 0.78, z: -0.2, w: 0.38, h: 0.16, d: 0.16, color: pants }, // paha kanan
@@ -321,35 +329,40 @@ export function motorcycleParts(variant: number): Part[] {
     { x: 0.12, y: 0.62, z: -0.21, w: 0.16, h: 0.26, d: 0.15, color: pants }, // betis kanan
     { x: 0.16, y: 0.5, z: 0.23, w: 0.24, h: 0.11, d: 0.16, color: boots }, // sepatu kiri di footpeg
     { x: 0.16, y: 0.5, z: -0.23, w: 0.24, h: 0.11, d: 0.16, color: boots }, // sepatu kanan
-    // badan (jaket) dengan punggung condong ke depan
+    // badan (jaket) — TEGAK LURUS di atas jok (tidak membungkuk miring ke depan)
     { x: -0.3, y: 0.97, z: 0, w: 0.3, h: 0.24, d: 0.42, color: riderJacket }, // perut
-    { x: -0.22, y: 1.17, z: 0, w: 0.32, h: 0.22, d: 0.44, color: riderJacket }, // dada
-    { x: -0.18, y: 1.29, z: 0, w: 0.3, h: 0.1, d: 0.46, color: riderJacket }, // bahu
-    { x: -0.22, y: 1.06, z: 0, w: 0.13, h: 0.36, d: 0.47, color: paint }, // strip resleting senada motor
-    { x: -0.22, y: 1.28, z: 0, w: 0.14, h: 0.07, d: 0.44, color: "#f1f3f6" }, // kerah putih
-    // lengan dua segmen dari bahu ke grip setang (siku membengkok, tangan pas di grip)
-    { x: 0.0, y: 1.2, z: 0.21, w: 0.38, h: 0.14, d: 0.14, rz: -0.36, color: riderJacket }, // lengan atas
-    { x: 0.0, y: 1.2, z: -0.21, w: 0.38, h: 0.14, d: 0.14, rz: -0.36, color: riderJacket },
-    { x: 0.33, y: 1.0, z: 0.26, w: 0.42, h: 0.13, d: 0.13, rz: -0.58, color: riderJacket }, // lengan bawah
-    { x: 0.33, y: 1.0, z: -0.26, w: 0.42, h: 0.13, d: 0.13, rz: -0.58, color: riderJacket },
+    { x: -0.3, y: 1.17, z: 0, w: 0.32, h: 0.22, d: 0.44, color: riderJacket }, // dada
+    { x: -0.3, y: 1.29, z: 0, w: 0.3, h: 0.1, d: 0.46, color: riderJacket }, // bahu
+    { x: -0.3, y: 1.06, z: 0, w: 0.13, h: 0.36, d: 0.47, color: paint }, // strip resleting senada motor
+    { x: -0.3, y: 1.28, z: 0, w: 0.14, h: 0.07, d: 0.44, color: "#f1f3f6" }, // kerah putih
+    // lengan dua segmen: LENGAN ATAS turun CEPAT dekat bahu (siku cukup menekuk),
+    // lengan bawah nyaris HORIZONTAL ke depan ke grip. Dari belakang/belakang-atas
+    // lengan terlihat pendek merapat ke badan (foreshortened), bukan pipa diagonal
+    // panjang yang bikin siluetnya tampak bengkok/miring.
+    // lengan TANGGA sederhana: TANPA rotasi diagonal sama sekali — kotak vertikal
+    // turun, lalu kotak horizontal maju ke grip; semuanya sejajar sumbu jalan.
+    { x: -0.18, y: 1.09, z: 0.245, w: 0.12, h: 0.32, d: 0.12, color: riderJacket }, // lengan atas (kotak turun)
+    { x: -0.18, y: 1.09, z: -0.245, w: 0.12, h: 0.32, d: 0.12, color: riderJacket },
+    { x: 0.14, y: 0.955, z: 0.27, w: 0.52, h: 0.11, d: 0.12, color: riderJacket }, // lengan bawah (kotak lurus maju)
+    { x: 0.14, y: 0.955, z: -0.27, w: 0.52, h: 0.11, d: 0.12, color: riderJacket },
     { x: 0.52, y: 0.87, z: 0.29, w: 0.18, h: 0.17, d: 0.15, color: "#2b2f38" }, // sarung tangan menggenggam grip (+z)
     { x: 0.52, y: 0.87, z: -0.29, w: 0.18, h: 0.17, d: 0.15, color: "#2b2f38" }, // sarung tangan menggenggam grip (-z)
-    // tas punggung kecil
-    { x: -0.46, y: 1.06, z: 0, w: 0.2, h: 0.34, d: 0.34, color: "#3f434c" },
-    { x: -0.55, y: 1.1, z: 0, w: 0.06, h: 0.16, d: 0.24, color: "#2b2f38" },
-    // ---- helm bulat dengan kaca depan (visor) ----
-    { x: -0.12, y: 1.34, z: 0, w: 0.15, h: 0.12, d: 0.15, color: "#e0b48f" }, // leher
-    { x: -0.1, y: 1.44, z: 0, w: 0.3, h: 0.17, d: 0.32, color: helmet }, // tempurung bawah
-    { x: -0.1, y: 1.555, z: 0, w: 0.25, h: 0.09, d: 0.28, color: helmet }, // tempurung atas (membulat)
-    { x: -0.1, y: 1.62, z: 0, w: 0.17, h: 0.045, d: 0.2, color: helmet }, // puncak helm
-    { x: -0.1, y: 1.36, z: 0, w: 0.32, h: 0.08, d: 0.34, color: helmet }, // dasar helm menutup tengkuk
-    { x: -0.1, y: 1.52, z: 0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet }, // pelipis kiri
-    { x: -0.1, y: 1.52, z: -0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet },
-    { x: 0.06, y: 1.47, z: 0, w: 0.1, h: 0.13, d: 0.29, color: "#20242c" }, // kaca helm (gelap)
-    { x: 0.05, y: 1.55, z: 0, w: 0.13, h: 0.05, d: 0.32, color: helmet }, // bibir atas kaca
-    { x: 0.04, y: 1.375, z: 0, w: 0.2, h: 0.09, d: 0.28, color: helmet }, // dagu (chin bar)
-    { x: -0.1, y: 1.6, z: 0, w: 0.22, h: 0.06, d: 0.33, color: paint }, // strip senada motor
-    { x: -0.27, y: 1.46, z: 0, w: 0.1, h: 0.12, d: 0.22, color: paint }, // spoiler belakang
+    // tas punggung kecil (menempel punggung yang tegak)
+    { x: -0.52, y: 1.06, z: 0, w: 0.2, h: 0.34, d: 0.34, color: "#3f434c" },
+    { x: -0.61, y: 1.1, z: 0, w: 0.06, h: 0.16, d: 0.24, color: "#2b2f38" },
+    // ---- helm bulat dengan kaca depan (visor), tepat di atas leher yang tegak ----
+    { x: -0.29, y: 1.34, z: 0, w: 0.15, h: 0.12, d: 0.15, color: "#e0b48f" }, // leher
+    { x: -0.28, y: 1.44, z: 0, w: 0.3, h: 0.17, d: 0.32, color: helmet }, // tempurung bawah
+    { x: -0.28, y: 1.555, z: 0, w: 0.25, h: 0.09, d: 0.28, color: helmet }, // tempurung atas (membulat)
+    { x: -0.28, y: 1.62, z: 0, w: 0.17, h: 0.045, d: 0.2, color: helmet }, // puncak helm
+    { x: -0.28, y: 1.36, z: 0, w: 0.32, h: 0.08, d: 0.34, color: helmet }, // dasar helm menutup tengkuk
+    { x: -0.28, y: 1.52, z: 0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet }, // pelipis kiri
+    { x: -0.28, y: 1.52, z: -0.175, w: 0.24, h: 0.16, d: 0.05, color: helmet },
+    { x: -0.12, y: 1.47, z: 0, w: 0.1, h: 0.13, d: 0.29, color: "#20242c" }, // kaca helm (gelap)
+    { x: -0.13, y: 1.55, z: 0, w: 0.13, h: 0.05, d: 0.32, color: helmet }, // bibir atas kaca
+    { x: -0.14, y: 1.375, z: 0, w: 0.2, h: 0.09, d: 0.28, color: helmet }, // dagu (chin bar)
+    { x: -0.28, y: 1.6, z: 0, w: 0.22, h: 0.06, d: 0.33, color: paint }, // strip senada motor
+    { x: -0.45, y: 1.46, z: 0, w: 0.1, h: 0.12, d: 0.22, color: paint }, // spoiler belakang
   ];
   return parts.map((p) => ({ ...p, y: p.y + DROP }));
 }
@@ -554,7 +567,7 @@ export function makeBuildingSpec(w: number): BuildingSpec {
   const color = BUILDING_COLORS[Math.floor(Math.random() * BUILDING_COLORS.length)];
   return {
     w,
-    floors: 3 + Math.floor(Math.random() * 4), // 3..6 floors
+    floors: 4 + Math.floor(Math.random() * 4), // 4..7 floors — gedung yang harusnya besar, DIBESARIN
     color,
     roof: "#5d6570",
     awning: Math.random() < 0.55,
@@ -598,8 +611,8 @@ export function buildingParts(s: BuildingSpec): Part[] {
     return shibuyaTowerParts(s);
   }
 
-  const depth = 5.8;
-  const floorH = 1.95;
+  const depth = 6.3;
+  const floorH = 2.35; // lantai tinggi — bangunan kota kelihatan GEDE & megah
   const h = s.floors * floorH + 0.8;
   const parts: Part[] = [
     { x: 0, y: h / 2, z: -depth / 2, w: s.w, h, d: depth, color: s.color },
@@ -647,31 +660,35 @@ export function buildingParts(s: BuildingSpec): Part[] {
 
 export function treeParts(variant: number): Part[] {
   const trunk = "#8b5a2b";
+  // Pohon kota yang harusnya besar, DIBESARIN: ~1.45x lebih tinggi, ~1.35x lebih lebar kanopinya.
+  const SY = 1.45, SW = 1.35;
+  const scaled = (parts: Part[]): Part[] =>
+    parts.map((p) => ({ ...p, x: p.x * SW, y: p.y * SY, z: p.z * SW, w: p.w * SW, h: p.h * SY, d: p.d * SW }));
   if (variant === 1) {
     // pine
-    return [
+    return scaled([
       { x: 0, y: 0.4, z: 0, w: 0.3, h: 0.8, d: 0.3, color: trunk },
       { x: 0, y: 1.0, z: 0, w: 1.5, h: 0.6, d: 1.5, color: "#2f855a" },
       { x: 0, y: 1.55, z: 0, w: 1.1, h: 0.55, d: 1.1, color: "#38a169" },
       { x: 0, y: 2.05, z: 0, w: 0.7, h: 0.5, d: 0.7, color: "#48bb78" },
       { x: 0, y: 2.45, z: 0, w: 0.35, h: 0.35, d: 0.35, color: "#68d391" },
-    ];
+    ]);
   }
   if (variant === 2) {
     // round
-    return [
+    return scaled([
       { x: 0, y: 0.5, z: 0, w: 0.3, h: 1.0, d: 0.3, color: trunk },
       { x: 0, y: 1.5, z: 0, w: 1.4, h: 1.1, d: 1.4, color: "#22c55e" },
       { x: 0, y: 2.25, z: 0, w: 0.9, h: 0.5, d: 0.9, color: "#34d399" },
       { x: 0.35, y: 1.3, z: 0.4, w: 0.7, h: 0.6, d: 0.7, color: "#16a34a" },
-    ];
+    ]);
   }
-  return [
+  return scaled([
     { x: 0, y: 0.45, z: 0, w: 0.3, h: 0.9, d: 0.3, color: trunk },
     { x: 0, y: 1.25, z: 0, w: 1.5, h: 0.8, d: 1.5, color: "#22c55e" },
     { x: 0, y: 1.9, z: 0, w: 1.05, h: 0.6, d: 1.05, color: "#34d399" },
     { x: 0, y: 2.35, z: 0, w: 0.55, h: 0.4, d: 0.55, color: "#4ade80" },
-  ];
+  ]);
 }
 
 export function lampParts(): Part[] {
@@ -1248,6 +1265,36 @@ const ELDER_OUTFITS: PedOutfit[] = [
   { top: "#8fbf9f", pants: "#454b52", hair: "#e4e4e6", skin: "#dfbb95", gender: "male", glasses: "round" },
 ];
 
+/** Tampilan MUSIM DINGIN (mode salju): jaket padded tebal, syal, dan kupluk rajut ber-pompom. */
+interface WinterLook { jacket: string; shade: string; fold: string; scarf: string; pants: string; beanie: string }
+const WINTER_LOOKS: WinterLook[] = [
+  { jacket: "#d95745", shade: "#b54536", fold: "#f4e3c3", scarf: "#f4e3c3", pants: "#2f3640", beanie: "#f4e3c3" },
+  { jacket: "#e8a33d", shade: "#c68630", fold: "#8d5c1c", scarf: "#3d4459", pants: "#3d4459", beanie: "#3d4459" },
+  { jacket: "#3d5a80", shade: "#2e4563", fold: "#1f3a55", scarf: "#e8c57c", pants: "#463f3a", beanie: "#e8c57c" },
+  { jacket: "#47663b", shade: "#35502c", fold: "#26401e", scarf: "#f0d9b5", pants: "#2f4858", beanie: "#f0d9b5" },
+  { jacket: "#7b4b94", shade: "#5f3a73", fold: "#482a58", scarf: "#f5d0dd", pants: "#4a4e57", beanie: "#f5d0dd" },
+  { jacket: "#b08968", shade: "#8d6b4e", fold: "#6e5239", scarf: "#7a3b3b", pants: "#39424e", beanie: "#7a3b3b" },
+  { jacket: "#c2557c", shade: "#9e4462", fold: "#7d334b", scarf: "#f7ede4", pants: "#33383f", beanie: "#f7ede4" },
+  { jacket: "#2a7f7d", shade: "#206260", fold: "#174847", scarf: "#ffd9a3", pants: "#2e3a45", beanie: "#ffd9a3" },
+  { jacket: "#566573", shade: "#424d58", fold: "#2f3841", scarf: "#c9ad82", pants: "#424a52", beanie: "#c9ad82" },
+  { jacket: "#9c5b3f", shade: "#7d4730", fold: "#5f3523", scarf: "#305243", pants: "#3c4247", beanie: "#305243" },
+  { jacket: "#c24b4b", shade: "#9e3a3a", fold: "#7c2c2c", scarf: "#2f4752", pants: "#4a5568", beanie: "#f4e3c3" },
+  { jacket: "#4f6d9e", shade: "#3c557c", fold: "#2c405c", scarf: "#f2c4a0", pants: "#2f3a4a", beanie: "#f2c4a0" },
+  { jacket: "#5f7748", shade: "#4a5d38", fold: "#374529", scarf: "#d9c3a5", pants: "#504539", beanie: "#d9c3a5" },
+  { jacket: "#a54f7a", shade: "#863f61", fold: "#662f49", scarf: "#e9e2d0", pants: "#41465a", beanie: "#e9e2d0" },
+  { jacket: "#3f6f6f", shade: "#305555", fold: "#233f40", scarf: "#d3a05b", pants: "#39414d", beanie: "#d3a05b" },
+  { jacket: "#cb8b45", shade: "#a66d33", fold: "#7d5225", scarf: "#4e5d4e", pants: "#4c545e", beanie: "#4e5d4e" },
+  { jacket: "#5566a3", shade: "#414e7e", fold: "#323a5c", scarf: "#f0e6d8", pants: "#353d4c", beanie: "#f0e6d8" },
+  { jacket: "#8d6b4f", shade: "#6e5239", fold: "#543d2a", scarf: "#c75050", pants: "#48414a", beanie: "#c75050" },
+];
+const WINTER_LOOKS_ELDER: WinterLook[] = [
+  { jacket: "#6d5a7d", shade: "#554763", fold: "#3e3347", scarf: "#e8e2d4", pants: "#4a4e57", beanie: "#e8e2d4" },
+  { jacket: "#8fae9f", shade: "#71907f", fold: "#55705f", scarf: "#f4ede0", pants: "#5b5560", beanie: "#f4ede0" },
+  { jacket: "#5f7a8f", shade: "#4a6070", fold: "#37485a", scarf: "#e5d8be", pants: "#454b52", beanie: "#e5d8be" },
+];
+const winterLook = (variant: number, elderly: boolean): WinterLook =>
+  (elderly ? WINTER_LOOKS_ELDER[Math.abs(variant) % WINTER_LOOKS_ELDER.length] : WINTER_LOOKS[Math.abs(variant) % WINTER_LOOKS.length]);
+
 /** Di mana tongkat digenggam: jarak telapak tangan dari sendi bahu (pakai `pedestrianArmParts`). */
 export const CANE_GRIP_Y = -0.56;
 
@@ -1265,7 +1312,7 @@ export function caneParts(): Part[] {
 }
 
 /** Pedestrian head with facial features, hair, hats (caps, bucket hats, beanies, berets), and glasses (sunglasses, wire, round). Origin at neck level (y = 0). */
-export function pedestrianHeadParts(variant: number, isHit = false, elderly = false): Part[] {
+export function pedestrianHeadParts(variant: number, isHit = false, elderly = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
   const isFemale = o.gender === "female";
   const parts: Part[] = [
@@ -1314,6 +1361,14 @@ export function pedestrianHeadParts(variant: number, isHit = false, elderly = fa
     // Topi baret chic miring
     const beretColor = variant === 12 ? "#1a1a1a" : variant === 17 ? "#7f4f24" : "#e63946";
     parts.push({ x: -0.04, y: 0.46, z: 0.04, w: 0.46, h: 0.09, d: 0.46, rx: 0.2, color: beretColor });
+  }
+
+  // ===== MUSIM DINGIN: SEMUA pakai KUPLUK rajut tebal ber-pompom (menimpa topi harian) =====
+  if (winter) {
+    const wl = winterLook(variant, elderly);
+    parts.push({ x: -0.02, y: 0.465, z: 0, w: 0.45, h: 0.19, d: 0.45, color: wl.beanie });   // mahkota kupluk
+    parts.push({ x: -0.02, y: 0.385, z: 0, w: 0.48, h: 0.09, d: 0.48, color: wl.fold });      // lipatan rajut
+    parts.push({ x: -0.02, y: 0.595, z: 0, w: 0.13, h: 0.11, d: 0.13, color: wl.scarf });     // pom-pom gumpil
   }
 
   if (isHit) {
@@ -1381,8 +1436,31 @@ export function pedestrianHeadParts(variant: number, isHit = false, elderly = fa
 }
 
 /** Pedestrian torso. Origin at torso center (y = 0). Mendukung rok wanita & tas randoseru sekolah. */
-export function pedestrianTorsoParts(variant: number, elderly = false, kid = false): Part[] {
+export function pedestrianTorsoParts(variant: number, elderly = false, kid = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    // JAKET TEBAL MUSIM DINGIN: bodi mengembang + garis quilt + hem + kerah + resleting + syal tebal
+    const wl = winterLook(variant, elderly);
+    const parts: Part[] = [
+      { x: 0, y: 0, z: 0, w: 0.5, h: 0.7, d: 0.6, color: wl.jacket },
+      { x: 0, y: 0.14, z: 0, w: 0.505, h: 0.045, d: 0.605, color: wl.shade },   // jahitan quilt atas
+      { x: 0, y: -0.1, z: 0, w: 0.505, h: 0.045, d: 0.605, color: wl.shade },   // jahitan quilt bawah
+      { x: 0, y: -0.33, z: 0, w: 0.52, h: 0.09, d: 0.62, color: wl.fold },      // hem rajutan
+      { x: 0.02, y: 0.34, z: 0, w: 0.46, h: 0.12, d: 0.52, color: wl.fold },    // kerah tebal
+      { x: 0.252, y: 0.0, z: 0, w: 0.015, h: 0.62, d: 0.05, color: wl.fold },   // resleting
+      { x: 0.0, y: 0.41, z: 0, w: 0.46, h: 0.13, d: 0.54, color: wl.scarf },    // syal menggulung
+      { x: 0.19, y: 0.13, z: 0.14, w: 0.1, h: 0.46, d: 0.15, color: wl.scarf }, // ujung syal menjuntai di dada
+    ];
+    if (kid) {
+      // randoseru tetap dibawa, digeser sedikit supaya tidak tenggelam di jaket tebal
+      const rc = variant % 2 ? "#b5323c" : "#262b33";
+      parts.push({ x: -0.36, y: 0.0, z: 0, w: 0.17, h: 0.46, d: 0.4, color: rc });
+      parts.push({ x: -0.39, y: 0.25, z: 0, w: 0.13, h: 0.07, d: 0.42, color: rc });
+      parts.push({ x: -0.27, y: 0.1, z: 0.2, w: 0.045, h: 0.34, d: 0.07, color: "#3a3f47" });
+      parts.push({ x: -0.27, y: 0.1, z: -0.2, w: 0.045, h: 0.34, d: 0.07, color: "#3a3f47" });
+    }
+    return parts;
+  }
   const parts: Part[] = [
     { x: 0, y: 0, z: 0, w: 0.42, h: 0.68, d: 0.52, color: o.top },
     { x: 0.12, y: 0.31, z: 0, w: 0.18, h: 0.08, d: 0.22, color: o.skin },
@@ -1415,8 +1493,20 @@ export function pedestrianTorsoParts(variant: number, elderly = false, kid = fal
 }
 
 /** Pedestrian arm. Origin at shoulder joint (y = 0), extends downward along -y. */
-export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly = false, holdsCane = false): Part[] {
+export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly = false, holdsCane = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    // lengan jaket penuh sampai pergelangan (kulit tidak kelihatan) + cuff rajut + sarung tangan bebuk
+    const wl = winterLook(variant, elderly);
+    const armw: Part[] = [
+      { x: 0, y: -0.11, z: 0, w: 0.18, h: 0.26, d: 0.18, color: wl.jacket },   // lengan atas tebal
+      { x: 0, y: -0.36, z: 0, w: 0.155, h: 0.3, d: 0.155, color: wl.jacket },  // lengan bawah tebal
+      { x: 0, y: -0.51, z: 0, w: 0.165, h: 0.09, d: 0.165, color: wl.fold },   // cuff rajutan
+      { x: 0, y: -0.63, z: 0, w: 0.15, h: 0.14, d: 0.15, color: wl.scarf },    // sarung tangan bebuk
+    ];
+    if (holdsCane) armw.push({ x: 0.01, y: -0.6, z: 0.02, w: 0.17, h: 0.13, d: 0.17, color: wl.scarf });
+    return armw;
+  }
   const arm: Part[] = [
     { x: 0, y: -0.12, z: 0, w: 0.15, h: 0.24, d: 0.15, color: o.top },
     { x: 0, y: -0.38, z: 0, w: 0.13, h: 0.32, d: 0.13, color: o.skin },
@@ -1429,13 +1519,254 @@ export function pedestrianArmParts(variant: number, _side: 1 | -1 = 1, elderly =
 }
 
 /** Pedestrian leg. Origin at hip joint (y = 0), extends downward along -y. */
-export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly = false): Part[] {
+export function pedestrianLegParts(variant: number, _side: 1 | -1 = 1, elderly = false, winter = false): Part[] {
   const o = elderly ? ELDER_OUTFITS[variant % ELDER_OUTFITS.length] : PED_OUTFITS[variant % PED_OUTFITS.length];
+  if (winter) {
+    const wl = winterLook(variant, elderly);
+    return [
+      { x: 0, y: -0.24, z: 0, w: 0.19, h: 0.48, d: 0.17, color: wl.pants },      // celana panjang hangat
+      { x: 0, y: -0.52, z: 0, w: 0.21, h: 0.16, d: 0.18, color: "#4a3a2c" },     // shaft boot salju
+      { x: 0.04, y: -0.6, z: 0, w: 0.26, h: 0.14, d: 0.19, color: "#2e2620" },   // sol boot tebal
+    ];
+  }
   return [
     { x: 0, y: -0.26, z: 0, w: 0.18, h: 0.52, d: 0.16, color: o.pants },
     { x: 0.03, y: -0.58, z: 0, w: 0.24, h: 0.12, d: 0.16, color: "#1f2430" },
   ];
 }
+
+/* ================= KAMEN RIDER (easter egg pejalan kaki) =================
+ * Pahlawan bertopeng klasik ala Showa Rider: helm hitam-hijau dengan MATA MAJEMUK
+ * merah menyala, antena perak, SYAL MERAH berkibar, typhoon belt, sarung tangan &
+ * sepatu boot perak. Proporsi mengikuti pedestrian biasa supaya anim jalan cocok. */
+// Palet Kamen Rider versi CUTE-HEROIC: hijau teal cerah (bukan hitam pekat),
+// mata jingga hangat besar ala kartun (bukan merah menyala yang serem).
+const KR = {
+  helmet: "#1fae6e",
+  helmShade: "#158552",
+  suit: "#26a06b",
+  suitShade: "#1a7a50",
+  eye: "#ff9a3d",
+  silver: "#e8ecf2",
+  silverDark: "#b8c0cc",
+  scarf: "#ef3b2d",
+  belt: "#1c1f26",
+};
+
+export function kamenRiderHeadParts(): Part[] {
+  return [
+    // HELM PENUH membulat ramah: hijau teal cerah menutup seluruh kepala
+    { x: 0, y: 0.18, z: 0, w: 0.42, h: 0.44, d: 0.44, color: KR.helmet },
+    { x: -0.02, y: 0.43, z: 0, w: 0.36, h: 0.1, d: 0.38, color: KR.helmShade }, // ridge atas
+    // Pipi bawah perak membulat (face-plate topeng classic tapi chubby)
+    { x: 0.14, y: 0.03, z: 0, w: 0.16, h: 0.14, d: 0.34, color: KR.silver },
+    // MATA MAJEMUK JINGGA BESAR & BULAT (khas Kamen Rider tapi ramah kartun)
+    { x: 0.2, y: 0.23, z: 0.12, w: 0.035, h: 0.17, d: 0.15, color: KR.eye, glow: true },
+    { x: 0.2, y: 0.23, z: -0.12, w: 0.035, h: 0.17, d: 0.15, color: KR.eye, glow: true },
+    // sparkle putih besar di tiap mata → kesan kawaii, tidak serem
+    { x: 0.215, y: 0.28, z: 0.1, w: 0.02, h: 0.07, d: 0.06, color: "#fff6dc" },
+    { x: 0.215, y: 0.28, z: -0.14, w: 0.02, h: 0.07, d: 0.06, color: "#fff6dc" },
+    // Grille mulut perak mungil (senyum kecil)
+    { x: 0.22, y: 0.02, z: 0, w: 0.02, h: 0.07, d: 0.16, color: KR.silverDark },
+    { x: 0.225, y: 0.04, z: 0, w: 0.015, h: 0.015, d: 0.12, color: "#8d95a1" },
+    // ANTENA V perak pendek & lebar (gemas, khas rider Showa)
+    { x: 0.08, y: 0.46, z: 0.07, w: 0.045, h: 0.16, d: 0.035, rx: -0.52, color: KR.silver },
+    { x: 0.08, y: 0.46, z: -0.07, w: 0.045, h: 0.16, d: 0.035, rx: 0.52, color: KR.silver },
+    // Crest bintang emas di dahi
+    { x: 0.17, y: 0.37, z: 0, w: 0.05, h: 0.11, d: 0.05, color: "#ffd23f" },
+    { x: 0.19, y: 0.41, z: 0, w: 0.03, h: 0.05, d: 0.03, color: "#ffe89a" },
+  ];
+}
+
+export function kamenRiderTorsoParts(): Part[] {
+  return [
+    // Kostum pahlawan hijau metalik
+    { x: 0, y: 0, z: 0, w: 0.42, h: 0.68, d: 0.52, color: KR.suit },
+    { x: 0.03, y: 0.14, z: 0, w: 0.38, h: 0.3, d: 0.54, color: KR.suitShade }, // dada armor
+    { x: 0.215, y: 0.16, z: 0, w: 0.02, h: 0.22, d: 0.34, color: KR.suit },     // kilau dada
+    // TYPHOON BELT: sabuk + gesper perak dengan inti kuning keemasan ceria
+    { x: 0, y: -0.26, z: 0, w: 0.44, h: 0.1, d: 0.54, color: KR.belt },
+    { x: 0.225, y: -0.26, z: 0, w: 0.03, h: 0.12, d: 0.16, color: KR.silver },
+    { x: 0.235, y: -0.26, z: 0, w: 0.015, h: 0.06, d: 0.07, color: "#ffd23f", glow: true },
+    { x: 0.225, y: -0.26, z: 0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark }, // turbin samping
+    { x: 0.225, y: -0.26, z: -0.13, w: 0.02, h: 0.05, d: 0.05, color: KR.silverDark },
+    // Badge bintang emas kecil di dada (pahlawan cilik!)
+    { x: 0.22, y: 0.2, z: 0, w: 0.025, h: 0.09, d: 0.09, color: "#ffd23f" },
+    { x: 0.225, y: 0.2, z: 0, w: 0.02, h: 0.045, d: 0.045, color: "#ffe89a" },
+    // SYAL MERAH CERAH mengalir ke belakang (ciri khas!)
+    { x: 0, y: 0.36, z: 0, w: 0.44, h: 0.1, d: 0.5, color: KR.scarf },
+    { x: -0.26, y: 0.3, z: 0.04, w: 0.26, h: 0.09, d: 0.2, rz: 0.28, color: KR.scarf },
+    { x: -0.44, y: 0.22, z: 0.02, w: 0.26, h: 0.08, d: 0.16, rz: 0.42, color: "#c22a20" }, // ujung syal
+  ];
+}
+
+export function kamenRiderArmParts(): Part[] {
+  return [
+    { x: 0, y: -0.12, z: 0, w: 0.16, h: 0.24, d: 0.16, color: KR.suit },
+    { x: 0, y: -0.36, z: 0, w: 0.14, h: 0.28, d: 0.14, color: KR.suitShade },
+    // Sarung tangan perak penutup lengan bawah (finisher glove)
+    { x: 0, y: -0.54, z: 0, w: 0.17, h: 0.14, d: 0.17, color: KR.silver },
+    { x: 0.01, y: -0.64, z: 0, w: 0.16, h: 0.08, d: 0.16, color: KR.silverDark },
+  ];
+}
+
+export function kamenRiderLegParts(): Part[] {
+  return [
+    { x: 0, y: -0.24, z: 0, w: 0.18, h: 0.48, d: 0.16, color: KR.suit },
+    // BOOT PERAK panjang khas rider
+    { x: 0, y: -0.52, z: 0, w: 0.2, h: 0.18, d: 0.18, color: KR.silver },
+    { x: 0.04, y: -0.62, z: 0, w: 0.26, h: 0.1, d: 0.18, color: KR.silverDark },
+  ];
+}
+
+/* ================= MOBIL SPORT LEGENDARIS PARKIR (kadang muncul) =================
+ * 3 model × 4 warna. variant: model = variant % 3 (0 RWB, 1 Skyline R34, 2 AE86),
+ * warna = floor(variant/3) % 4. Menghadap +x sepanjang trotoar, skala mobil game. */
+
+/** Porsche 911 RWB: widebody baut keling, ban ceper, SAYAP GT RAKSASA. */
+export function rwbParts(colorIdx: number): Part[] {
+  const paint = ["#e63946", "#f5f6f7", "#56cfe1", "#ffd23f"][colorIdx % 4]; // merah / putih / biru miami / kuning
+  const tire = "#1c1e22", rim = "#e8c766", glass = "#a9c8de";
+  return [
+    // Sasis ceper LEBAR (ciri khas RWB) + bumper dalam
+    { x: 0, y: 0.5, z: 0, w: 3.0, h: 0.55, d: 1.9, color: paint },
+    { x: 0, y: 0.26, z: 0, w: 2.9, h: 0.14, d: 1.7, color: "#22242a" }, // skirt bawah gelap
+    // Kap depan melandai (2 tahap ala hidung 911)
+    { x: 1.15, y: 0.78, z: 0, w: 0.85, h: 0.22, d: 1.7, color: paint },
+    { x: 0.42, y: 0.84, z: 0, w: 0.7, h: 0.3, d: 1.7, color: paint },
+    // FENDER FLARE baut keling di atas tiap roda (overfender RWB!)
+    { x: 1.02, y: 0.62, z: 0.93, w: 0.72, h: 0.34, d: 0.12, color: paint },
+    { x: 1.02, y: 0.62, z: -0.93, w: 0.72, h: 0.34, d: 0.12, color: paint },
+    { x: -1.02, y: 0.62, z: 0.95, w: 0.78, h: 0.38, d: 0.14, color: paint },
+    { x: -1.02, y: 0.62, z: -0.95, w: 0.78, h: 0.38, d: 0.14, color: paint },
+    // Kabin bubble coupe mungil + kaca
+    { x: -0.28, y: 1.12, z: 0, w: 1.15, h: 0.5, d: 1.35, color: paint },
+    { x: 0.28, y: 1.1, z: 0, w: 0.08, h: 0.36, d: 1.15, color: glass },
+    { x: -0.88, y: 1.02, z: 0, w: 0.3, h: 0.3, d: 1.2, rx: 0.5, color: glass }, // kaca belakang fastback
+    { x: -0.28, y: 1.1, z: 0.68, w: 0.8, h: 0.3, d: 0.05, color: glass },
+    { x: -0.28, y: 1.1, z: -0.68, w: 0.8, h: 0.3, d: 0.05, color: glass },
+    // SAYAP GT RAKSASA RWB + 2 strut hitam
+    { x: -1.28, y: 1.52, z: 0, w: 0.55, h: 0.06, d: 2.0, rx: -0.12, color: "#22242a" },
+    { x: -1.15, y: 1.2, z: 0.62, w: 0.08, h: 0.6, d: 0.08, rx: -0.2, color: "#22242a" },
+    { x: -1.15, y: 1.2, z: -0.62, w: 0.08, h: 0.6, d: 0.08, rx: -0.2, color: "#22242a" },
+    // Roda ceper: ban hitam + velg deep-dish emas
+    { x: 1.02, y: 0.34, z: 0.86, w: 0.62, h: 0.62, d: 0.3, color: tire },
+    { x: 1.02, y: 0.34, z: -0.86, w: 0.62, h: 0.62, d: 0.3, color: tire },
+    { x: -1.02, y: 0.34, z: 0.88, w: 0.66, h: 0.66, d: 0.32, color: tire },
+    { x: -1.02, y: 0.34, z: -0.88, w: 0.66, h: 0.66, d: 0.32, color: tire },
+    { x: 1.02, y: 0.34, z: 1.02, w: 0.3, h: 0.3, d: 0.02, color: rim },
+    { x: -1.02, y: 0.34, z: 1.05, w: 0.32, h: 0.32, d: 0.02, color: rim },
+    // Lampu bulat 911 + strip belakang merah menyala + knalpot ganda
+    { x: 1.45, y: 0.62, z: 0.55, w: 0.07, h: 0.18, d: 0.24, color: "#fff7c2" },
+    { x: 1.45, y: 0.62, z: -0.55, w: 0.07, h: 0.18, d: 0.24, color: "#fff7c2" },
+    { x: -1.5, y: 0.68, z: 0, w: 0.05, h: 0.14, d: 1.5, color: "#ff3b3b", glow: true }, // full-width light bar
+    { x: -1.53, y: 0.34, z: 0.5, w: 0.08, h: 0.1, d: 0.1, color: "#9aa2ae" },
+    { x: -1.53, y: 0.34, z: -0.5, w: 0.08, h: 0.1, d: 0.1, color: "#9aa2ae" },
+  ];
+}
+
+/** Nissan Skyline GT-R R34: coupe kotak legendaris, 4 lampu belakang bulat. */
+export function skylineR34Parts(colorIdx: number): Part[] {
+  const paint = ["#2a6fdb", "#c9d1d9", "#181c22", "#f4f6f8"][colorIdx % 4]; // bayside blue / silver / black / white
+  const tire = "#1c1e22", rim = "#b9c0ca", glass = "#a9c8de";
+  return [
+    // Bodi kotak berotot coupe
+    { x: 0, y: 0.55, z: 0, w: 3.2, h: 0.62, d: 1.7, color: paint },
+    { x: 0.95, y: 0.88, z: 0, w: 1.15, h: 0.14, d: 1.5, color: paint }, // kap dengan power bulge
+    { x: 0.95, y: 0.96, z: 0, w: 0.5, h: 0.06, d: 0.5, color: paint },
+    // Kabin 2-door dengan pilar tebal
+    { x: -0.2, y: 1.16, z: 0, w: 1.5, h: 0.52, d: 1.42, color: paint },
+    { x: 0.56, y: 1.14, z: 0, w: 0.1, h: 0.4, d: 1.24, color: glass },
+    { x: -0.95, y: 1.12, z: 0, w: 0.14, h: 0.38, d: 1.24, rx: 0.35, color: glass },
+    { x: -0.05, y: 1.14, z: 0.72, w: 1.15, h: 0.34, d: 0.05, color: glass },
+    { x: -0.05, y: 1.14, z: -0.72, w: 1.15, h: 0.34, d: 0.05, color: glass },
+    // Grille depan gelap + lampu depan tajam
+    { x: 1.62, y: 0.66, z: 0, w: 0.05, h: 0.16, d: 0.82, color: "#1c1e22" },
+    { x: 1.62, y: 0.66, z: 0.62, w: 0.06, h: 0.2, d: 0.3, color: "#fff7c2" },
+    { x: 1.62, y: 0.66, z: -0.62, w: 0.06, h: 0.2, d: 0.3, color: "#fff7c2" },
+    // 4 LAMPU BELAKANG BULAT (ikonik GT-R!)
+    { x: -1.62, y: 0.66, z: 0.55, w: 0.05, h: 0.2, d: 0.2, color: "#ff2b3d", glow: true },
+    { x: -1.62, y: 0.66, z: 0.28, w: 0.05, h: 0.2, d: 0.2, color: "#ff6b4a", glow: true },
+    { x: -1.62, y: 0.66, z: -0.28, w: 0.05, h: 0.2, d: 0.2, color: "#ff6b4a", glow: true },
+    { x: -1.62, y: 0.66, z: -0.55, w: 0.05, h: 0.2, d: 0.2, color: "#ff2b3d", glow: true },
+    // Spoiler GT-R di pilar belakang
+    { x: -1.35, y: 1.3, z: 0, w: 0.5, h: 0.05, d: 1.5, rx: -0.1, color: paint },
+    { x: -1.3, y: 1.02, z: 0.55, w: 0.08, h: 0.5, d: 0.07, rx: -0.15, color: "#22242a" },
+    { x: -1.3, y: 1.02, z: -0.55, w: 0.08, h: 0.5, d: 0.07, rx: -0.15, color: "#22242a" },
+    // Side skirt + knalpot besar tunggal
+    { x: 0, y: 0.28, z: 0.88, w: 2.2, h: 0.14, d: 0.08, color: "#22242a" },
+    { x: 0, y: 0.28, z: -0.88, w: 2.2, h: 0.14, d: 0.08, color: "#22242a" },
+    { x: -1.64, y: 0.32, z: 0.4, w: 0.1, h: 0.14, d: 0.14, color: "#d8dde4" },
+    // Roda + velg gunmetal
+    { x: 1.05, y: 0.33, z: 0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: 1.05, y: 0.33, z: -0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: -0.95, y: 0.33, z: 0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: -0.95, y: 0.33, z: -0.78, w: 0.62, h: 0.62, d: 0.27, color: tire },
+    { x: 1.05, y: 0.33, z: 0.93, w: 0.3, h: 0.3, d: 0.02, color: rim },
+    { x: -0.95, y: 0.33, z: 0.93, w: 0.3, h: 0.3, d: 0.02, color: rim },
+  ];
+}
+
+/** Toyota AE86 Trueno ala Initial D: hatchback panda putih-hitam, lampu pop-up tertutup. */
+export function ae86Parts(colorIdx: number): Part[] {
+  // 0 = panda klasik (putih, kap hitam, rocker hitam) — sisanya warna solid 80s
+  const panda = colorIdx % 4 === 0;
+  const paint = panda ? "#f6f6f4" : ["#f6f6f4", "#d53a3a", "#f4f4f4", "#8f9aa6"][colorIdx % 4];
+  const dark = "#1b1d22";
+  const hood = panda ? dark : paint;
+  const lower = panda ? dark : paint;
+  const tire = "#1c1e22", rim = "#d9c98f", glass = "#b7cfe0";
+  return [
+    // Bodi hatchback 80-an (2 warna ala panda bila colorIdx 0)
+    { x: 0, y: 0.55, z: 0, w: 2.9, h: 0.5, d: 1.6, color: paint },
+    { x: 0, y: 0.34, z: 0, w: 2.9, h: 0.18, d: 1.62, color: lower }, // rocker bawah
+    { x: 0.85, y: 0.84, z: 0, w: 1.0, h: 0.14, d: 1.4, color: hood }, // kap (HITAM pada panda!)
+    // Kabin hatchback: kabin + atap rata + pilar C miring khas liftback
+    { x: -0.1, y: 1.1, z: 0, w: 1.3, h: 0.44, d: 1.34, color: paint },
+    { x: 0.55, y: 1.08, z: 0, w: 0.1, h: 0.34, d: 1.16, color: glass },
+    { x: -0.75, y: 0.98, z: 0, w: 0.28, h: 0.34, d: 1.16, rx: 0.45, color: glass }, // jendela hatch miring
+    { x: -0.1, y: 1.08, z: 0.68, w: 1.0, h: 0.28, d: 0.05, color: glass },
+    { x: -0.1, y: 1.08, z: -0.68, w: 1.0, h: 0.28, d: 0.05, color: glass },
+    // LAMPU POP-UP TERTUTUP: moncong halus rata (ciri Trueno!)
+    { x: 1.46, y: 0.66, z: 0, w: 0.06, h: 0.2, d: 1.36, color: paint },
+    { x: 1.43, y: 0.78, z: 0.4, w: 0.08, h: 0.06, d: 0.3, color: "#2a2d33" }, // tutup pop-up
+    { x: 1.43, y: 0.78, z: -0.4, w: 0.08, h: 0.06, d: 0.3, color: "#2a2d33" },
+    // Grill tipis + lampu sein oranye kecil di bumper
+    { x: 1.47, y: 0.5, z: 0, w: 0.04, h: 0.12, d: 0.9, color: "#22242a" },
+    { x: 1.47, y: 0.56, z: 0.58, w: 0.04, h: 0.08, d: 0.2, color: "#ff9f1c" },
+    { x: 1.47, y: 0.56, z: -0.58, w: 0.04, h: 0.08, d: 0.2, color: "#ff9f1c" },
+    // Buritan + lip spoiler mungil + lampu belakang oranye-merah 80-an
+    { x: -1.42, y: 1.02, z: 0, w: 0.3, h: 0.05, d: 1.5, rx: -0.08, color: panda ? dark : paint },
+    { x: -1.46, y: 0.62, z: 0.5, w: 0.05, h: 0.14, d: 0.5, color: "#ff3b3b" },
+    { x: -1.46, y: 0.62, z: -0.5, w: 0.05, h: 0.14, d: 0.5, color: "#ff8046" },
+    // Strip samping + stiker pintu tofu (putih kecil) — hanya pada livery panda
+    ...(panda
+      ? [
+          { x: 0, y: 0.78, z: 0.81, w: 1.7, h: 0.09, d: 0.02, color: dark },
+          { x: 0, y: 0.78, z: -0.81, w: 1.7, h: 0.09, d: 0.02, color: dark },
+          { x: 0.1, y: 0.55, z: 0.82, w: 0.5, h: 0.18, d: 0.02, color: "#f6f6f4" },
+          { x: 0.1, y: 0.55, z: 0.835, w: 0.4, h: 0.1, d: 0.01, color: "#22242a" },
+        ]
+      : []),
+    // Roda + velg hitam-watanabe krem khas 86
+    { x: 0.95, y: 0.32, z: 0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: 0.95, y: 0.32, z: -0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: -0.9, y: 0.32, z: 0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: -0.9, y: 0.32, z: -0.72, w: 0.58, h: 0.58, d: 0.24, color: tire },
+    { x: 0.95, y: 0.32, z: 0.85, w: 0.28, h: 0.28, d: 0.02, color: rim },
+    { x: -0.9, y: 0.32, z: 0.85, w: 0.28, h: 0.28, d: 0.02, color: rim },
+  ];
+}
+
+/** Mobil sport spesial yang PARKIR di bahu/trotoar (jarang muncul — surprise!). */
+export function specialCarParts(variant: number): Part[] {
+  const model = Math.abs(variant) % 3;
+  const colorIdx = Math.floor(Math.abs(variant) / 3) % 4;
+  if (model === 0) return rwbParts(colorIdx);
+  if (model === 1) return skylineR34Parts(colorIdx);
+  return ae86Parts(colorIdx);
+}
+
 
 /** Pedestrian with tote bag / umbrella variants, facing +x. */
 export function pedestrianParts(variant: number, isHit = false, elderly = false): Part[] {
@@ -1520,6 +1851,49 @@ export function sidewalkPlanterParts(variant: number): Part[] {
   [-0.35, 0.0, 0.35].forEach((fx, i) => {
     parts.push({ x: fx, y: 0.68 + (i % 2) * 0.04, z: i % 2 ? 0.10 : -0.08, w: 0.11, h: 0.11, d: 0.11, color: fl[i % fl.length] });
   });
+  return parts;
+}
+
+/** Gundukan/tumpukan salju (bendungan salju berserok di tepi jalan): 4 varian bentuk indah —
+ *  v0 gundukan landai lebar, v1 dua bongkah sandaran, v2 gundukan TINGGI tebal, v3 banket panjang berserok.
+ *  Origin di dasar tumpukan (y=0 = permukaan tanah/trotoar). */
+export function snowDriftParts(variant: number): Part[] {
+  const g0 = "#e6edf7"; // bayangan dasar (kebiruan tertimbun)
+  const g1 = "#f2f7fc"; // tengah
+  const g2 = "#ffffff"; // puncak bercahaya
+  const v = Math.abs(variant) % 4;
+  const parts: Part[] = [];
+  if (v === 0) {
+    parts.push({ x: 0, y: 0.11, z: 0, w: 2.1, h: 0.22, d: 1.5, color: g0 });
+    parts.push({ x: -0.25, y: 0.3, z: 0.1, w: 1.35, h: 0.24, d: 1.0, color: g1 });
+    parts.push({ x: 0.45, y: 0.26, z: -0.3, w: 0.85, h: 0.2, d: 0.75, color: g1 });
+    parts.push({ x: -0.2, y: 0.5, z: 0.08, w: 0.78, h: 0.2, d: 0.6, color: g2 });
+    parts.push({ x: 0.42, y: 0.42, z: -0.3, w: 0.48, h: 0.14, d: 0.42, color: g2 });
+  } else if (v === 1) {
+    parts.push({ x: -0.5, y: 0.13, z: 0, w: 1.05, h: 0.26, d: 1.1, color: g0 });
+    parts.push({ x: 0.5, y: 0.13, z: 0.05, w: 1.05, h: 0.26, d: 1.05, color: g0 });
+    parts.push({ x: 0, y: 0.1, z: 0.0, w: 0.5, h: 0.2, d: 1.1, color: g1 });
+    parts.push({ x: -0.5, y: 0.34, z: 0, w: 0.7, h: 0.2, d: 0.75, color: g1 });
+    parts.push({ x: 0.5, y: 0.34, z: 0.05, w: 0.7, h: 0.2, d: 0.7, color: g1 });
+    parts.push({ x: -0.5, y: 0.5, z: 0, w: 0.42, h: 0.14, d: 0.45, color: g2 });
+    parts.push({ x: 0.5, y: 0.5, z: 0.05, w: 0.42, h: 0.14, d: 0.42, color: g2 });
+  } else if (v === 2) {
+    // gundukan TINGGI tebal ("salju beberapa agak tebal" — tumpukan yang serius!)
+    parts.push({ x: 0, y: 0.15, z: 0, w: 1.6, h: 0.3, d: 1.35, color: g0 });
+    parts.push({ x: 0.05, y: 0.4, z: -0.02, w: 1.15, h: 0.26, d: 1.0, color: g1 });
+    parts.push({ x: -0.02, y: 0.62, z: 0.03, w: 0.75, h: 0.22, d: 0.68, color: g2 });
+    parts.push({ x: 0.02, y: 0.8, z: 0, w: 0.42, h: 0.16, d: 0.4, color: g2 });
+    parts.push({ x: 0.12, y: 0.92, z: -0.04, w: 0.2, h: 0.1, d: 0.2, color: g2 });
+  } else {
+    // banket panjang berserok (benderara salju di pinggir — khas Jakarta/negara dingin)
+    parts.push({ x: 0, y: 0.08, z: 0, w: 2.8, h: 0.16, d: 0.55, color: g0 });
+    parts.push({ x: -0.4, y: 0.2, z: 0, w: 1.9, h: 0.1, d: 0.42, color: g1 });
+    parts.push({ x: 0.5, y: 0.27, z: 0, w: 1.1, h: 0.08, d: 0.3, color: g2 });
+    parts.push({ x: -1.15, y: 0.16, z: 0, w: 0.5, h: 0.08, d: 0.4, color: g1 });
+  }
+  // keping kecipratan di kaki tumpukan
+  parts.push({ x: -(0.9 + (v % 2) * 0.35), y: 0.045, z: 0.5, w: 0.34, h: 0.09, d: 0.3, color: g1 });
+  parts.push({ x: 0.85 + (v % 3) * 0.2, y: 0.04, z: -0.45, w: 0.3, h: 0.08, d: 0.27, color: g1 });
   return parts;
 }
 
@@ -1631,17 +2005,20 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
   parts.push({ x: halfW * 0.43, y: 0.018, z: 0, w: 1.4, h: 0.025, d: 7.8, color: asphaltDark });
 
   // 2. Lateral Cross-Streets (Left: z = -4.0 to -30, Right: z = +4.0 to +30)
-  // Raised to y = 0.145 (surface top at y = 0.175) so it cleanly overlays ground sidewalk (0.12) & curbs (0.14)
+  // The cross street must sit flush with the main asphalt. The old raised deck
+  // made a floating grey platform visible from the player's right side.
   for (const sz of [-CROSS_STREET_MID, CROSS_STREET_MID]) {
-    // Roadbed asphalt (38m long each side, 8.4m wide)
-    parts.push({ x: 0, y: 0.145, z: sz, w: W, h: 0.06, d: CROSS_STREET_LEN, color: asphalt });
-    // Underneath skirt foundation down to y = -0.3 to prevent any floating seams
-    parts.push({ x: 0, y: -0.05, z: sz, w: W + 0.1, h: 0.35, d: CROSS_STREET_LEN, color: "#2d3139" });
+    // Roadbed asphalt: top at roughly y = 0.03, matching the main road.
+    parts.push({ x: 0, y: 0.015, z: sz, w: W, h: 0.03, d: CROSS_STREET_LEN, color: asphalt });
+    // Hidden sub-base: below the ground plane, so no concrete wall is visible
+    // along the near/far edge of the crossing.
+    parts.push({ x: 0, y: -0.16, z: sz, w: W + 0.1, h: 0.28, d: CROSS_STREET_LEN, color: "#79847c" });
   }
 
-  // Smooth curb-cut ramp connecting main street (y = 0) to cross street (y = 0.145)
+  // Flat join to the main street. No raised two-step ramp: the cross street
+  // now meets the road cleanly without a visible wedge or broken-looking slab.
   for (const dir of [-1, 1]) {
-    parts.push({ x: 0, y: 0.08, z: dir * 4.0, w: W, h: 0.09, d: 0.8, color: asphalt });
+    parts.push({ x: 0, y: 0.018, z: dir * 3.9, w: W, h: 0.03, d: 0.3, color: asphalt });
   }
 
   // 3. Sidewalks along both sides of the Cross-Street (x = -halfW - 0.7 and x = +halfW + 0.7)
@@ -1668,21 +2045,27 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
     }
   }
 
-  // 5. White Stop Lines before the intersection (di belakang zebra, seperti aturan Jepang)
-  for (const sz of [-7.0, 7.0]) {
-    parts.push({ x: 0, y: 0.18, z: sz, w: W - 1.2, h: 0.022, d: 0.45, color: white });
+  // 5. White Stop Lines sebelum zebra (hanya di lajur mendekat — kiri ala Jepang —
+  //    bukan membentang penuh menyeberangi garis kuning tengah)
+  for (const dir of [-1, 1]) {
+    const stopZ = dir * 7.0;
+    // Jepang = kiri-jalan: mobil yang mendekat dari +z melaju ke -z di lajur x<0, dan sebaliknya
+    const laneCx = -dir * (halfW / 2 + 0.1);
+    parts.push({ x: laneCx, y: 0.18, z: stopZ, w: halfW - 0.8, h: 0.022, d: 0.45, color: white });
   }
 
   // 6. Double Solid Yellow Center Dividing Lines on the Cross-Street
+  //    (mulai SETELAH zebra cross selesai di |z|=6.9 → marka tidak saling tumpuk)
   for (const dir of [-1, 1]) {
-    for (let z = 5.2; z <= CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 1; z += 1.8) {
+    for (let z = 6.95; z <= CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 1; z += 1.8) {
       const cz = dir * z;
       parts.push({ x: -0.15, y: 0.18, z: cz, w: 0.14, h: 0.022, d: 1.3, color: yellow });
       parts.push({ x: 0.15, y: 0.18, z: cz, w: 0.14, h: 0.022, d: 1.3, color: yellow });
     }
-    // Solid white shoulder edge lines on the cross street
+    // Solid white shoulder edge lines — juga mulai rapi setelah zebra
     for (const sx of [-halfW + 0.5, halfW - 0.5]) {
-      parts.push({ x: sx, y: 0.178, z: dir * CROSS_STREET_MID, w: 0.16, h: 0.022, d: CROSS_STREET_LEN - 3, color: white });
+      const cz = dir * (6.95 + (CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 6.95) / 2);
+      parts.push({ x: sx, y: 0.178, z: cz, w: 0.16, h: 0.022, d: CROSS_STREET_MID + CROSS_STREET_LEN / 2 - 6.95, color: white });
     }
     // Painted directional arrows on the cross-street lanes
     const arrowZ = dir * 11;
@@ -1694,55 +2077,62 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
     }
   }
 
-  // 7. ZEBRA CROSS 4 ARAH — desain benar ala Jepang:
-  // pita selebar ~2.3 m; tiap garis MEMANJANG searah laju mobil dan berulang
-  // searah langkah pejalan kaki, jadi terbaca sebagai zebra sungguhan.
+  // 7. ZEBRA CROSS 4 ARAH — desain benar ala Jepang, rapat & presisi:
+  // pita selebar ~2.2 m; tiap garis MEMANJANG searah laju mobil dan berulang
+  // searah langkah pejalan kaki. Ujung tiap pita PAS di tepi plat/aspal — tidak ada
+  // setrip yang mencuat melewati kurb atau melayang di luar badan jalan.
   // A. Menyeberangi main street (pejalan jalan sepanjang z; garis memanjang di x)
-  for (const sx of [-(halfW + 1.5), halfW + 1.5]) {
+  //    Pita mulai tepat di tepi plat junction (|x| = halfW) dan merentang 2.2 m ke luar.
+  for (const sx of [-(halfW + 1.1), halfW + 1.1]) {
     for (let zi = -4; zi <= 4; zi++) {
-      parts.push({ x: sx, y: 0.025, z: zi * 0.82, w: 2.3, h: 0.022, d: 0.46, color: white });
+      parts.push({ x: sx, y: 0.028, z: zi * 0.82, w: 2.2, h: 0.022, d: 0.46, color: white });
     }
   }
   // B. Menyeberangi cross-street kiri/kanan (pejalan jalan sepanjang x; garis memanjang di z)
-  for (const sz of [-5.5, 5.5]) {
+  //    Pita di |z| 4.55..6.65 — bersih dari tepi dek (4.0) dan garis kuning (mulai 6.95).
+  for (const sz of [-5.6, 5.6]) {
     const nx = Math.floor((W - 1.6) / 0.82);
     for (let xi = 0; xi < nx; xi++) {
       const x = -((nx - 1) * 0.82) / 2 + xi * 0.82;
-      parts.push({ x, y: 0.182, z: sz, w: 0.46, h: 0.022, d: 2.2, color: white });
+      parts.push({ x, y: 0.182, z: sz, w: 0.46, h: 0.022, d: 2.1, color: white });
     }
   }
 
   // 8. Overhead Highway / Cross-Street Directional Gantry Sign
-  // Steel gantry columns on both sides of main street at x = 0, z = -4.8 and +4.8
+  // Kolom baja berdiri di TROTOAR main street sisi pendekat (bukan di tengah zebra!):
+  // gantryX menempatkan seluruh gantry SEBELUM zebra A — persis gantry jalan tol asli
+  // yang menyambut pengemudi sebelum masuk perempatan.
+  const gantryX = -(halfW + 2.6);
   for (const gz of [-4.8, 4.8]) {
-    parts.push({ x: 0, y: 2.8, z: gz, w: 0.25, h: 5.6, d: 0.25, color: metal });
-    parts.push({ x: 0, y: 0.15, z: gz, w: 0.5, h: 0.3, d: 0.5, color: curb });
+    parts.push({ x: gantryX, y: 2.8, z: gz, w: 0.25, h: 5.6, d: 0.25, color: metal });
+    parts.push({ x: gantryX, y: 0.15, z: gz, w: 0.5, h: 0.3, d: 0.5, color: curb });
   }
   // Overhead truss beam spanning across at y = 5.2
-  parts.push({ x: 0, y: 5.3, z: 0, w: 0.28, h: 0.35, d: 9.8, color: metal });
-  // Japanese Overhead Directional Signs:
-  // Sign 1 (facing incoming player on -x side): Blue sign "渋谷 SHIBUYA ➔"
-  parts.push({ x: -0.16, y: 4.8, z: -1.8, w: 0.06, h: 1.1, d: 2.4, color: signBlue });
-  parts.push({ x: -0.20, y: 4.8, z: -1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
-  parts.push({ x: -0.22, y: 4.8, z: -1.8, w: 0.02, h: 0.7, d: 1.95, color: signBlue });
+  parts.push({ x: gantryX, y: 5.3, z: 0, w: 0.28, h: 0.35, d: 9.8, color: metal });
+  // Japanese Overhead Directional Signs (menghadap pemain yang datang dari -x):
+  // Sign 1: Blue sign "渋谷 SHIBUYA ➔"
+  parts.push({ x: gantryX - 0.16, y: 4.8, z: -1.8, w: 0.06, h: 1.1, d: 2.4, color: signBlue });
+  parts.push({ x: gantryX - 0.20, y: 4.8, z: -1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.22, y: 4.8, z: -1.8, w: 0.02, h: 0.7, d: 1.95, color: signBlue });
   // Route 246 badge
-  parts.push({ x: -0.24, y: 5.0, z: -2.3, w: 0.02, h: 0.4, d: 0.45, color: "#ffffff" });
-  parts.push({ x: -0.25, y: 5.0, z: -2.3, w: 0.02, h: 0.32, d: 0.36, color: signBlue });
+  parts.push({ x: gantryX - 0.24, y: 5.0, z: -2.3, w: 0.02, h: 0.4, d: 0.45, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.25, y: 5.0, z: -2.3, w: 0.02, h: 0.32, d: 0.36, color: signBlue });
   // Arrow on sign
-  parts.push({ x: -0.24, y: 4.8, z: -1.1, w: 0.02, h: 0.2, d: 0.45, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.8, z: -1.1, w: 0.02, h: 0.2, d: 0.45, color: "#ffffff" });
 
   // Sign 2: Green sign "CROSSROAD / 交差点"
-  parts.push({ x: -0.16, y: 4.8, z: 1.8, w: 0.06, h: 1.1, d: 2.4, color: signGreen });
-  parts.push({ x: -0.20, y: 4.8, z: 1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
-  parts.push({ x: -0.22, y: 4.8, z: 1.8, w: 0.02, h: 0.7, d: 1.95, color: signGreen });
+  parts.push({ x: gantryX - 0.16, y: 4.8, z: 1.8, w: 0.06, h: 1.1, d: 2.4, color: signGreen });
+  parts.push({ x: gantryX - 0.20, y: 4.8, z: 1.8, w: 0.02, h: 0.85, d: 2.15, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.22, y: 4.8, z: 1.8, w: 0.02, h: 0.7, d: 1.95, color: signGreen });
   // Street name glyph blocks on green sign
-  parts.push({ x: -0.24, y: 4.85, z: 1.8, w: 0.02, h: 0.3, d: 1.5, color: "#ffffff" });
-  parts.push({ x: -0.24, y: 4.6, z: 1.8, w: 0.02, h: 0.15, d: 1.2, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.85, z: 1.8, w: 0.02, h: 0.3, d: 1.5, color: "#ffffff" });
+  parts.push({ x: gantryX - 0.24, y: 4.6, z: 1.8, w: 0.02, h: 0.15, d: 1.2, color: "#ffffff" });
 
   // 9. Curbside Storm Drain Grates in the road gutters
+  //    (di main street |z| = 3.55 — TEPAT sebelum mulut ramp; tidak terkubur plat cross-street)
   for (const dx of [-3.5, 3.5]) {
-    for (const dz of [-4.2, 4.2]) {
-      parts.push({ x: dx, y: 0.02, z: dz, w: 0.8, h: 0.015, d: 0.4, color: "#1f2329" });
+    for (const dz of [-3.55, 3.55]) {
+      parts.push({ x: dx, y: 0.012, z: dz, w: 0.8, h: 0.015, d: 0.35, color: "#1f2329" });
     }
   }
 

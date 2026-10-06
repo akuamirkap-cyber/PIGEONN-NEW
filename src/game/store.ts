@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { SKINS, getSkin } from "./skins";
 import { TRICKS, type TrickKind } from "./tricks";
 import { loadWordHunt, saveWordHunt, type WordHuntData } from "./wordHunt";
+import { evaluate, markAllSeen, unseenCount, getAch } from "./achievements";
 
 export type Phase = "menu" | "playing" | "crashed" | "gameover";
 export type TurnMode = "old" | "new";
@@ -35,6 +36,8 @@ interface UIState {
   wallet: number;
   runs: number;
   muted: boolean;
+  tutorialSeen: boolean;
+  setTutorialSeen: () => void;
   isNewBest: boolean;
   popups: Popup[];
   combo: number;
@@ -64,8 +67,18 @@ interface UIState {
   /** Crossy Road = elevated, readable follow camera; chase = original low action camera. */
   cameraMode: CameraMode;
   setCameraMode: (m: CameraMode) => void;
+  /** Penyetelan kamera in-game: offset ketinggian, sudut & jarak zoom (tersimpan), plus status panel adjust (game dijeda) */
+  camHeight: number;
+  camAngle: number;
+  camDist: number;
+  camAdjusting: boolean;
+  setCamHeight: (v: number) => void;
+  setCamAngle: (v: number) => void;
+  setCamDist: (v: number) => void;
+  setCamAdjusting: (v: boolean) => void;
+  resetCamView: () => void;
   /** cuaca mode siang: cerah / berawan indah */
-  weather: "sunny" | "cloudy";
+  weather: "sunny" | "cloudy" | "snow";
   toggleWeather: () => void;
   /** kecerahan lampu malam: 0 = redup, 1 = pas, 2 = terang */
   nightBright: 0 | 1 | 2;
@@ -73,8 +86,8 @@ interface UIState {
   /** waktu hari untuk Shibuya: pagi / siang / sore / malam */
   shibuyaTime: "pagi" | "siang" | "sore" | "malam";
   cycleShibuyaTime: () => void;
-  deckOverride: "default" | "baguette";
-  setDeckOverride: (d: "default" | "baguette") => void;
+  deckOverride: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo";
+  setDeckOverride: (d: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo") => void;
   wheelColor: WheelColor;
   setWheelColor: (c: WheelColor) => void;
   worldCurve: "subway" | "flat";
@@ -96,6 +109,11 @@ interface UIState {
   setShowMysteryBox: (show: boolean) => void;
   collectWordLetter: (index: number) => { completed: boolean; char: string; remaining: number };
   claimMysteryBox: () => { bread: number; score: number; title: string };
+  /** achievement: jumlah yang terbuka tapi belum dilihat (badge merah tombol) + id yang baru terbuka sesi ini */
+  unseenAch: number;
+  newAch: string[];
+  recheckAchievements: () => void;
+  markAchSeen: () => void;
 }
 
 let popupId = 0;
@@ -124,6 +142,16 @@ const initialUnlocked = (() => {
   for (const f of defaultFree) set.add(f);
   return Array.from(set);
 })();
+/** Default view kamera pilihan user: TINGGI -1.0, SUDUT +1.0, JARAK +2.2 (lebih dekat & sinematik). */
+const CAM_VIEW_DEFAULT = { h: -1, a: 1, d: 2.2 };
+const CAM_VIEW_INIT = (() => {
+  const c = load<{ h?: number; a?: number; d?: number }>("pigeon-sk8-cam-view", {});
+  const h = typeof c?.h === "number" && isFinite(c.h) ? Math.max(-3, Math.min(7, c.h)) : CAM_VIEW_DEFAULT.h;
+  const a = typeof c?.a === "number" && isFinite(c.a) ? Math.max(-3, Math.min(5, c.a)) : CAM_VIEW_DEFAULT.a;
+  const d = typeof c?.d === "number" && isFinite(c.d) ? Math.max(-3, Math.min(6, c.d)) : CAM_VIEW_DEFAULT.d;
+  return { h, a, d };
+})();
+
 const initialSkin = (() => {
   const id = load<string>("pigeon-sk8-skin", "classic");
   return initialUnlocked.includes(id) ? id : "classic";
@@ -144,6 +172,7 @@ export const useUI = create<UIState>((set, get) => ({
   wallet: load<number>("pigeon-sk8-wallet", 0) || 0,
   runs: 0,
   muted: load<boolean>("pigeon-sk8-muted", false) === true,
+  tutorialSeen: load<boolean>("pigeon-sk8-tutor", false) === true,
   isNewBest: false,
   popups: [],
   combo: 0,
@@ -196,9 +225,37 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-camera", cameraMode);
     set({ cameraMode });
   },
-  weather: load<"sunny" | "cloudy">("pigeon-sk8-weather", "sunny") === "cloudy" ? "cloudy" : "sunny",
+  camHeight: CAM_VIEW_INIT.h,
+  camAngle: CAM_VIEW_INIT.a,
+  camDist: CAM_VIEW_INIT.d,
+  camAdjusting: false,
+  setCamHeight: (v) => {
+    const camHeight = Math.max(-3, Math.min(7, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: camHeight, a: get().camAngle, d: get().camDist });
+    set({ camHeight });
+  },
+  setCamAngle: (v) => {
+    const camAngle = Math.max(-3, Math.min(5, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: get().camHeight, a: camAngle, d: get().camDist });
+    set({ camAngle });
+  },
+  setCamDist: (v) => {
+    const camDist = Math.max(-3, Math.min(6, Math.round(v * 10) / 10));
+    save("pigeon-sk8-cam-view", { h: get().camHeight, a: get().camAngle, d: camDist });
+    set({ camDist });
+  },
+  setCamAdjusting: (camAdjusting) => set({ camAdjusting }),
+  resetCamView: () => {
+    save("pigeon-sk8-cam-view", { ...CAM_VIEW_DEFAULT });
+    set({ camHeight: CAM_VIEW_DEFAULT.h, camAngle: CAM_VIEW_DEFAULT.a, camDist: CAM_VIEW_DEFAULT.d });
+  },
+  weather: ((): "sunny" | "cloudy" | "snow" => {
+    const w = load<string>("pigeon-sk8-weather", "sunny");
+    return w === "cloudy" || w === "snow" ? (w as "cloudy" | "snow") : "sunny";
+  })(),
   toggleWeather: () => {
-    const weather = get().weather === "sunny" ? "cloudy" : "sunny";
+    const cur = get().weather;
+    const weather: "sunny" | "cloudy" | "snow" = cur === "sunny" ? "cloudy" : cur === "cloudy" ? "snow" : "sunny";
     save("pigeon-sk8-weather", weather);
     set({ weather });
   },
@@ -227,7 +284,7 @@ export const useUI = create<UIState>((set, get) => ({
   },
   deckOverride: (() => {
     const d = load<string>("pigeon-sk8-deck", "default");
-    return d === "baguette" ? "baguette" : "default";
+    return (["default", "baguette", "hoverboard", "broom", "silver", "ufo"] as const).includes(d as "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo") ? d as "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo" : "default";
   })(),
   setDeckOverride: (deckOverride) => {
     save("pigeon-sk8-deck", deckOverride);
@@ -254,11 +311,13 @@ export const useUI = create<UIState>((set, get) => ({
     const tricksOn = { ...get().tricksOn, [k]: !get().tricksOn[k] };
     save("pigeon-sk8-tricks", tricksOn);
     set({ tricksOn });
+    get().recheckAchievements();
   },
   setAllTricks: (on) => {
     const tricksOn = Object.fromEntries(TRICKS.map((t) => [t.kind, on])) as Record<TrickKind, boolean>;
     save("pigeon-sk8-tricks", tricksOn);
     set({ tricksOn });
+    get().recheckAchievements();
   },
   setPhase: (phase) => set({ phase }),
   setMenuView: (menuView) => set({ menuView }),
@@ -279,12 +338,17 @@ export const useUI = create<UIState>((set, get) => ({
     const wallet = s.wallet + bread;
     save("pigeon-sk8-best", best);
     save("pigeon-sk8-wallet", wallet);
-    set({ score, bread, best, wallet, isNewBest, phase: "gameover", runs: s.runs + 1, crashCause: cause });
+    set({ score, bread, best, wallet, isNewBest, phase: "gameover", runs: s.runs + 1, crashCause: cause, newAch: [] });
+    get().recheckAchievements();
   },
   toggleMute: () => {
     const muted = !get().muted;
     save("pigeon-sk8-muted", muted);
     set({ muted });
+  },
+  setTutorialSeen: () => {
+    save("pigeon-sk8-tutor", true);
+    set({ tutorialSeen: true });
   },
   selectSkin: (id) => {
     if (!get().unlocked.includes(id)) return;
@@ -313,6 +377,7 @@ export const useUI = create<UIState>((set, get) => ({
     save("pigeon-sk8-wallet", wallet);
     save("pigeon-sk8-skin", id);
     set({ unlocked, wallet, skin: id, preview: id });
+    get().recheckAchievements();
     return true;
   },
   wordHunt: loadWordHunt(),
@@ -360,10 +425,36 @@ export const useUI = create<UIState>((set, get) => ({
       wallet: newWallet,
       wordHunt: updated,
     });
+    get().recheckAchievements(); // achievement 🎁 Pemburu Kata & wallet total
     return {
       bread: breadReward,
       score: scoreReward,
       title: "HADIAH PETI MISTERI!",
     };
+  },
+  unseenAch: unseenCount(),
+  newAch: [],
+  /**
+   * Evaluasi ulang semua achievement dari state terkini. Yang baru tercapai
+   * langsung memberi hadiah roti ke wallet + menambah badge merah di tombol 🏆.
+   */
+  recheckAchievements: () => {
+    const s = get();
+    const newly = evaluate({
+      best: s.best,
+      wallet: s.wallet,
+      skinsUnlocked: s.unlocked.length,
+      tricksAllOn: TRICKS.every((t) => s.tricksOn[t.kind]),
+      wordDone: s.wordHunt.claimed,
+    });
+    if (!newly.length) return;
+    const bonus = newly.reduce((sum, id) => sum + (getAch(id)?.reward ?? 0), 0);
+    const wallet = s.wallet + bonus;
+    save("pigeon-sk8-wallet", wallet);
+    set({ wallet, newAch: [...s.newAch, ...newly], unseenAch: unseenCount() });
+  },
+  markAchSeen: () => {
+    markAllSeen();
+    set({ unseenAch: 0, newAch: [] });
   },
 }));

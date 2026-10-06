@@ -1,7 +1,7 @@
 import { useUI } from "../game/store";
 import { BreadIcon } from "./BreadIcon";
 import { engine, NOS_MAX } from "../game/engine";
-import { unlockAudio } from "../game/audio";
+import { unlockAudio, sfx } from "../game/audio";
 
 function SpeakerIcon({ muted }: { muted: boolean }) {
   if (muted) {
@@ -33,6 +33,15 @@ export function HUD() {
   const shibuyaTime = useUI((s) => s.shibuyaTime);
   const wordHunt = useUI((s) => s.wordHunt);
   const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
+  const camAdjusting = useUI((s) => s.camAdjusting);
+  const camHeight = useUI((s) => s.camHeight);
+  const camAngle = useUI((s) => s.camAngle);
+  const camDist = useUI((s) => s.camDist);
+  const setCamHeight = useUI((s) => s.setCamHeight);
+  const setCamAngle = useUI((s) => s.setCamAngle);
+  const setCamDist = useUI((s) => s.setCamDist);
+  const setCamAdjusting = useUI((s) => s.setCamAdjusting);
+  const resetCamView = useUI((s) => s.resetCamView);
   const inRun = phase === "playing" || phase === "crashed";
   const nosReady = nos >= NOS_MAX * 0.99 && !nosActive;
   const sprint = useUI((s) => s.sprint);
@@ -45,7 +54,10 @@ export function HUD() {
       : `TOKYO CITY ${dist} M`;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 select-none">
+    <div
+      className="pointer-events-none absolute inset-0 z-20 select-none"
+      style={{ inset: "env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)" }}
+    >
       {/* bread counter (top-left) in vibrant royal blue pill + optional small speed indicator */}
       {inRun && (
         <div className="pointer-events-auto absolute left-[3.5%] top-[3%] flex items-center gap-2">
@@ -112,9 +124,9 @@ export function HUD() {
         </div>
       )}
 
-      {/* top-right control: ONLY MUTE button */}
+      {/* top-right control: MUTE + tombol adjust kamera (📷 membuka panel; game dijeda) */}
       {inRun && (
-        <div className="pointer-events-auto absolute right-[3.5%] top-[3%] flex flex-col items-end">
+        <div className="pointer-events-auto absolute right-[3.5%] top-[3%] flex flex-col items-end gap-2">
           <button
             type="button"
             onClick={toggleMute}
@@ -123,6 +135,21 @@ export function HUD() {
           >
             <SpeakerIcon muted={muted} />
           </button>
+          {phase === "playing" && !camAdjusting && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                unlockAudio();
+                sfx.click();
+                setCamAdjusting(true);
+              }}
+              className="flex h-[10cqw] w-[10cqw] min-h-[38px] min-w-[38px] items-center justify-center rounded-full border-2 border-white/20 bg-[#3a86ff] text-[4.6cqw] text-white shadow-[0_3px_0_#2456ad] active:translate-y-[2px] active:shadow-none"
+              aria-label="Atur kamera (game dijeda)"
+            >
+              📷
+            </button>
+          )}
         </div>
       )}
 
@@ -149,8 +176,9 @@ export function HUD() {
         })}
       </div>
 
-      {/* NOS meter + boost button (bottom-right) — SATU-SATUNYA TOMBOL DI BAWAH SEPERTI PERMINTAAN */}
-      {phase === "playing" && (
+      {/* NOS meter + boost button (bottom-right) — SATU-SATUNYA TOMBOL DI BAWAH SEPERTI PERMINTAAN
+          (disembunyikan sementara saat panel atur kamera terbuka) */}
+      {phase === "playing" && !camAdjusting && (
         <div className="pointer-events-auto absolute bottom-[4.5%] right-[4%] flex flex-col items-center gap-2">
           {/* NOS vertical capsule */}
           <div className="relative h-[25cqw] w-[6.8cqw] overflow-hidden rounded-full border-[3.5px] border-[#0091ff] bg-[#001838]/90 p-[2px] shadow-[0_0_14px_rgba(0,145,255,0.65)]">
@@ -209,6 +237,93 @@ export function HUD() {
             )}
           </button>
         </div>
+      )}
+
+      {/* ── Panel ATUR KAMERA: game dijeda, bar tipis transparan di tepi bawah
+             supaya pemandangan game tidak tertutup; kamera bergerak LIVE mengikuti slider ── */}
+      {camAdjusting && (
+        <>
+          <div className="pointer-events-none absolute left-0 right-0 top-[15%] z-30 flex justify-center">
+            <div className="rounded-full border border-white/25 bg-black/55 px-4 py-1.5 font-display text-[3.1cqw] tracking-wider text-[#ffd23f] backdrop-blur-[2px]">
+              ⏸ DIJEDA · ATUR KAMERA
+            </div>
+          </div>
+          <div
+            className="pointer-events-auto absolute inset-x-[3%] bottom-[2%] z-40 flex flex-col gap-1.5 rounded-2xl border border-white/20 bg-black/55 p-2.5 backdrop-blur-md"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-[14cqw] shrink-0 font-display text-[2.9cqw] leading-none text-white/95">⬆️ TINGGI</span>
+              <input
+                type="range"
+                min={-3}
+                max={7}
+                step={0.1}
+                value={camHeight}
+                onChange={(e) => setCamHeight(parseFloat(e.target.value))}
+                className="h-2.5 flex-1 cursor-pointer accent-[#ffd60a]"
+                aria-label="Ketinggian kamera"
+              />
+              <span className="w-[8.5cqw] shrink-0 text-right font-display text-[2.9cqw] leading-none text-[#ffd60a]">
+                {camHeight > 0 ? `+${camHeight.toFixed(1)}` : camHeight.toFixed(1)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-[14cqw] shrink-0 font-display text-[2.9cqw] leading-none text-white/95">📐 SUDUT</span>
+              <input
+                type="range"
+                min={-3}
+                max={5}
+                step={0.1}
+                value={camAngle}
+                onChange={(e) => setCamAngle(parseFloat(e.target.value))}
+                className="h-2.5 flex-1 cursor-pointer accent-[#2ec4b6]"
+                aria-label="Sudut pandang kamera"
+              />
+              <span className="w-[8.5cqw] shrink-0 text-right font-display text-[2.9cqw] leading-none text-[#2ec4b6]">
+                {camAngle > 0 ? `+${camAngle.toFixed(1)}` : camAngle.toFixed(1)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-[14cqw] shrink-0 font-display text-[2.9cqw] leading-none text-white/95">🔍 JARAK</span>
+              <input
+                type="range"
+                min={-3}
+                max={6}
+                step={0.1}
+                value={camDist}
+                onChange={(e) => setCamDist(parseFloat(e.target.value))}
+                className="h-2.5 flex-1 cursor-pointer accent-[#ff9500]"
+                aria-label="Jarak kamera (zoom dekat-jauh)"
+              />
+              <span className="w-[8.5cqw] shrink-0 text-right font-display text-[2.9cqw] leading-none text-[#ff9500]">
+                {camDist > 0 ? `+${camDist.toFixed(1)}` : camDist.toFixed(1)}
+              </span>
+            </div>
+            <div className="mt-0.5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.click();
+                  resetCamView();
+                }}
+                className="flex-1 rounded-xl bg-white/15 py-1.5 font-display text-[3cqw] leading-none text-white active:scale-95"
+              >
+                RESET
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.click();
+                  setCamAdjusting(false);
+                }}
+                className="flex-[2] rounded-xl bg-[#2ec46b] py-1.5 font-display text-[3cqw] leading-none text-white shadow-[0_3px_0_#1c7a3e] active:translate-y-[2px] active:shadow-none"
+              >
+                ✓ SELESAI · LANJUT MAIN
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

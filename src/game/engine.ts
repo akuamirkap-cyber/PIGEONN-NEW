@@ -25,8 +25,18 @@ import {
 } from "./shibuyaPacks";
 import { TRICK_MAP, TRICKS, type TrickKind } from "./tricks";
 import { useUI, type Phase } from "./store";
+import { recordRun, recordShibuyaRun } from "./stats";
 import { sfx } from "./audio";
 import { clamp, lerp, pick, rand, randInt } from "./voxel";
+
+/** Haptic feedback HP (getar) — diabaikan otomatis di browser tanpa dukungan. */
+function buzz(pattern: number | number[]) {
+  try {
+    (navigator as Navigator & { vibrate?: (p: number | number[]) => void }).vibrate?.(pattern);
+  } catch {
+    /* noop */
+  }
+}
 import { Track, type TrackSample } from "./track";
 import { TURN, makeTurnState, resetTurnState, stepTurn, rearOf } from "./turnModel";
 import {
@@ -108,6 +118,15 @@ export const ONCOMING_MOTORCYCLE_SPEED_MULT = 1.3;
 export const ARM_S = -2.0; // arm position relative to the rails
 export const ARM_HIT = 0.8;
 export const CROSSING_RAMP_S = -4.8;
+/** Jarak minimum dari perlintasan rel KE perempatan berikutnya, supaya lompatan ramp rel
+ *  SELALU mendarat DULU di aspal biasa sebelum masuk zona perempatan.
+ *  Fisika: takeoff di 3.6 m sebelum rel (CROSSING_RAMP_S + halfLen ramp 1.2), waktu udara
+ *  ≈1.126 s (y = 1 + 16t − 15t², RAMP_V 16 / GRAVITY 30). Jarak landing = −3.6 + 1.126 × v.
+ *  Margin +14 m untuk tepi deck perempatan (clearance scramble 12.2 m) + jarak reaksi.
+ *  Mengikuti speed mode menu (2×/3× → papan dua/tiga kali lebih jauh melompat). */
+export function railLandClear(speedMult: number) {
+  return Math.ceil(-3.6 + 1.126 * MAX_SPEED * speedMult + 14); // 25 m (1×) / 39 m (2×) / 54 m (3×)
+}
 /** Run distance (m) of the first railway crossing; later ones follow every CROSSING_GAP. */
 export const FIRST_CROSSING_M = 50;
 export const CROSSING_GAP: [number, number] = [150, 260];
@@ -223,6 +242,12 @@ export interface Obstacle {
   catHit?: boolean;
 }
 export const RAIL_LENGTHS = [7, 12, 18, 24];
+/**
+ * Jarak sisi minimal antara ramp dan rel grind di lajur yang sama.
+ * 2.3 m: cukup jelas supaya tidak "ketembus", tapi masih nyaman
+ * untuk kombo lompat dari ramp lalu mendarat grind di rel.
+ */
+export const RAMP_RAIL_MIN_GAP = 2.3;
 export function obstacleHalf(o: Obstacle) {
   return o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
 }
@@ -288,7 +313,9 @@ export type DecorKind =
   | "subway_wall"
   | "subway_track"
   | "subway_overhead_rail"
-  | "city_bus";
+  | "city_bus"
+  | "special_car"
+  | "snow_drift";
 export interface Decor {
   kind: DecorKind;
   pos: Vec3;
@@ -468,6 +495,44 @@ export function crossCarH(lat: number): number {
   return smooth * CROSS_DECK_H;
 }
 
+/** Titik tunggu pejalan kaki Shibuya di median tengah (bukan di aspal jalur seberang). */
+export const SHIBUYA_MEDIAN_LAT = 4.72;
+
+/**
+ * Tinggi permukaan yang diinjak pejalan kaki pada lat tertentu.
+ * Trotoar, curb, dan median lebih tinggi dari aspal — tanpa ini kaki penyeberang
+ * tenggelam ke trotoar atau tampak melayang di atas jalan.
+ */
+export function pedGroundH(lat: number, mode: "tokyo" | "haruna" | "shibuya"): number {
+  if (mode === "shibuya") {
+    if (lat <= -4.0 && lat >= -8.2) return 0.12; // trotoar dekat
+    if (lat < -3.7 && lat > -4.0) return 0.14;  // curb dekat
+    if (lat >= 3.7 && lat <= 5.0) return 0.16;  // median tengah (tempat menunggu)
+    if (lat > 12.3 && lat < 12.6) return 0.14;  // curb jauh
+    if (lat >= 12.6 && lat <= 16.1) return 0.12; // trotoar jauh
+    if (lat < -8.2 || lat > 16.1) return 0.1;   // plaza
+    return 0; // aspal
+  }
+  if (lat < 0) {
+    if (lat <= -4.0 && lat >= -7.0) return 0.12;
+    if (lat < -3.7 && lat > -4.0) return 0.14;
+    if (lat < -7.0) return 0.1;
+    return 0;
+  }
+  if (lat >= 4.0 && lat <= 6.3) return 0.12;
+  if (lat > 3.7 && lat < 4.0) return 0.14;
+  if (lat > 6.3) return 0.1;
+  return 0;
+}
+
+/** Permukaan scramble crossing: apron datar, median di-aspal (0.18), jalan lintas naik 0.175. */
+export function scramblePedH(lat: number): number {
+  if (lat < -4.0) return 0.175;
+  if (lat >= 3.5 && lat <= 5.3) return 0.18; // median yang di-pave
+  if (lat > 12.3) return 0.175;
+  return 0.03; // apron persimpangan
+}
+
 export interface Intersection {
   id: number;
   s: number;
@@ -581,7 +646,8 @@ function stepRagdoll(r: Ragdoll, dt: number, floor: number, friction = 4.2, boun
   const drag = Math.exp(-dt * 0.12);
   r.vs *= drag;
   r.vlat *= drag;
-  const angDrag = Math.exp(-dt * 1.5);
+  // Drag sudut lebih ringan: tubrukan tumbling tidak "nge-rem" kaku, guling berlanjut alami
+  const angDrag = Math.exp(-dt * 1.05);
   r.wx *= angDrag;
   r.wy *= angDrag;
   r.wz *= angDrag;
@@ -590,15 +656,17 @@ function stepRagdoll(r: Ragdoll, dt: number, floor: number, friction = 4.2, boun
     r.h = floor;
     if (r.vh < -0.8) {
       // Rubbery comical bounce: first bounce is high and springy, forward momentum preserved
-      const bCoeff = Math.min(0.78, (r.bounces === 0 ? 0.48 : r.bounces === 1 ? 0.35 : 0.22) * (r.bouncy ?? 1));
+      // (sedikit variasi acak tiap pantul → lintasan tidak pernah terasa "direkam"/scripted)
+      const bCoeff = Math.min(0.78, (r.bounces === 0 ? 0.48 : r.bounces === 1 ? 0.35 : 0.22) * (r.bouncy ?? 1) * rand(0.85, 1.12));
       r.vh = -r.vh * bCoeff;
       r.vs *= 0.88; // skips forward on ground impact!
       r.bounces++;
-      // Ground contact imparts a hilarious forward roll/somersault tumble from street friction
-      const rollImpulse = -Math.sign(r.vs) * Math.min(Math.abs(r.vs) * 0.42, 3.2);
+      // Ground contact imparts a hilarious forward roll/somersault tumble from street friction,
+      // plus skid lateral → barrel roll & yaw wobble: terasa seperti benda jatuh beneran, bukan animasi kaku
+      const rollImpulse = -Math.sign(r.vs) * Math.min(Math.abs(r.vs) * 0.42, 3.6) * rand(0.75, 1.25);
       r.wz = r.wz * 0.35 + rollImpulse;
-      r.wx = r.wx * 0.35 + rand(-0.8, 0.8) * bounce;
-      r.wy *= 0.35;
+      r.wx = r.wx * 0.35 + rand(-0.8, 0.8) * bounce + Math.sign(r.vlat) * Math.min(Math.abs(r.vlat) * 0.18, 1.4);
+      r.wy = r.wy * 0.35 + rand(-0.7, 0.7) * (0.35 + bounce);
     } else {
       r.vh = 0;
     }
@@ -676,6 +744,9 @@ const tmpV = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
 
 const SHIBUYA_ROAD_CLEARANCE = 6.8;
+/** Sisi seberang avenue Shibuya: aspal jalur mobil berakhir di lat 12.3 (curb 12.6).
+ *  Jejak gedung toko dilarang masuk ke sana — wajib mulai di atas trotoar jauh. */
+const SHIBUYA_ROAD_CLEARANCE_FAR = 12.75;
 const SHIBUYA_FOOTPRINT_GAP = 0.9;
 const SHIBUYA_MIN_ASSET_SCALE = 0.52;
 
@@ -742,6 +813,8 @@ class Engine {
   /** index into the enabled-trick list for the sequential "S" freestyle cycle */
   cycleIndex = 0;
   menuTrickPending = false;
+  /** trick yang sedang diantre untuk didemokan di podium (dari toggle ON panel TRICKS) */
+  menuPreview: TrickKind | null = null;
 
   obstacles: Obstacle[] = [];
   breads: Bread[] = [];
@@ -866,6 +939,12 @@ class Engine {
     boardYaw: 0,
     pitch: 0,
     roll: 0,
+    /** kanal trick BARU: roll seluruh rider (cartwheel/cork, sumbu-x di grup bank) */
+    trickRoll: 0,
+    /** kanal trick BARU: pitch seluruh rider (front/back flip, sumbu-z di grup bank) */
+    trickPitch: 0,
+    /** kanal trick BARU: hidung papan naik/turun INDEPENDEN dari badan (wrap/rocket/pressure) */
+    boardPitch: 0,
     wing: 0,
     crashVx: 0,
     crashVy: 0,
@@ -907,6 +986,7 @@ class Engine {
     this.overT = 0;
     this.menuT = 0;
     this.menuTrickPending = false;
+    this.menuPreview = null;
     this.obstacles = [];
     this.breads = [];
     this.chunks = [];
@@ -1026,6 +1106,7 @@ class Engine {
       this.phase = "playing";
       this.reset();
     }
+    if (useUI.getState().trackMode === "shibuya") recordShibuyaRun(); // statistik achievement 🌆
     this.phase = "playing";
     this.runTime = 0;
     this.runDistance = 0;
@@ -1070,6 +1151,7 @@ class Engine {
   skinPop() {
     if (this.phase !== "menu") return;
     const p = this.player;
+
     p.showYaw = FRONT_YAW;
     p.squash = 1;
     this.menuT = 0;
@@ -1079,6 +1161,24 @@ class Engine {
       this.jump(5);
     }
     this.emit("dust", 0, PODIUM_H + 0.05, 0, 8);
+  }
+
+  /**
+   * Demokan satu trick tertentu di podium menu — dipanggil panel TRICKS saat
+   * pemain mengaktifkan (toggle ON) sebuah trick. Merpati melompat lalu
+   * memainkan animasi trick itu sekali, kamera bebas menonton.
+   */
+  previewTrick(kind: TrickKind) {
+    if (this.phase !== "menu") return;
+    const p = this.player;
+    this.menuT = 0; // tunda idle showcase berikutnya
+    this.menuPreview = kind;
+    if (p.grounded) {
+      p.trick = null;
+      p.flip = 0;
+      this.menuTrickPending = false;
+      this.jump(7.5);
+    }
   }
 
   toMenu() {
@@ -1354,6 +1454,9 @@ class Engine {
     if (!tr) return;
     p.trick = null;
     p.flip = 0;
+    p.trickRoll = 0;
+    p.trickPitch = 0;
+    p.boardPitch = 0;
     if (this.phase !== "playing") return;
     const info = TRICK_INFO[tr.kind];
     p.tricksThisAir++;
@@ -1610,6 +1713,7 @@ class Engine {
     this.emit("feather", 0, p.h + 0.5, p.lat, 42);
     this.emit("dust", 0, 0.05, p.lat, 24);
     sfx.crash();
+    buzz([30, 40, 60]); // haptic HP saat tabrakan
     sfx.bonk();
     sfx.whoosh();
     useUI.getState().setPhase("crashed");
@@ -1719,6 +1823,7 @@ class Engine {
       if (this.phase === "crashed" && this.crashT > 3.8) {
         this.phase = "gameover";
         this.overT = 0;
+        recordRun(this.distance, this.rocketTaken); // statistik seumur hidup untuk achievement
         useUI.getState().finishRun(this.score, this.breadCount, this.crashCause);
         sfx.coo();
       }
@@ -1810,9 +1915,20 @@ class Engine {
         this.jump(7.5);
         this.menuTrickPending = true;
       }
+      // Demo trick dari panel TRICKS: begitu merpati meninggalkan tanah, mainkan
+      // trick yang baru saja diaktifkan pemain (bukan acak seperti idle showcase).
+      if (this.menuPreview && !p.grounded && p.airT > 0.06) {
+        const kind = this.menuPreview;
+        this.menuPreview = null;
+        this.menuTrickPending = false;
+        this.startTrick(kind, 0.45);
+      }
       if (this.menuTrickPending && !p.grounded && p.airT > 0.06) {
         this.menuTrickPending = false;
-        this.startTrick(pick(["kickflip", "heelflip", "spinL", "spinR", "shuvit", "method", "impossible"] as TrickKind[]), 0.45);
+        this.startTrick(
+          pick(["kickflip", "heelflip", "spinL", "spinR", "shuvit", "method", "impossible", "varial", "treflip", "shifty", "melon", "hardflip"] as TrickKind[]),
+          0.45,
+        );
       }
     } else {
       // un-spin after leaving the podium
@@ -2125,6 +2241,9 @@ class Engine {
     let yaw = 0;
     let grab = 0;
     let boardYaw = 0;
+    let trickRoll = 0;
+    let trickPitch = 0;
+    let boardPitch = 0;
     if (tr) {
       const u = clamp(tr.t / tr.dur, 0, 1);
       const e = easeInOut(u);
@@ -2161,12 +2280,124 @@ class Engine {
         case "coo540":
           yaw = this.trickDir * e * Math.PI * 3;
           break;
+        /* ===== 20 GAYA BARU — tiap trick punya SIGNATURE gerak sendiri:
+           selain flip/boardYaw/yaw/grab, kini ada PITCH papan (boardPitch),
+           ROLL rider (trickRoll: cartwheel/cork), dan PITCH rider (front/back). ===== */
+        // —— FLIP & SHUV FAMILY (papan yang unjuk gigi; tiap beda sumbu & sudut) ——
+        case "varial":
+          flip = e * Math.PI * 2;
+          boardYaw = e * Math.PI;
+          boardPitch = hump * 0.25; // sendok kecil ke depan
+          break;
+        case "inward":
+          flip = -e * Math.PI * 2;
+          boardYaw = e * Math.PI;
+          boardPitch = -hump * 0.3; // sendok ke belakang (lawan varial)
+          break;
+        case "hardflip":
+          flip = e * Math.PI * 2;
+          boardYaw = -e * Math.PI;
+          boardPitch = hump * 0.75; // SIGNATURE: hidung papan mencelat curam (wrap-around)
+          break;
+        case "fingerflip":
+          flip = e * Math.PI * 2;
+          grab = -hump * 0.55; // jari ikut menyentil (tuck)
+          boardPitch = hump * 0.15;
+          trickPitch = hump * 0.2; // badan merunduk mengikuti sentilan
+          break;
+        case "pressure":
+          flip = -e * Math.PI * 2;
+          boardYaw = -e * Math.PI;
+          boardPitch = hump * 0.85; // SIGNATURE: papan berputar DIAGONAL sekaligus
+          break;
+        case "dblflip":
+          flip = e * Math.PI * 4; // dua putaran flip penuh!
+          boardPitch = hump * 0.12;
+          break;
+        case "hospital":
+          // out-and-back: papan berputar maju lalu BERBALIK ke posisi semula
+          flip = hump * Math.PI * 2;
+          boardYaw = hump * Math.PI;
+          boardPitch = hump * 0.2;
+          break;
+        case "treflip":
+          flip = e * Math.PI * 2;
+          boardYaw = e * Math.PI * 2;
+          boardPitch = hump * 0.3;
+          break;
+        case "laser":
+          flip = -e * Math.PI * 4;
+          boardYaw = e * Math.PI * 2;
+          boardPitch = hump * 0.25;
+          break;
+        // —— SPIN FAMILY (badan yang unjuk gigi; sudut tubuh = identitas) ——
+        case "shifty":
+          yaw = hump * Math.PI * 0.75; // twist lalu kembali ke depan
+          trickRoll = hump * 0.25; // bahu ikut membanking ke dalam twist
+          break;
+        case "bigspin":
+          yaw = e * Math.PI;
+          boardYaw = e * Math.PI * 2;
+          trickPitch = hump * 0.2; // dorongan badan ke depan
+          break;
+        case "gazelle":
+          // BARREL ROLL PENUH: badan mengguling satu putaran sempurna,
+          // papan kontra-berputar mengimbangi — showstopper!
+          trickRoll = e * Math.PI * 2;
+          yaw = e * Math.PI;
+          boardYaw = -e * Math.PI * 2;
+          break;
+        case "air720":
+          // CORK 720: dua putaran badan dengan bahu terjun ke samping (cork sesungguhnya)
+          yaw = this.trickDir * e * Math.PI * 4;
+          trickRoll = this.trickDir * hump * 0.85;
+          break;
+        // —— GRAB & STYLE FAMILY (pose badan = karakter; bukan sekadar grab) ——
+        case "melon":
+          yaw = e * Math.PI;
+          grab = -hump;
+          trickRoll = hump * 0.35; // miring menyilang ala melon
+          break;
+        case "nosegrab":
+          grab = hump * 0.6;
+          boardPitch = hump * 0.55; // hidung papan turun ke tangan
+          trickPitch = hump * 0.4; // badan MERUNDUK maju meraih hidung
+          break;
+        case "tailgrab":
+          grab = -hump * 0.75;
+          boardPitch = -hump * 0.55; // ekor papan naik ke tangan
+          trickPitch = -hump * 0.4; // badan MERUNDUK mundur (cermin nose grab)
+          break;
+        case "stalefish":
+          grab = -hump;
+          boardYaw = -hump * 0.2;
+          yaw = hump * 0.3;
+          trickRoll = -hump * 0.45; // miring ke samping belakang — "stale" sesungguhnya
+          break;
+        case "benihana":
+          grab = hump * 0.5;
+          yaw = -hump * 0.4;
+          trickPitch = hump * 0.55; // SIGNATURE: badan menukik maju dalam!
+          break;
+        case "rocket":
+          grab = -hump * 0.9;
+          boardPitch = -hump * 0.8; // SIGNATURE: papan menunjuk LURUS ke depan-bawah
+          trickPitch = -hump * 0.25; // badan tetap tegak (efek roket!)
+          break;
+        case "christ":
+          grab = hump * 0.25; // badan tegak, papan sedikit terangkat (lengan T di Player)
+          boardPitch = hump * 0.25;
+          trickRoll = hump * 0.08; // goyang kecil mengambang
+          break;
       }
     }
     p.flip = flip;
     p.yaw = yaw;
     p.grab = grab;
     p.boardYaw = boardYaw;
+    p.trickRoll = trickRoll;
+    p.trickPitch = trickPitch;
+    p.boardPitch = boardPitch;
     let pitch = 0;
     if (!p.grounded && !p.grinding) pitch = clamp(p.vh / JUMP_V, -0.5, 1) * 0.45;
     else if (p.onRamp) pitch = 0.39;
@@ -2404,6 +2635,7 @@ class Engine {
       if (Math.abs(b.h - (p.h + 0.55)) > 0.95) continue;
       b.taken = true;
       this.breadCount++;
+      buzz(14);
       this.addNos(NOS_PER_BREAD);
       this.breadFx.push({ rel: b.s - d, lat: LANE_LAT[b.lane], h: b.h, age: 0 });
       if (this.breadFx.length > 8) this.breadFx.shift();
@@ -2755,8 +2987,12 @@ class Engine {
         }
         if (m.s < d - 16) remove = true;
       } else if (m.kind === "pedestrian") {
+        // Kaki penyeberang selalu menapak permukaan yang benar (trotoar/median/dek
+        // perempatan) — tidak lagi melayang di atas trotoar atau tenggelam ke aspal.
+        const gh = this.pedSurfaceAt(m.lat, m.s);
         if (m.phase === "wait") {
           m.delay -= dt;
+          m.h = lerp(m.h, gh, Math.min(1, dt * 8));
           const signal = m.signalIntersectionId == null
             ? undefined
             : this.intersections.find((inter) => inter.id === m.signalIntersectionId);
@@ -2773,13 +3009,19 @@ class Engine {
             else if (Math.abs(m.lat) < 4.8) v = 0; // berhenti dulu di tepi / median
           }
           m.lat += m.dir * v * dt;
+          const ghNow = this.pedSurfaceAt(m.lat, m.s);
           if (v > 0.01) {
             m.hopT += dt * (v / m.speed);
-            m.h = Math.abs(Math.sin(m.hopT * 9)) * 0.06;
+            m.h = ghNow + Math.abs(Math.sin(m.hopT * 9)) * 0.06;
           } else {
-            m.h = Math.max(0, m.h - dt * 0.3); // berdiri tenang menunggu
+            m.h = Math.max(ghNow, m.h - dt * 0.3); // berdiri tenang menunggu
           }
-          if (Math.abs(m.lat) > (m.crossingEdge ?? 7.2) + 0.45) remove = true;
+          // Di Shibuya, penyeberang dari trotoar dekat BERAKHIR di median — mereka
+          // tidak pernah masuk ke aspal jalur seberang (5.0..12.3) tempat mobil lewat.
+          const farOut = track.mode === "shibuya" && m.dir > 0
+            ? SHIBUYA_MEDIAN_LAT + 0.45
+            : (m.crossingEdge ?? 7.2) + 0.45;
+          if (m.dir > 0 ? m.lat > farOut : m.lat < -((m.crossingEdge ?? 7.2) + 0.45)) remove = true;
         }
         if (m.s < d - 16) remove = true;
       } else if (m.kind === "car" || m.kind === "motorcycle") {
@@ -3096,6 +3338,21 @@ class Engine {
     }
   }
 
+  /** Permukaan yang diinjak pejalan kaki: trotoar/median/curb, plus dek perempatan / scramble. */
+  private pedSurfaceAt(lat: number, s: number): number {
+    let h = pedGroundH(lat, track.mode);
+    for (const it of this.intersections) {
+      const ds = Math.abs(s - it.s);
+      if (it.scramble) {
+        if (ds < 6.7) { h = Math.max(h, scramblePedH(lat)); break; }
+      } else if (ds < (it.wide ? 6.3 : 4.2)) {
+        h = Math.max(h, crossCarH(lat));
+        break;
+      }
+    }
+    return h;
+  }
+
   private spawnCrossCar(intersectionId: number, s: number, startLat: number, dir: 1 | -1, speed: number) {
     // jangan susulkan mobil baru kalau mobil sejalur masih dekat titik muncul
     const blocked = this.crossCars.some(
@@ -3249,6 +3506,7 @@ class Engine {
           ) {
             rb.taken = true;
             this.breadCount++;
+      buzz(14);
             this.addNos(NOS_PER_BREAD);
             track.frame(breadS, LANE_LAT[st.lane], SUBWAY_ROOF_H + 0.35, tmpV);
             this.breadFx.push({ rel: breadS - d, lat: LANE_LAT[st.lane], h: SUBWAY_ROOF_H + 0.35, age: 0 });
@@ -3866,7 +4124,9 @@ class Engine {
       for (let i = 0; i < n; i++) {
         const dir = i === 0 ? firstDir : i === 1 ? -firstDir : Math.random() < 0.5 ? 1 : -1;
         const px = s + offsets[i];
-        const m = this.newMover("pedestrian", px, -1, -dir * edge);
+        // Shibuya: penyeberang arah sebaliknya MENUNGGU DI MEDIAN (bukan di aspal jalur
+        // seberang 5.0..12.3). Penyeberang dari trotoar dekat juga selesai di median.
+        const m = this.newMover("pedestrian", px, -1, track.mode === "shibuya" && dir < 0 ? SHIBUYA_MEDIAN_LAT : -dir * edge);
         m.dir = dir;
         m.crossingEdge = edge;
         m.signalIntersectionId = inter.id;
@@ -3966,6 +4226,28 @@ class Engine {
     return { pos: [tmpV.x, tmpV.y, tmpV.z], rotY: -th };
   }
 
+  /** Gundukan tumpukan salju di SEKITAR jalan (tepi aspal, trotoar, kaki trotoar) —
+   *  hanya saat cuaca SALJU; aspal jalan utama, perlintasan rel & perempatan tetap bersih. */
+  private addSnowDrifts(s0: number, decor: Decor[], inTunnel = false) {
+    if (useUI.getState().weather !== "snow" || inTunnel) return;
+    const n = randInt(4, 6); // 4-6 tumpukan per chunk, kedua tepi jalan
+    for (let i = 0; i < n; i++) {
+      const absS = s0 + rand(0.5, CHUNK_LEN - 0.7);
+      const side = Math.random() < 0.5 ? -1 : 1;
+      if (
+        this.intersections.some((it) => Math.abs(absS - it.s) < (it.scramble ? 12.2 : it.wide ? 11.0 : 8.8)) ||
+        Math.abs(absS - this.nextIntersectionS) < 12.2 ||
+        this.crossings.some((cr) => Math.abs(absS - cr.s) < 7.5)
+      ) continue;
+      const big = Math.random() < 0.32; // 32% gundukan TINGGI tebal (salju "beberapa agak tebal")
+      const lat = side * (big ? rand(5.6, 7.4) : rand(4.55, 5.35)); // tepi aspal/trotoar — BUKAN di jalan
+      const dy = rand(0.02, 0.1);
+      const variant = big ? 2 : Math.random() < 0.35 ? 3 : randInt(0, 3);
+      const pl = this.place(absS, lat, dy);
+      decor.push({ kind: "snow_drift", pos: pl.pos, rotY: pl.rotY + (Math.random() * 0.5 - 0.25), variant, frontSide: lat > 0 });
+    }
+  }
+
   /**
    * Find a safe slot for a transferred Shibuya asset.
    *
@@ -4005,7 +4287,7 @@ class Engine {
         const bounds = shibuyaFootprintAt(source, s, candidate.lat, scale);
         if (bounds.latMin < -42 || bounds.latMax > 42) continue;
         if ((candidate.lat < 0 && bounds.latMax > -SHIBUYA_ROAD_CLEARANCE)
-          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE)) continue;
+          || (candidate.lat > 0 && bounds.latMin < SHIBUYA_ROAD_CLEARANCE_FAR)) continue;
         if (this.shibuyaFootprints.some(existing => footprintOverlaps(bounds, existing))) continue;
         const placed = { asset, scale, ...bounds };
         this.shibuyaFootprints.push(placed);
@@ -4063,6 +4345,11 @@ class Engine {
         crossing = this.addCrossing(cs);
         // Shibuya nights are busier: railway crossings come around more often
         this.nextCrossingS = cs + (isShibuya ? rand(110, 190) : rand(CROSSING_GAP[0], CROSSING_GAP[1]));
+        // Beri ruang mendarat SEBELUM perempatan: ramp rel melempar pemain jauh ke depan
+        // (takeoff −3.6 m dari rel, udara ≈1.126 s) — menarik perempatan berikutnya ke
+        // depan track secukupnya agar pendaratan jatuh di aspal biasa, bukan di tengah
+        // zebra cross / arus lintas kendaraan.
+        this.nextIntersectionS = Math.max(this.nextIntersectionS, cs + railLandClear(this.speedMult));
       } else {
         this.nextCrossingS = this.isInSubwayTunnel(cs, 32) ? Math.max(this.nextCrossingS, s0 + CHUNK_LEN + 30) : s0 + CHUNK_LEN + 2;
       }
@@ -4081,9 +4368,14 @@ class Engine {
     const kind: Chunk["kind"] = isHaruna ? "haruna" : isShibuya ? "shibuya" : crossing ? "park" : Math.random() < 0.28 ? "park" : "street";
     const decor: Decor[] = [];
     const add = (k: DecorKind, lx: number, lat: number, dy: number, variant = 0, spec?: BuildingSpec): ShibuyaPlacement | null => {
-      // Keep cross-road clear of sidewalk decor, buildings, and trees (minimum 8.2m clearance)
+      // Keep cross-road clear of sidewalk decor, buildings, and trees. Clearance mengikuti
+      // lebar nyata zona perempatan: scramble menutup seluruh avenue (±11.5m), jadi dekor /
+      // tiang tidak boleh berdiri di aspal tempat mobil lintas & penyeberang berjalan.
       const absS = s0 + lx;
-      if (this.intersections.some((it) => Math.abs(absS - it.s) < 9.6) || Math.abs(absS - this.nextIntersectionS) < 9.6) return null;
+      if (
+        this.intersections.some((it) => Math.abs(absS - it.s) < (it.scramble ? 12.2 : it.wide ? 11.0 : 8.8)) ||
+        Math.abs(absS - this.nextIntersectionS) < 12.2
+      ) return null;
 
       let placedS = absS;
       let placedLat = lat;
@@ -4160,6 +4452,7 @@ class Engine {
         add("touge_lamp", 2, -4.4, 0.12);
       }
 
+      this.addSnowDrifts(s0, decor);
       this.chunks.push({ id, s0, kind: "haruna", decor });
       this.listVersion++;
       return;
@@ -4189,11 +4482,14 @@ class Engine {
       // +23.8 background row left shoppers, lamps and glass frontage detached
       // in the middle of the avenue; the reserve planner handles true skyline
       // landmarks separately when their source footprint needs it.
-      const farLat = curTunnel ? 16.2 : 10.2;
+      // PENTING: barisan seberang DIPINDAH dari lat 10.2 (itu masih aspal jalur
+      // seberang 5.0..12.3!) ke 16.2, tepat di belakang trotoar jauh — supaya
+      // etalase, lampion, dan pengunjung toko berdiri di trotoar, BUKAN di jalan mobil.
+      const farLat = 16.2;
 
       const frontageSidewalkLat = (buildingLat: number) => buildingLat < 0
-        ? buildingLat + 4.85
-        : buildingLat - 4.85;
+        ? buildingLat + 4.85   // sisi dekat: trotoar dalam lebar, pengunjung berdiri ~depan toko
+        : buildingLat - 1.15;  // sisi seberang: rapat di muka etalase, tetap ATAS trotoar jauh (12.6..16.1)
 
       const addRamenCustomers = (buildingS: number, buildingLat: number) => {
         // The exact Shibuya Blocks Eat rig is rendered by World.tsx. Two customers
@@ -4271,11 +4567,13 @@ class Engine {
       if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.8, 0.12, randInt(0, 2));
       if (Math.random() < 0.3) add("mamachari", rand(2.5, 9.5), -4.9, 0.12, randInt(0, 3));
       if (Math.random() < 0.4) add("tree", rand(2.5, 9.5), -6.6, 0.12, randInt(0, 2));
-      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 12.0 : 16.2, 0.12, randInt(0, 2));
+      // Pohon sisi seberang juga harus di trotoar jauh, bukan di aspal jalur seberang (12.0 -> 15.6)
+      if (Math.random() < 0.35) add("tree", rand(2.5, 9.5), curTunnel ? 15.6 : 16.2, 0.12, randInt(0, 2));
 
-      // 7. Lampu jalan: di kedua trotoar
+      // 7. Lampu jalan: di kedua trotoar (sisi seberang SELALU di atas trotoar jauh
+      // 12.6..16.1 — lat 10.5 dulu masih aspal jalur mobil seberang 5.0..12.3)
       add("lamp", id % 2 === 0 ? 3 : 9, -4.3, 0.12);
-      add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 10.5 : 12.55, 0.14);
+      add("lamp", id % 2 === 0 ? 9 : 3, curTunnel ? 12.75 : 12.55, 0.14);
       if (!curTunnel && id % 2 === 0 && !nearCrossing(6.5)) add("avenue_lamp", 6.5, 4.35, 0.16);
 
       // 8. Pagar pembatas trotoar pipa putih khas Jepang kini disapu mulus & kontinu di ground.ts mengikuti kontur jalan tanpa patah/anak tangga
@@ -4283,6 +4581,7 @@ class Engine {
       // 9. Planter trotoar
       if (Math.random() < 0.45) add("sidewalk_planter", rand(3.0, 9.0), -4.95, 0.12, randInt(0, 2));
 
+      this.addSnowDrifts(s0, decor, inTunnel);
       this.chunks.push({ id, s0, kind: "shibuya", decor });
       this.listVersion++;
       return;
@@ -4305,6 +4604,7 @@ class Engine {
       else if (rAve < 0.65) add("village_house", rand(3, 9), rand(-8.5, -11), -0.12, randInt(0, 3));
       else if (rAve < 0.85) add("machiya", rand(3, 9), rand(-8.5, -11), -0.12, randInt(0, 1));
       add("flowers", rand(1, 11), rand(6.4, 8), 0.08, randInt(0, 1));
+      this.addSnowDrifts(s0, decor);
       this.chunks.push({ id, s0, kind: "park", decor });
       this.listVersion++;
       return;
@@ -4313,7 +4613,7 @@ class Engine {
       // Balanced streetscape: grand city buildings, ramen shops, machiya merchant shops, houses
       const lot = (lx: number) => {
         const r = Math.random();
-        if (r < 0.32) add("building", lx, -7.5, 0.1, 0, makeBuildingSpec(rand(8.2, 11.2)));
+        if (r < 0.32) add("building", lx, -7.5, 0.1, 0, makeBuildingSpec(rand(9.0, 11.6)));
         else if (r < 0.50) add("house", lx, -7.5, 0.1, randInt(0, 1)); // traditional house
         else if (r < 0.68) add("machiya", lx, -7.5, 0.1, randInt(0, 1)); // machiya shop
         else if (r < 0.84) add("ramen", lx, -7.5, 0.1, 0); // 8.6m grand ramen shop
@@ -4333,6 +4633,12 @@ class Engine {
       if (Math.random() < 0.4) add("mamachari", rand(2.5, 9.5), -4.55, 0.12, randInt(0, 3));
       if (Math.random() < 0.25) add("mamachari", rand(2.5, 9.5), 4.55, 0.12, randInt(0, 3));
 
+      // MOBIL SPORT LEGENDARIS parkir di bahu jalan: RWB Porsche / Nissan Skyline R34 / Initial D AE86.
+      // JARANG (≈5.5% per chunk, 12 livery kombinasi) — surprise car-spotting, tidak selalu ada.
+      if (Math.random() < 0.055) {
+        add("special_car", rand(1.5, 10), Math.random() < 0.5 ? -4.62 : 4.62, 0.1, randInt(0, 11));
+      }
+
       // Illuminated sidewalk neon / ramen lantern signboards
       if (Math.random() < 0.35) add("neon_sign", rand(2.5, 9.5), -4.4, 0.12, randInt(0, 2));
       // a sakura in front of the shops now and then
@@ -4340,7 +4646,7 @@ class Engine {
       // Front sidewalk buildings & houses (facing the street)
       const rFront = Math.random();
       if (rFront < 0.22) add("house", 6, 11.2, -0.1, randInt(0, 1));
-      else if (rFront < 0.45) add("building", 6, 11.2, -0.1, 0, makeBuildingSpec(rand(8.0, 10.5)));
+      else if (rFront < 0.45) add("building", 6, 11.2, -0.1, 0, makeBuildingSpec(rand(8.8, 11.0)));
       else if (rFront < 0.60) add("machiya", 6, 11.2, -0.1, randInt(0, 1));
       else if (rFront < 0.75) add("village_house", 6, 11.2, -0.1, randInt(0, 3));
     } else {
@@ -4370,6 +4676,7 @@ class Engine {
     if (Math.random() < 0.4) add("sakura", rand(1, 11), 5.1, 0.12, randInt(0, 3));
     for (let i = 0; i < randInt(1, 2); i++) add("bush", rand(0.5, 11.5), rand(6.6, 11), 0.05, randInt(0, 1));
     for (let i = 0; i < randInt(1, 3); i++) add("flowers", rand(0.5, 11.5), rand(6.4, 11.5), 0.08, randInt(0, 1));
+    this.addSnowDrifts(s0, decor);
     this.chunks.push({ id, s0, kind, decor });
     this.listVersion++;
   }
@@ -4466,6 +4773,46 @@ class Engine {
     if (this.intersections.some((it) => Math.abs(it.s - s) < (it.scramble ? 11 : it.wide ? 10.5 : 8.5))) return;
     if (this.laneReserved(lane, s)) return;
     const hLen = half ?? OBSTACLE_DEFS[kind].halfLen;
+    // Ramp & rel besi (grind rail) tidak boleh terlalu dekat apalagi ketembus satu sama lain
+    // di lajur yang sama: jaga jarak sisi minimal supaya kombo ramp -> rel tetap nyaman dimainkan.
+    if (kind === "rail") {
+      for (const o of this.obstacles) {
+        if (o.kind !== "ramp" || o.lane !== lane) continue;
+        const oHalf = o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
+        if (Math.abs(o.s - s) < oHalf + hLen + RAMP_RAIL_MIN_GAP) return; // rel: batalkan saja
+      }
+    } else if (kind === "ramp") {
+      for (let i = this.obstacles.length - 1; i >= 0; i--) {
+        const o = this.obstacles[i];
+        if (o.lane !== lane) continue;
+        const oHalf = o.half ?? OBSTACLE_DEFS[o.kind].halfLen;
+        if (o.kind === "rail") {
+          if (Math.abs(o.s - s) >= oHalf + hLen + RAMP_RAIL_MIN_GAP) continue;
+          if (!_force) return; // ramp biasa: batalkan, jangan potong rel yang sudah ada
+          // Ramp darurat (runway bus / perlintasan): PANGKAS ujung rel yang bentrok supaya
+          // kedua ujungnya tetap berjarak RAMP_RAIL_MIN_GAP dari badan ramp.
+          const railStart = o.s - oHalf;
+          const railEnd = o.s + oHalf;
+          const keepHead = o.s < s; // sisakan sisi rel yang menjauhi ramp
+          const newStart = keepHead ? railStart : s + hLen + RAMP_RAIL_MIN_GAP;
+          const newEnd = keepHead ? s - hLen - RAMP_RAIL_MIN_GAP : railEnd;
+          if (newEnd - newStart < 6) {
+            this.obstacles.splice(i, 1); // sisa terlalu pendek untuk di-grind: hapus
+          } else {
+            o.s = (newStart + newEnd) / 2;
+            o.half = (newEnd - newStart) / 2;
+            track.frame(o.s, LANE_LAT[o.lane], 0, tmpV);
+            track.quat(o.s, tmpQ);
+            o.pos = [tmpV.x, tmpV.y, tmpV.z];
+            o.quat = [tmpQ.x, tmpQ.y, tmpQ.z, tmpQ.w];
+          }
+        } else if (o.kind === "ramp") {
+          if (!_force && Math.abs(o.s - s) < oHalf + hLen + 0.6) return; // jangan tumpuk dua ramp
+        } else if (_force && Math.abs(o.s - s) < oHalf + hLen + 0.35) {
+          this.obstacles.splice(i, 1); // ramp darurat menyingkirkan rintangan kecil yang menabrak badannya
+        }
+      }
+    }
     // JANGAN PERNAH menempatkan obstacle di dekat apalagi di belakang item (huruf, roket, kaleng NOS)!
     // Clearance 22m di depan item dan 20m di belakang item agar pemain bebas & aman mengambil item.
     if (this.isNearCollectibleItem(s, lane, hLen + 22.0, hLen + 20.0)) return;
@@ -4675,7 +5022,9 @@ class Engine {
       const activity = activities[i];
       const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
       const dir = i % 2 === 0 ? 1 : -1;
-      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side * 5.3);
+      // Hewan pinggir jalan berdiri di trotoar: sisi +1 di trotoar JAUH (12.6..16.1),
+      // bukan di aspal jalur seberang (5.0..12.3) seperti lat 5.3 sebelumnya.
+      const m = this.newMover("shibuya_animal", this.distance + 46 + i * 5.6, -1, activity === "crossing" ? -dir * 4.15 : side > 0 ? 13.45 : -5.3);
       m.dir = dir;
       m.speed = activity === "crossing" ? 2.35 : 0;
       m.delay = activity === "crossing" ? Math.max(0.25, (m.s - this.distance) / Math.max(this.speed, START_SPEED) - 3.4) : 0;
@@ -5257,7 +5606,8 @@ class Engine {
               ? "bathing"
               : slot % 2 === 0 ? "waving" : "crossing";
           const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
-          const sidewalkLat = side * 5.3;
+          // Sisi +1 = trotoar jauh (12.6..16.1), bukan aspal jalur seberang yang dilewati mobil
+          const sidewalkLat = side > 0 ? 13.45 : -5.3;
           const m = this.newMover("shibuya_animal", x + (i - (n - 1) / 2) * 1.8, -1, activity === "crossing" ? -dir * startEdge : sidewalkLat);
           m.dir = dir;
           m.speed = activity === "crossing" ? animalSpeed : 0;

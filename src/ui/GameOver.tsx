@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useUI } from "../game/store";
 import { engine } from "../game/engine";
 import { sfx } from "../game/audio";
@@ -16,7 +17,7 @@ const QUIPS: Record<string, string[]> = {
   cross_traffic: ["T-BONED DI PEREMPATAN!", "LOMPAT SISI DEPAN AJA!", "WATCH CROSS TRAFFIC!", "HOOD JUMP MISSED!"],
 };
 
-/** Label singkat penyebab tumbang, biar pemain langsung paham kenapa game over. */
+/** Label singkat penyebab tumbang — dirasionalkan jadi satu caption kecil di bawah skor. */
 const CAUSE_LABEL: Record<string, string> = {
   obstacle: "NUBRUK RINTANGAN",
   car: "KETABRAK MOBIL",
@@ -30,109 +31,234 @@ const CAUSE_LABEL: Record<string, string> = {
   cross_traffic: "TABRAKAN DI PEREMPATAN",
 };
 
+const CONFETTI_COLORS = ["#ffd60a", "#2ec4b6", "#ff6b6b", "#a855f7", "#4cc9f0", "#ff9f1c"];
+
+/**
+ * Layar Game Over — hypercasual & HIDUP:
+ *  - sinar sunburst pelan berputar di belakang kartu
+ *  - skor DIHITUNG NAIK 0 → final dengan tik-tik nada-naik yang satisfying (tap untuk skip)
+ *  - "TENG!" saat berhenti, lalu roti dihitung "pling-pling-pling" menaiki tangga nada
+ *  - NEW BEST! → parade fanfare + letusan confetti
+ *  - tombol RETRY menyala berdenyut mengundang tap
+ */
 export function GameOver() {
   const phase = useUI((s) => s.phase);
   const score = useUI((s) => s.score);
   const best = useUI((s) => s.best);
   const bread = useUI((s) => s.bread);
-  const wallet = useUI((s) => s.wallet);
   const isNewBest = useUI((s) => s.isNewBest);
   const runs = useUI((s) => s.runs);
   const cause = useUI((s) => s.crashCause);
   const wordHunt = useUI((s) => s.wordHunt);
   const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
+
+  const [disp, setDisp] = useState(0); // skor yang sedang ditampilkan (naik)
+  const [dispB, setDispB] = useState(0); // roti yang sedang dihitung
+  const [done, setDone] = useState(false); // hitung skor selesai → TENG!
+  const [bDone, setBDone] = useState(false); // hitung roti selesai → tombol menyala
+  const raf = useRef(0);
+  const skip = useRef(false);
+
+  // Fase 1: hitung skor naik dengan tik yang makin tinggi (ease-out).
+  useEffect(() => {
+    if (phase !== "gameover") return;
+    skip.current = false;
+    const D = score >= 3000 ? 1.9 : score >= 1000 ? 1.5 : 1.15; // skor besar = sweep lebih panjang
+    const t0 = performance.now();
+    let lastTick = 0;
+    let lastVal = -1;
+    const step = (now: number) => {
+      let t = Math.min(1, (now - t0) / (D * 1000));
+      if (skip.current) t = 1;
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = Math.round(score * eased);
+      if (val !== lastVal) {
+        lastVal = val;
+        setDisp(val);
+        if (t < 1 && now - lastTick > 45) {
+          lastTick = now;
+          sfx.countTick(eased);
+        }
+      }
+      if (t < 1) raf.current = requestAnimationFrame(step);
+      else {
+        setDone(true);
+        if (!skip.current || score > 0) sfx.countDone();
+      }
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [phase, score]);
+
+  // Fase 2: setelah TENG — NEW BEST merayakan, lalu roti dihitung "pling-pling".
+  useEffect(() => {
+    if (!done) return;
+    if (isNewBest && score > 0) sfx.fanfare();
+    if (bread <= 0) {
+      setBDone(true);
+      return;
+    }
+    const per = Math.max(30, Math.min(85, 950 / bread)); // roti banyak → tempo cepat ("hujan pling")
+    let i = 0;
+    const id = window.setInterval(() => {
+      i++;
+      setDispB(i);
+      sfx.breadCoin(i - 1);
+      if (i >= bread) {
+        window.clearInterval(id);
+        setBDone(true);
+      }
+    }, per);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
+
   if (phase !== "gameover") return null;
   const list = QUIPS[cause] ?? QUIPS.obstacle;
   const quip = list[runs % list.length];
+  const got = wordHunt.collected.filter(Boolean).length;
+  const canOpen = wordHunt.pendingBox || (wordHunt.collected.every(Boolean) && !wordHunt.claimed);
+
+  const confetti = done && isNewBest;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex select-none items-center justify-center bg-black/25">
-      <div className="card-in w-[84%] max-w-[440px] overflow-hidden rounded-[30px] bg-white text-center shadow-[0_12px_0_rgba(0,0,0,0.28)]">
-        {/* judul + guyon */}
-        <div className="bg-[#ef4b4b] px-5 pb-4 pt-3.5">
-          <div className="mx-auto w-fit rounded-full bg-black/15 px-3 py-0.5 font-body text-[2.6cqw] font-extrabold tracking-[0.35em] text-white">
-            GAME OVER
-          </div>
-          <div className="mt-1.5 font-display text-[8cqw] leading-none text-white txt-outline-sm">{quip}</div>
+    <div className="pointer-events-none absolute inset-0 z-20 flex select-none items-center justify-center overflow-hidden bg-black/45">
+      {/* spotlight lembut statis di belakang kartu — fokus & rapi, tanpa sinar berputar */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(52% 42% at 50% 46%, rgba(255,255,255,0.1), transparent 70%)" }}
+      />
+
+      <div className="card-in w-[84%] max-w-[400px] overflow-hidden rounded-[26px] bg-white text-center shadow-[0_10px_0_rgba(0,0,0,0.22)]">
+        {/* header: judul ber-goyang + guyon dalam satu blok ramping */}
+        <div className="bg-gradient-to-b from-[#ff5d5d] to-[#e23e3e] px-5 pb-3.5 pt-3">
+          <div className="go-wobble font-display text-[clamp(25px,6.4cqw,42px)] leading-none text-white txt-outline-sm">GAME OVER</div>
+          <div className="mt-1 font-body text-[clamp(11px,2.6cqw,17px)] font-extrabold tracking-[0.14em] text-white/90">{quip}</div>
         </div>
 
         <div className="px-5 pb-5 pt-4">
-          {/* skor */}
-          <div className="rounded-[22px] bg-[#1f2430] px-4 py-3">
-            <div className="font-body text-[2.7cqw] font-extrabold tracking-[0.3em] text-white/60">SCORE</div>
-            <div className="font-display text-[13cqw] leading-none text-[#ffd60a]">{score}</div>
-            {isNewBest ? (
-              <div className="mx-auto mt-1.5 w-fit rotate-[-3deg] rounded-full bg-[#ffd60a] px-3 py-0.5 font-display text-[3.4cqw] leading-none text-[#1f2430]">
-                NEW BEST!
+          {/* skor — SATU pusat perhatian; TAP untuk lewati perhitungan */}
+          <div
+            onClick={() => {
+              skip.current = true;
+            }}
+            title={!done ? "tap untuk langsung ke skor akhir" : undefined}
+            className="relative cursor-pointer rounded-2xl bg-[#1f2430] px-4 pb-3 pt-2.5 shadow-[0_4px_0_rgba(10,13,20,0.5),inset_0_0_22px_rgba(255,214,10,0.06)]"
+          >
+            {confetti && (
+              <div className="pointer-events-none absolute inset-0 overflow-visible">
+                {Array.from({ length: 18 }, (_, i) => (
+                  <i
+                    key={i}
+                    className="go-confetti-piece"
+                    style={{
+                      left: "50%",
+                      top: "30%",
+                      ["--dx" as string]: `${((i * 97) % 220) - 110}px`,
+                      ["--dy" as string]: `${-40 - ((i * 53) % 130)}px`,
+                      ["--r" as string]: `${160 + ((i * 61) % 400)}deg`,
+                      ["--cd" as string]: `${(i % 6) * 0.03}s`,
+                      background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                    }}
+                  />
+                ))}
               </div>
-            ) : (
-              <div className="mt-1 font-body text-[3.2cqw] font-extrabold text-white/55">BEST {best}</div>
             )}
+            {isNewBest && (
+              <div
+                className={`${done ? "go-badge" : "opacity-0"} go-starburst absolute right-2 top-2 z-10 max-w-[48%] px-2.5 py-2 text-center font-display text-[clamp(10px,3.2cqw,16px)] leading-[0.95] text-[#5b3a00]`}
+                style={{ ["--tilt" as string]: "6deg" }}
+              >
+                <span className="relative z-[1]">NEW BEST!</span>
+              </div>
+            )}
+            <div className="pt-1 font-body text-[clamp(10px,2.3cqw,15px)] font-extrabold tracking-[0.3em] text-white/65">SCORE</div>
+            {done && score > 0 && (
+              <>
+                <span className="go-twinkle left-[14%] top-[22%] text-[11px]" />
+                <span className="go-twinkle right-[16%] top-[40%] text-[9px]" style={{ ["--d" as string]: "0.5s" }} />
+                <span className="go-twinkle left-[20%] bottom-[26%] text-[8px]" style={{ ["--d" as string]: "1s" }} />
+              </>
+            )}
+            <div key={done ? "d" : "c"} className={`${done && score > 0 ? "go-numpop" : ""} font-display text-[12.5cqw] leading-[1.02] text-[#ffd60a] [text-shadow:0_3px_0_rgba(120,72,0,0.55),0_0_18px_rgba(255,214,10,0.35)]`}>
+              {disp}
+            </div>
+            <div className="mt-1 flex items-center justify-center gap-3">
+              <span className="font-body text-[clamp(11px,2.7cqw,17px)] font-extrabold text-white/70">BEST {best}</span>
+              {bread > 0 && (
+                <span className={`flex items-center gap-1 font-display text-[clamp(14px,3.1cqw,19px)] leading-none transition-colors ${bDone ? "text-[#ffd60a]" : "text-[#ffb64d]"}`}>
+                  <BreadIcon size={15} />+{dispB}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* kenapa tumbang */}
-          <div className="mt-2.5 flex items-center justify-center gap-2">
-            <span className="rounded-full bg-[#ffe3e3] px-2.5 py-1 font-body text-[2.6cqw] font-extrabold tracking-[0.12em] text-[#c23a3a]">
+          {/* kenapa tumbang — pill muncul setelah hitungan beres */}
+          <div className={`${done ? "go-fade" : "opacity-0"} mt-2`} style={{ ["--d" as string]: "0.05s" }}>
+            <span className="inline-block rounded-full bg-[#ffe9e9] px-3 py-1 font-body text-[clamp(11px,2.6cqw,16px)] font-extrabold tracking-[0.1em] text-[#c0564c]">
               {CAUSE_LABEL[cause] ?? "TUMBANG!"}
             </span>
-            <span className="flex items-center gap-1 rounded-full bg-[#fff4d6] px-2.5 py-1 font-display text-[3.4cqw] leading-none text-[#8a5a12]">
-              <BreadIcon size={18} />+{bread}
-              <span className="font-body text-[2.5cqw] font-extrabold text-[#b08340]">· wallet {wallet}</span>
-            </span>
           </div>
 
-          {/* Daily Word Hunt progress banner */}
+          {/* Daily Word Hunt — strip tipis, jadi emas hanya saat box siap dibuka */}
           <div
             onClick={() => {
               sfx.click();
               setShowMysteryBox(true);
             }}
-            className="pointer-events-auto mt-3 flex cursor-pointer items-center justify-between rounded-2xl border-2 border-[#ffd21f]/40 bg-[#1c2230] px-3.5 py-2 shadow-sm transition-transform active:scale-95"
+            className={`${done ? "go-fade" : "opacity-0"} pointer-events-auto mt-2.5 flex cursor-pointer items-center justify-between rounded-xl px-3 py-1.5 transition-transform active:scale-95 ${
+              canOpen ? "bg-[#1c2230]" : "bg-[#f3f5f8]"
+            }`}
+            style={{ ["--d" as string]: "0.12s" }}
           >
-            <div className="flex flex-col items-start leading-none">
-              <span className="font-body text-[2.2cqw] font-extrabold tracking-wider text-[#ffd21f]">
-                DAILY WORD HUNT
-              </span>
-              <div className="mt-1 flex items-center gap-1 font-display text-[3.6cqw] text-white">
-                {wordHunt.word.split("").map((ch, idx) => (
-                  <span
-                    key={idx}
-                    className={wordHunt.collected[idx] ? "text-[#ffd21f] font-bold" : "text-white/25"}
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </div>
-            </div>
-            {wordHunt.pendingBox || (wordHunt.collected.every(Boolean) && !wordHunt.claimed) ? (
-              <span className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-[#ffd60a] to-[#ff9f1c] px-2.5 py-1.5 font-display text-[2.8cqw] text-[#1c1400] shadow animate-bounce">
+            <span className={`font-body text-[clamp(10px,2.1cqw,14px)] font-extrabold tracking-[0.12em] ${canOpen ? "text-[#ffd21f]" : "text-[#9aa4b2]"}`}>
+              WORD HUNT
+            </span>
+            <span className="flex items-center gap-1 font-display text-[clamp(13px,3cqw,18px)] leading-none">
+              {wordHunt.word.split("").map((ch, idx) => (
+                <span key={idx} className={wordHunt.collected[idx] ? "text-[#e8b10c]" : canOpen ? "text-white/25" : "text-[#c6cdd6]"}>
+                  {ch}
+                </span>
+              ))}
+            </span>
+            {canOpen ? (
+              <span className="animate-bounce rounded-lg bg-gradient-to-r from-[#ffd60a] to-[#ff9f1c] px-2 py-1 font-display text-[2.6cqw] leading-none text-[#1c1400] shadow">
                 BUKA 🎁
               </span>
             ) : (
-              <span className="rounded-full bg-white/10 px-2 py-0.5 font-display text-[2.4cqw] text-white/70">
-                {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length} 🎁
-              </span>
+              <span className="font-body text-[2.2cqw] font-extrabold text-[#9aa4b2]">{got}/{wordHunt.word.length}</span>
             )}
           </div>
 
-          {/* aksi */}
-          <button
-            type="button"
-            onClick={() => engine.input("tap")}
-            className="pointer-events-auto mt-4 w-full rounded-2xl bg-[#2ec4b6] py-3.5 font-display text-[5.6cqw] leading-none text-white shadow-[0_5px_0_#1f9a8f] active:translate-y-[3px] active:shadow-[0_2px_0_#1f9a8f]"
-          >
-            TAP TO RETRY
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              sfx.click();
-              engine.toMenu();
-            }}
-            className="pointer-events-auto mt-2.5 w-full rounded-2xl bg-[#eef0f3] py-3 font-display text-[4.2cqw] leading-none text-[#1f2430] shadow-[0_4px_0_#cfd4db] active:translate-y-[2px] active:shadow-[0_2px_0_#cfd4db]"
-          >
-            MENU · SKINS
-          </button>
+          {/* aksi — RETRY pop masuk, lalu berdenyut mengundang setelah semua hitungan tuntas */}
+          {done ? (
+            <button
+              type="button"
+              onClick={() => engine.input("tap")}
+              className="pointer-events-auto relative mt-3.5 w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#3ad6c8] to-[#25b3a5] py-3.5 font-display text-[5.4cqw] leading-none text-white shadow-[0_5px_0_#1f9a8f] active:translate-y-[3px] active:shadow-[0_2px_0_#1f9a8f]"
+            >
+              TAP TO RETRY
+              {/* sapuan kilau lembut (bukan glow) supaya tombol terasa hidup */}
+              <span className="shine pointer-events-none absolute inset-y-0 w-[22%] -rotate-12 bg-white/30 blur-[2px]" />
+            </button>
+          ) : (
+            <div className="mt-3.5 w-full rounded-2xl border-2 border-dashed border-[#dfe3e8] py-3.5 font-body text-[clamp(13px,3.4cqw,21px)] font-extrabold tracking-[0.12em] text-[#aab2bd]">
+              MENGHITUNG SKOR…
+            </div>
+          )}
+          {done && (
+            <button
+              type="button"
+              onClick={() => {
+                sfx.click();
+                engine.toMenu();
+              }}
+              className="go-fade pointer-events-auto mt-2 w-full rounded-2xl bg-white py-2.5 font-display text-[3.9cqw] leading-none text-[#667085] shadow-[0_3px_0_#dfe3e8] ring-1 ring-[#e6e9ee] active:translate-y-[2px] active:shadow-[0_1px_0_#dfe3e8]"
+              style={{ ["--d" as string]: "0.18s" }}
+            >
+              MENU · SKINS
+            </button>
+          )}
         </div>
       </div>
     </div>

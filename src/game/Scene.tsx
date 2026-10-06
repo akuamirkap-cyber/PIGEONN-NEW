@@ -38,8 +38,9 @@ const CROSSY: Framing = { back: 8.2, up: 9.2, lookAhead: 6.0, lookUp: 0.45, fov:
 const CROSSY_NOS: Framing = { ...CROSSY, back: 9.0, up: 9.6, fov: 51 };
 // Subway Surfers signature pre-game action angle: Low-Angle Dutch Hero Shot (sudut rendah miring dinamis)
 const MENU: Framing = { back: 3.3, up: 0.86, lookAhead: 0.12, lookUp: 0.95, fov: 54, latFollow: 1, orbit: -0.78, roll: -0.095, curveDown: 0.0008, curveSide: 0.0003, hazeNear: 90, hazeFar: 175 };
-const SKINS: Framing = { back: 7.6, up: 1.8, lookAhead: 0.15, lookUp: -0.5, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
-const TRICKS_F: Framing = { back: 9.8, up: 1.8, lookAhead: 0.15, lookUp: -1.4, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
+const SKINS: Framing = { back: 5.0, up: 1.6, lookAhead: 0.15, lookUp: -0.5, fov: 42, latFollow: 1, orbit: -0.55, roll: 0, curveDown: 0.0, curveSide: 0, hazeNear: 90, hazeFar: 180 };
+// Kamera panel Trick disamakan persis dengan panel Skin (per request user)
+const TRICKS_F: Framing = { ...SKINS };
 const CRASH: Framing = { back: 5.6, up: 3.6, lookAhead: 0, lookUp: 0.35, fov: 56, latFollow: 0.25, orbit: 0, roll: 0, curveDown: 0.0006, curveSide: 0, hazeNear: 85, hazeFar: 165 };
 
 function CameraRig() {
@@ -139,6 +140,13 @@ function CameraRig() {
 
       v.target.copy(v.base).addScaledVector(v.fwd, c.lookAhead).addScaledVector(v.side, camLat.current * 0.6);
       v.target.y += c.lookUp + hFollow * 0.8 + gAhead * 0.85;
+
+      // Penyetelan kamera in-game (panel adjust): offset tinggi, sudut & jarak zoom pemain.
+      if (phase === "playing") {
+        v.pos.y += ui.camHeight;
+        v.target.y -= ui.camAngle;
+        if (ui.camDist !== 0) v.pos.addScaledVector(v.fwd, ui.camDist); // + = kamera lebih DEKAT merpati
+      }
     }
 
     const s = phase === "crashed" || phase === "gameover" ? Math.min(engine.shake, 0.35) : engine.shake;
@@ -194,16 +202,24 @@ function CameraRig() {
       {
         const st = useUI.getState();
         const isNightNow = trackModeNow === "shibuya" && st.shibuyaTime === "malam";
+        const snowNow = st.weather === "snow" && !isNightNow;
+        // jumlah salju di permukaan fade in/out halus saat cuaca berubah
+        const target = st.weather === "snow" ? 1 : 0;
+        const curS = curveUniforms.uSnowAmount.value as number;
+        curveUniforms.uSnowAmount.value = target + (curS - target) * Math.exp(-step * 1.8);
+        if (snowNow) curveUniforms.uHazeRange.value.set(c.hazeNear * 0.82, c.hazeFar * 0.86); // udara bersalju lebih "dekat"
         curveUniforms.uHazeColor.value.set(
           isNightNow
             ? "#162032"
-            : st.weather === "cloudy"
-              ? "#dfe7ee"
-              : trackModeNow === "shibuya" && st.shibuyaTime === "sore"
-                ? "#f7cda4"
-                : trackModeNow === "shibuya" && st.shibuyaTime === "pagi"
-                  ? "#ffe7cd"
-                  : "#dbeeff",
+            : snowNow
+              ? "#e4edf5"
+              : st.weather === "cloudy"
+                ? "#dfe7ee"
+                : trackModeNow === "shibuya" && st.shibuyaTime === "sore"
+                  ? "#f7cda4"
+                  : trackModeNow === "shibuya" && st.shibuyaTime === "pagi"
+                    ? "#ffe7cd"
+                    : "#dbeeff",
         );
       }
     }
@@ -228,15 +244,19 @@ function Lights() {
   const tod = useUI((s) => s.shibuyaTime);
   // PENTING: hook harus selalu terpanggil dengan urutan sama — jangan pakai && antar useUI
   const cloudyWeather = useUI((s) => s.weather === "cloudy");
+  const snowWeather = useUI((s) => s.weather === "snow");
   const nightBright = useUI((s) => s.nightBright);
   const night = mode === "shibuya" && tod === "malam";
   const cloudy = cloudyWeather && !night;
+  const snowy = snowWeather && !night;
   const nightMul = [0.82, 1, 1.18][nightBright];
-  // Preset cahaya: malam (terang, hangat, bersih) / berawan / Shibuya pagi (emas lembut) / Shibuya sore (senja oranye) / siang cerah
+  // Preset cahaya: malam (terang, hangat, bersih) / bersalju (dingin lembut, langit putih) / berawan / Shibuya pagi (emas lembut) / Shibuya sore (senja oranye) / siang cerah
   const preset = night
     ? { hemi: ["#e4ecf8", "#242e40", 1.65 * nightMul] as const, amb: [0.95 * nightMul, "#f0f4fc"] as const, dir: [1.65 * nightMul, "#fff6e8"] as const }
-    : cloudy
-      ? { hemi: ["#e8edf4", "#93a0ad", 1.4] as const, amb: [0.5, "#eef2f7"] as const, dir: [1.15, "#eef2f6"] as const }
+    : snowy
+      ? { hemi: ["#eef3fb", "#aabdd0", 1.8] as const, amb: [0.62, "#f2f7fd"] as const, dir: [0.85, "#e6edf8"] as const }
+      : cloudy
+        ? { hemi: ["#e8edf4", "#93a0ad", 1.4] as const, amb: [0.5, "#eef2f7"] as const, dir: [1.15, "#eef2f6"] as const }
       : mode === "shibuya" && tod === "pagi"
         ? { hemi: ["#fff0dd", "#8a90b8", 1.7] as const, amb: [0.4, "#ffe9d0"] as const, dir: [2.1, "#fff0d8"] as const }
         : mode === "shibuya" && tod === "sore"
@@ -286,7 +306,14 @@ function Lights() {
 }
 
 function Loop() {
-  useFrame((_, dt) => engine.update(dt), -10);
+  useFrame((_, dt) => {
+    // Auto-pause: tab disembunyikan = dunia beku penuh (HP hemat daya, balik lagi tanpa lompat waktu)
+    if (typeof document !== "undefined" && document.hidden) return;
+    // Panel adjust kamera terbuka = game BERHENTI total, tapi render jalan terus
+    // (CameraRig tetap responsif sehingga slider menggerakkan kamera secara live).
+    if (useUI.getState().camAdjusting) return;
+    engine.update(dt);
+  }, -10);
   return null;
 }
 
@@ -337,6 +364,9 @@ const SKY_DAY = { top: "#249bed", mid: "#55b8f5", bot: "#ccecff" };
 const SKY_NIGHT = { top: "#0b1220", mid: "#18243b", bot: "#24324d" };
 // Siang berawan yang lembut: zenith abu kebiruan turun ke horizon putih keperakan
 const SKY_CLOUDY = { top: "#7d93ab", mid: "#c9d6e0", bot: "#eaf0f5" };
+// Cuaca bersalju: gradien KHAS cantik & ceria (bukan kelabu muram) —
+// zenith biru powder lembut -> tengah periwinkle cerah -> horizon blush kemerahan hangat
+const SKY_SNOW = { top: "#6aa9ec", mid: "#b8d4f6", bot: "#ffe6dc" };
 // Shibuya pagi: biru muda dengan horizon emas lembut
 const SKY_PAGI = { top: "#4f9be0", mid: "#ffdab6", bot: "#ffedd6" };
 // Shibuya sore: senja — zenith biru tua, horizon oranye hangat
@@ -345,7 +375,9 @@ function Sky() {
   const mode = useUI((s) => s.trackMode);
   const tod = useUI((s) => s.shibuyaTime);
   const cloudy = useUI((s) => s.weather === "cloudy");
+  const snowW = useUI((s) => s.weather === "snow");
   const night = mode === "shibuya" && tod === "malam";
+  const snow = snowW && !night;
   const mat = useMemo(() => {
     const m = new THREE.ShaderMaterial({
       side: THREE.BackSide,
@@ -364,9 +396,11 @@ function Sky() {
   useEffect(() => {
     const pal = night
       ? SKY_NIGHT
-      : cloudy
-        ? SKY_CLOUDY
-        : mode === "shibuya" && tod === "pagi"
+      : snow
+        ? SKY_SNOW
+        : cloudy
+          ? SKY_CLOUDY
+          : mode === "shibuya" && tod === "pagi"
           ? SKY_PAGI
           : mode === "shibuya" && tod === "sore"
             ? SKY_SORE
@@ -374,7 +408,7 @@ function Sky() {
     (mat.uniforms.top.value as THREE.Color).set(pal.top);
     (mat.uniforms.mid.value as THREE.Color).set(pal.mid);
     (mat.uniforms.bot.value as THREE.Color).set(pal.bot);
-  }, [night, cloudy, mode, tod, mat]);
+  }, [night, snow, cloudy, mode, tod, mat]);
   const ref = useRef<THREE.Mesh>(null);
   useFrame(({ camera }) => {
     if (ref.current) ref.current.position.copy(camera.position);
@@ -384,6 +418,93 @@ function Sky() {
       <sphereGeometry args={[150, 24, 16]} />
     </mesh>
   );
+}
+
+/** Hujan salju lembut: ~1500 butir dalam box 96×26×96 yang mengikuti kamera (wrap-around), angin ombak + kelepak per butir. */
+function Snowfall() {
+  const snowOn = useUI((s) => s.weather === "snow");
+  const ref = useRef<THREE.Points>(null);
+  const fade = useRef(0);
+  const { geo, mat } = useMemo(() => {
+    const COUNT = 4000;
+    const pos = new Float32Array(COUNT * 3);
+    const seed = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
+      pos[i * 3] = Math.random() * 96;
+      pos[i * 3 + 1] = Math.random() * 26;
+      pos[i * 3 + 2] = Math.random() * 96;
+      seed[i * 3] = Math.random();
+      seed[i * 3 + 1] = Math.random();
+      seed[i * 3 + 2] = Math.random();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("aSeed", new THREE.BufferAttribute(seed, 3));
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6); // jangan culled saat wrap
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      toneMapped: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uFade: { value: 0 },
+        uPx: { value: 700 },
+        uAnchor: { value: new THREE.Vector3() },
+      },
+      vertexShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uPx;
+        uniform vec3 uAnchor;
+        attribute vec3 aSeed;
+        varying float vA;
+        varying float vS;
+        void main() {
+          vec3 p = position;
+          float t = uTime * ( 0.85 + aSeed.y * 0.6 );
+          p.x = mod( p.x + t * ( 1.35 + aSeed.x * 0.95 ) + sin( uTime * 0.75 + aSeed.z * 6.2831 ) * 0.9, 96.0 );
+          p.z = mod( p.z + t * ( 0.8 + aSeed.y * 0.6 ) + cos( uTime * 0.6 + aSeed.x * 6.2831 ) * 0.9, 96.0 );
+          p.y = mod( p.y - t * ( 3.4 + aSeed.x * 2.1 ), 26.0 );
+          vec3 wp = uAnchor + p - vec3( 48.0, 7.0, 48.0 );
+          vec4 mv = modelViewMatrix * vec4( wp, 1.0 );
+          gl_Position = projectionMatrix * mv;
+          float dist = max( -mv.z, 0.5 );
+          gl_PointSize = clamp( ( 0.21 + aSeed.z * 0.17 ) * uPx / dist, 1.3, 13.0 );
+          vA = smoothstep( 70.0, 26.0, dist );            // pudar pelan di kejauhan (ikut kabut)
+          vA *= smoothstep( 0.5, 2.5, dist );             // jangan menutupi lensa
+          vS = aSeed.y;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform float uFade;
+        varying float vA;
+        varying float vS;
+        void main() {
+          vec2 q = gl_PointCoord - 0.5;
+          float d = length( q );
+          float a = smoothstep( 0.5, 0.10, d ) * vA * uFade * ( 0.72 + 0.28 * vS );
+          if ( a < 0.004 ) discard;
+          gl_FragColor = vec4( vec3( 0.965, 0.98, 1.0 ), a );
+        }`,
+    });
+    return { geo, mat };
+  }, []);
+  useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
+  useFrame(({ camera, gl }, dt) => {
+    const target = snowOn ? 1 : 0;
+    fade.current += (target - fade.current) * Math.min(1, dt * 1.4);
+    if (fade.current < 0.01 && !snowOn) {
+      if (ref.current) ref.current.visible = false;
+      return;
+    }
+    if (ref.current) ref.current.visible = true;
+    mat.uniforms.uTime.value += dt;
+    mat.uniforms.uFade.value = fade.current;
+    mat.uniforms.uPx.value = (gl.domElement.height / 2) * (camera as THREE.PerspectiveCamera).projectionMatrix.elements[5] * 0.5;
+    // ikut kamera tetapi di-kuantisasi supaya salju tidak "nyetir" bersama kamera
+    const a = mat.uniforms.uAnchor.value as THREE.Vector3;
+    a.set(Math.floor(camera.position.x / 2) * 2, camera.position.y, Math.floor(camera.position.z / 2) * 2);
+  });
+  return <points ref={ref} geometry={geo} material={mat} frustumCulled={false} visible={false} renderOrder={50} />;
 }
 
 export function Scene({ onContextLost }: { onContextLost?: () => void }) {
@@ -425,6 +546,7 @@ export function Scene({ onContextLost }: { onContextLost?: () => void }) {
       <Sky />
       <Backdrop />
       <World />
+      <Snowfall />
       <Player />
     </Canvas>
   );

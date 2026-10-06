@@ -58,6 +58,13 @@ export function buildVoxelGeometry(parts: Part[]): THREE.BufferGeometry {
 
 const cache = new Map<string, THREE.BufferGeometry>();
 
+/** Buang semua geometri ter-cache — dipakai saat HMR mengganti sumber model
+ *  supaya mesh lama (mis. pengendara motor versi sebelumnya) tidak terus dipakai. */
+export function bustGeometryCache() {
+  cache.clear();
+  pairCache.clear();
+}
+
 /** Cached geometry by key so identical props share one geometry. */
 export function getGeometry(key: string, make: () => Part[]): THREE.BufferGeometry {
   let g = cache.get(key);

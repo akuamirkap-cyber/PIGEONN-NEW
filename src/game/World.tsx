@@ -49,10 +49,16 @@ import {
   pedestrianTorsoParts,
   pedestrianArmParts,
   pedestrianLegParts,
+  kamenRiderHeadParts,
+  kamenRiderTorsoParts,
+  kamenRiderArmParts,
+  kamenRiderLegParts,
+  specialCarParts,
   briefcaseParts,
   isSuitVariant,
   guardFenceParts,
   sidewalkPlanterParts,
+  snowDriftParts,
   overpassParts,
   overpassCarParts,
   puddleParts,
@@ -212,6 +218,8 @@ const RamenCustomerView = memo(function RamenCustomerView({
 const DecorView = memo(function DecorView({ d }: { d: Decor }) {
   const groupRef = useRef<THREE.Group>(null);
   const isShibuya = useUI((state) => state.trackMode === "shibuya");
+  // true saat panel karakter/trick sedang dibuka dari menu (kamera preview podium)
+  const previewFocus = useUI((s) => s.phase === "menu" && (s.menuView === "skins" || s.menuView === "tricks"));
   const geo: GeoPair = useMemo(() => {
     switch (d.kind) {
       case "building":
@@ -255,7 +263,7 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
       case "puddle":
         return getGeometryPair(`puddle-${d.variant}`, () => puddleParts(d.variant));
       case "sakura": {
-        const scale = (1 + (d.variant % 2) * 0.18) * (isShibuya ? 2 : 1);
+        const scale = (1.25 + (d.variant % 2) * 0.2) * (isShibuya ? 2 : 1);
         return getGeometryPair(`sakura-${d.variant}-${isShibuya ? "shibuya" : "standard"}`, () => sakuraParts(d.variant, scale));
       }
       case "lantern":
@@ -274,6 +282,8 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getShibuyaBuildingGeoPair("machiya");
       case "house":
         return getGeometryPair(`house-${d.variant % 2}`, () => japaneseHouseParts(d.variant));
+      case "snow_drift":
+        return getGeometryPair(`snowdrift-${Math.abs(d.variant) % 4}`, () => snowDriftParts(d.variant));
       case "village_house":
         return getGeometryPair(`village_house-${Math.abs(d.variant) % 3}`, () => japaneseVillageHouseParts(d.variant));
       case "guardrail":
@@ -300,6 +310,9 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
         return getGeometryPair(`billboard-${d.variant % 3}`, () => billboardParts(d.variant));
       case "jam_car":
         return getGeometryPair(`jam-car-${d.variant % 5}`, () => jamCarParts(d.variant));
+      case "special_car":
+        // RWB / Skyline R34 / AE86 parkir — livery warna dienkode di variant
+        return getGeometryPair(`special-car-${Math.abs(d.variant) % 12}`, () => specialCarParts(d.variant));
       case "tower109":
         return getShibuyaBuildingGeoPair("shibuya109");
       case "avenue_lamp":
@@ -355,9 +368,20 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "tower109";
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
+  // Shibuya Blocks citizens are exclusive to Shibuya mode. If a decoration from
+  // the previous track survives a mode switch, never show its faceless voxel
+  // fallback in Pigeon mode; Pigeon mode must use the face-equipped pedestrians.
+  if (!isShibuya && (d.kind === "ramen_customer" || d.kind === "shopper")) return null;
   if (d.kind === "ramen_customer") {
     const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
     return <RamenCustomerView d={d} customer={customer} rotationY={d.rotY + flip} />;
+  }
+  // Saat panel karakter/trick terbuka di menu: kamera menyorot podium — pepohonan
+  // di dekat podium disembunyikan supaya tidak menutupi pandangan ke merpati.
+  if (previewFocus && (d.kind === "tree" || d.kind === "sakura" || d.kind === "bush")) {
+    const dx = d.pos[0] - engine.player.wx;
+    const dz = d.pos[2] - engine.player.wz;
+    if (dx * dx + dz * dz < 15 * 15) return null;
   }
   return (
     <group ref={groupRef} position={d.pos} rotation-y={d.rotY + flip} scale={d.spec?.assetScale ?? 1}>
@@ -485,14 +509,15 @@ const PedestrianMover = memo(function PedestrianMover({ m }: { m: Mover }) {
 
   // kakek/nenek (elderly) punya geometri sendiri: rambut putih, kacamata, cardigan, tongkat
   const isElder = !!m.elderly;
-  const pedKey = `${m.variant % 8}${isElder ? "-old" : ""}`;
-  const headNormalGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(m.variant, false, isElder)), [pedKey, m.variant, isElder]);
-  const headHitGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-hit`, () => pedestrianHeadParts(m.variant, true, isElder)), [pedKey, m.variant, isElder]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(m.variant, isElder)), [pedKey, m.variant, isElder]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(m.variant, 1, isElder, false)), [pedKey, m.variant, isElder]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(m.variant, -1, isElder, isElder)), [pedKey, m.variant, isElder]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(m.variant, 1, isElder)), [pedKey, m.variant, isElder]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(m.variant, -1, isElder)), [pedKey, m.variant, isElder]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = `${m.variant % 8}${isElder ? "-old" : ""}${snowW ? "-w" : ""}`;
+  const headNormalGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(m.variant, false, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const headHitGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-hit`, () => pedestrianHeadParts(m.variant, true, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(m.variant, isElder, false, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(m.variant, 1, isElder, false, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(m.variant, -1, isElder, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(m.variant, 1, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
+  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(m.variant, -1, isElder, snowW)), [pedKey, m.variant, isElder, snowW]);
   // tongkat kayu (cuma untuk lansia), dipegang tangan kanan dan ikut mengayun
   const caneGeo = useMemo(() => (isElder ? getGeometry("ped-cane", caneParts) : null), [isElder]);
 
@@ -805,6 +830,7 @@ const MoverView = memo(function MoverView({
 
 function Movers() {
   const { camera } = useThree();
+  const isShibuya = useUI((state) => state.trackMode === "shibuya");
   const refs = useRef(new Map<number, THREE.Group>());
   const signs = useRef(new Map<number, THREE.Group>());
   const seen = useRef(-1);
@@ -916,11 +942,12 @@ function Movers() {
           inner.scale.set(1 + sq * 0.35, 1 - sq, 1 + sq * 0.35);
           inner.position.y = Math.sin(t * 18 + m.variant) * 0.015 - sq * 0.25;
           if (m.kind === "motorcycle") {
-            // motor: goyang halus + sedikit rebahan (lebih lincah dari mobil)
+            // motor & pengendaranya SELALU TEGAK (jangan miring/rebah saat melaju);
+            // cukup getaran mesin vertikal yang sangat halus supaya tetap terasa hidup.
             inner.scale.set(1 + sq * 0.3, 1 - sq, 1 + sq * 0.3);
-            inner.rotation.z = Math.sin(t * 3.1 + m.id) * 0.045;
-            inner.rotation.x = Math.sin(t * 9 + m.id * 0.7) * 0.02;
-            inner.position.y += Math.abs(Math.sin(t * 26 + m.id)) * 0.012 - sq * 0.2;
+            inner.rotation.z = 0;
+            inner.rotation.x = 0;
+            inner.position.y += Math.abs(Math.sin(t * 26 + m.id)) * 0.006 - sq * 0.2;
           }
         }
       }
@@ -946,7 +973,7 @@ function Movers() {
     <>
       {engine.movers.map((m) =>
         m.kind === "pedestrian" ? (
-          m.shibuyaChar ? (
+          m.shibuyaChar && isShibuya ? (
             <ShibuyaPedestrianMover key={m.id} m={m} />
           ) : (
             <PedestrianMover key={m.id} m={m} />
@@ -1204,14 +1231,15 @@ const ScrambleWalker = memo(function ScrambleWalker({ inter, idx }: { inter: Int
   // varian 0..7: campuran kasual + salaryman berjas (5..7); idx 4 = anak sekolah ber-randoseru
   const variant = idx % 8;
   const kid = idx === 4;
-  const pedKey = `${variant}${kid ? "-kid" : ""}`;
-  const headGeo = useMemo(() => getGeometry(`ped-head-${variant}-normal`, () => pedestrianHeadParts(variant, false, false)), [variant]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, false, kid)), [pedKey, variant, kid]);
-  const caseGeo = useMemo(() => (!kid && isSuitVariant(variant) ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [variant, kid]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, false, false)), [pedKey, variant]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, false, false)), [pedKey, variant]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, false)), [pedKey, variant]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, false)), [pedKey, variant]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = `${variant}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
+  const headGeo = useMemo(() => getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, false, snowW)), [pedKey, variant, snowW]);
+  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, false, kid, snowW)), [pedKey, variant, kid, snowW]);
+  const caseGeo = useMemo(() => (!kid && isSuitVariant(variant) && !snowW ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [variant, kid, snowW]);
+  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, false, false, snowW)), [pedKey, variant, snowW]);
+  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, false, false, snowW)), [pedKey, variant, snowW]);
+  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, false, snowW)), [pedKey, variant, snowW]);
+  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, false, snowW)), [pedKey, variant, snowW]);
   const seed = useMemo(() => {
     const slot = -4.6 + (idx + 0.5) * (9.2 / 9); // tiap penyeberang punya "jalur" x sendiri
     const dirU = (idx % 2 === 0 ? 1 : -1) as 1 | -1;
@@ -1262,8 +1290,8 @@ const ScrambleWalker = memo(function ScrambleWalker({ inter, idx }: { inter: Int
     }
     const lat = 4.2 + seed.u * 11.0; // median (4.2) -> trotoar seberang (15.2)
     const sPos = inter.s + seed.x + seed.diag * seed.u;
-    // tinggi permukaan: median/trotoar jauh ditinggikan, aspal jalur lawan rendah
-    const h = lat < 5.2 ? 0.18 : lat > 12.25 ? 0.18 : 0.03;
+    // tinggi permukaan tepat menapak: median ter-aspal 0.18, dek jalan lintas/trotoar jauh 0.175, apron 0.03
+    const h = lat < 5.2 ? 0.18 : lat > 12.25 ? 0.175 : 0.03;
     track.frame(sPos, lat, h, root.position);
     track.quat(sPos, root.quaternion);
     inner.rotation.y = seed.dirU > 0 ? -Math.PI / 2 : Math.PI / 2;
@@ -2173,12 +2201,14 @@ function crowdLat(mode: TrackMode, side: 1 | -1, dir: 1 | -1): number {
   return pick(farLanes) + (Math.random() - 0.5) * 0.25;
 }
 
-type WalkerKind = "adult" | "elder" | "suit" | "kid";
+type WalkerKind = "adult" | "elder" | "suit" | "kid" | "kamen";
 
 const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, trackMode }: { w: Walker; all: Walker[]; variant: number; kind: WalkerKind; trackMode: TrackMode }) {
   const elderly = kind === "elder";
   const kid = kind === "kid";
   const suit = kind === "suit";
+  // EASTER EGG: Kamen Rider kadang ikutan jalan santai di trotoar (tanpa topi kupluk saat salju)
+  const kamen = kind === "kamen";
   const rootRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
   const armLRef = useRef<THREE.Group>(null);
@@ -2188,13 +2218,32 @@ const AmbientWalker = memo(function AmbientWalker({ w, all, variant, kind, track
   const headRef = useRef<THREE.Group>(null);
 
   // pakai cache geometri yang sama dengan pedestrian penyeberang (hemat memori)
-  const pedKey = `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}`;
-  const headGeo = useMemo(() => getGeometry(`ped-head-${variant % 8}${elderly ? "-old" : ""}-normal`, () => pedestrianHeadParts(variant, false, elderly)), [variant, elderly]);
-  const torsoGeo = useMemo(() => getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid)), [pedKey, variant, elderly, kid]);
-  const armLGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false)), [pedKey, variant, elderly]);
-  const armRGeo = useMemo(() => getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly)), [pedKey, variant, elderly]);
-  const legLGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly)), [pedKey, variant, elderly]);
-  const legRGeo = useMemo(() => getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly)), [pedKey, variant, elderly]);
+  const snowW = useUI((s) => s.weather === "snow"); // mode salju: jaket tebal + kupluk
+  const pedKey = kamen ? "kamen" : `${variant % 8}${elderly ? "-old" : ""}${kid ? "-kid" : ""}${snowW ? "-w" : ""}`;
+  const headGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-head", kamenRiderHeadParts) : getGeometry(`ped-head-${pedKey}-normal`, () => pedestrianHeadParts(variant, false, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const torsoGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-torso", kamenRiderTorsoParts) : getGeometry(`ped-torso-${pedKey}`, () => pedestrianTorsoParts(variant, elderly, kid, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const armLGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-arm", kamenRiderArmParts) : getGeometry(`ped-arm-${pedKey}-L`, () => pedestrianArmParts(variant, 1, elderly, false, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const armRGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-arm", kamenRiderArmParts) : getGeometry(`ped-arm-${pedKey}-R`, () => pedestrianArmParts(variant, -1, elderly, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const legLGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-leg", kamenRiderLegParts) : getGeometry(`ped-leg-${pedKey}-L`, () => pedestrianLegParts(variant, 1, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
+  const legRGeo = useMemo(
+    () => (kamen ? getGeometry("kamen-leg", kamenRiderLegParts) : getGeometry(`ped-leg-${pedKey}-R`, () => pedestrianLegParts(variant, -1, elderly, snowW))),
+    [pedKey, variant, elderly, kid, snowW, kamen],
+  );
   const caneGeo = useMemo(() => (elderly ? getGeometry("ped-cane", caneParts) : null), [elderly]);
   // salaryman: tas kerja dikempit rapat di sisi badan, lengan kirinya tidak mengayun
   const caseGeo = useMemo(() => (suit ? getGeometry(`ped-briefcase-${variant % 2}`, () => briefcaseParts(variant)) : null), [suit, variant]);
@@ -2293,7 +2342,8 @@ function UrbanCrowd() {
   const walkers = useMemo<Walker[]>(
     () =>
       Array.from({ length: URBAN_CROWD_N }, (_, i) => {
-        const kind = CROWD_KINDS[i % CROWD_KINDS.length];
+        // SATU Kamen Rider menyamar di keramaian (easter egg — jarang kelihatan, nggak tiap detik ada)
+        const kind: WalkerKind = i === 13 ? "kamen" : CROWD_KINDS[i % CROWD_KINDS.length];
         const elderly = kind === "elder";
         const kid = kind === "kid";
         return {
@@ -2316,8 +2366,8 @@ function UrbanCrowd() {
   return (
     <>
       {walkers.map((w, i) => {
-        // Mix salarymen, children, elders, and casual walkers on both city sidewalks.
-        const kind = CROWD_KINDS[i % CROWD_KINDS.length];
+        // Mix salarymen, children, elders, casual walkers — dan SATU Kamen Rider easter egg.
+        const kind: WalkerKind = i === 13 ? "kamen" : CROWD_KINDS[i % CROWD_KINDS.length];
         return <AmbientWalker key={i} w={w} all={walkers} variant={kind === "suit" ? 5 + (i % 3) : i % 5} kind={kind} trackMode={trackMode} />;
       })}
     </>

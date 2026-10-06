@@ -18,6 +18,14 @@ function ensure() {
   return ctx;
 }
 
+/** Tuduh AudioContext saat tab disembunyikan; lanjut saat kembali (hemat daya + syarat auto-pause HP). */
+export function suspendAudioForHiddenPage() {
+  if (ctx) ctx.suspend().catch(() => {});
+}
+export function resumeAudioFromHiddenPage() {
+  if (ctx && unlocked) ctx.resume().catch(() => {});
+}
+
 export function unlockAudio() {
   unlocked = true;
   ensure();
@@ -63,12 +71,55 @@ function noise(dur: number, vol = 0.4, filterFreq = 1200) {
   src.start();
 }
 
+/**
+ * Tangga melody AMBIL ROTI — ala irama hypercasual: roti beruntun (kombo) menaiki
+ * pentatonik mayor sehingga terdengar seperti lagu mini yang makin tinggi & puas.
+ * Tangganya reset kalau berhenti >1.2 detik (pemain "kehilangan irama"), lalu di
+ * ujung tangga bergoyang 2 nada teratas biar tidak jenuh.
+ */
+const BREAD_SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98, 1760]; // C5 D5 E5 G5 A5 C6 D6 E6 G6 A6
+let breadStep = 0;
+let breadLast = 0;
+
 export const sfx = {
   jump: () => tone(320, 0.14, "square", { to: 640, vol: 0.25 }),
   land: () => noise(0.06, 0.25, 600),
   bread: () => {
-    tone(880, 0.07, "sine", { vol: 0.35 });
-    tone(1320, 0.1, "sine", { vol: 0.35, delay: 0.06 });
+    const now = performance.now();
+    if (now - breadLast > 1200) breadStep = 0;
+    breadLast = now;
+    let i = breadStep;
+    if (i >= BREAD_SCALE.length) i = BREAD_SCALE.length - 2 + (breadStep % 2); // bergoyang di puncak
+    else breadStep = Math.min(breadStep + 1, BREAD_SCALE.length + 4);
+    const f = BREAD_SCALE[i];
+    // "Plock" marimba: triangle dengan infleksi naik kecil + kilau sine satu oktaf.
+    tone(f, 0.09, "triangle", { to: f * 1.18, vol: 0.34, attack: 0.004 });
+    tone(f * 2, 0.11, "sine", { vol: 0.22, delay: 0.02, attack: 0.004 });
+  },
+  /** Tik penghitung skor di layar GAME OVER — nada makin tinggi mengikuti progres. */
+  countTick: (p: number) => {
+    tone(620 + p * 780, 0.034, "triangle", { vol: 0.15, attack: 0.003 });
+  },
+  /** Angka skor berhenti: "teng" bulat yang puas + pop kental. */
+  countDone: () => {
+    tone(987.77, 0.1, "triangle", { vol: 0.4, attack: 0.004 }); // B5
+    tone(1318.51, 0.3, "triangle", { vol: 0.42, delay: 0.08, attack: 0.004 }); // E6
+    tone(659.25, 0.12, "sine", { vol: 0.2 }); // badan bawah
+  },
+  /** Perayaan REKOR BARU sesudah perhitungan selesai — parade mini + renyah. */
+  fanfare: () => {
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51]; // C5 E5 G5 C6 E6
+    notes.forEach((f, i) => tone(f, i === notes.length - 1 ? 0.34 : 0.09, "triangle", { vol: 0.4, delay: i * 0.085, attack: 0.004 }));
+    tone(2093, 0.4, "sine", { vol: 0.14, delay: 0.34, attack: 0.01 }); // kilau ekor
+    noise(0.45, 0.1, 3600);
+  },
+  /** "Pling" per roti yang dihitung di layar GAME OVER (naik tangga pentatonik,
+   *  lalu bergoyang 2 nada teratas biar roti banyak tetap terasa berirama). */
+  breadCoin: (i: number) => {
+    const L = BREAD_SCALE.length;
+    const idx = i < L ? i : L - 2 + ((i - L) & 1);
+    const f = BREAD_SCALE[idx];
+    tone(f, 0.07, "triangle", { to: f * 1.15, vol: 0.26, attack: 0.003 });
   },
   trick: () => {
     tone(523, 0.08, "triangle", { vol: 0.4 });

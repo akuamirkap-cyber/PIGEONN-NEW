@@ -7,6 +7,7 @@ import { BreadIcon } from "./BreadIcon";
 import { SkinsPanel } from "./SkinsPanel";
 import { TricksPanel } from "./TricksPanel";
 import { PigeonIcon } from "./PigeonIcon";
+import { AchievementsPanel } from "./AchievementsPanel";
 
 function ShirtIcon() {
   return (
@@ -24,6 +25,22 @@ function SkateboardIcon() {
       {/* Wheels */}
       <circle cx="6" cy="17" r="2.2" />
       <circle cx="18" cy="17" r="2.2" />
+    </svg>
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="60%" height="60%" fill="currentColor" aria-hidden="true" className="drop-shadow-sm">
+      {/* Badan piala */}
+      <path d="M6.5 2h11a1 1 0 0 1 1 1v5.2a6.5 6.5 0 0 1-13 0V3a1 1 0 0 1 1-1z" />
+      {/* Gagang kiri-kanan */}
+      <path d="M5.5 3.5H3A1.5 1.5 0 0 0 1.5 5v1A4.5 4.5 0 0 0 6 10.5h.6A8 8 0 0 1 5.5 7V3.5zM3.5 5.5h2V7a6 6 0 0 0 .5 2.4A2.5 2.5 0 0 1 3.5 6v-.5z" />
+      <path d="M18.5 3.5H21A1.5 1.5 0 0 1 22.5 5v1a4.5 4.5 0 0 1-4.5 4.5h-.6a8 8 0 0 0 1.1-3.5V3.5zm2 2h-2V7a6 6 0 0 1-.5 2.4A2.5 2.5 0 0 0 20.5 6v-.5z" />
+      {/* Batang + alas */}
+      <path d="M11 13h2v4h3.2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H7.8a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1H11v-4z" />
+      {/* Bintang kecil di piala */}
+      <path d="M12 4.2l.9 1.8 2 .3-1.45 1.4.35 2L12 8.75 10.2 9.7l.35-2L9.1 6.3l2-.3.9-1.8z" fill="#ffd23f" />
     </svg>
   );
 }
@@ -145,15 +162,17 @@ function SettingsRow() {
   const [tips, setTips] = useState(false);
 
   const toggleDeck = () => {
-    const next = deck === "baguette" ? "default" : "baguette";
+    const order = ["default", "baguette", "hoverboard", "broom", "silver", "ufo"] as const;
+    const next = order[(order.indexOf(deck) + 1) % order.length];
     setDeck(next);
     engine.skinPop();
     if (next === "baguette") {
       sfx.unlock();
       addPopup("PAPAN ROTI BAGUETTE!", "#ff9f1c", "Free Baguette Skateboard");
     } else {
-      sfx.click();
-      addPopup("PAPAN STANDAR", "#2ec4b6", "Classic Pro Deck");
+      sfx.unlock();
+      const labels = { default: "PAPAN STANDAR", hoverboard: "HOVERBOARD NEON", broom: "SAPU TERBANG", silver: "SILVER SURFER", ufo: "UFO SKATE" } as const;
+      addPopup(labels[next as keyof typeof labels] ?? "PAPAN", next === "silver" ? "#8fd3ff" : "#2ec4b6", "Free skateboard skin");
     }
   };
 
@@ -192,17 +211,23 @@ function SettingsRow() {
       <div className="flex w-full gap-1.5">
         <CyclePill label="SPEED" value={`${speed}×`} accent={speed > 1 ? "#d98b3d" : undefined} onTap={cycleSpeed} />
         <CyclePill label="CURVE" value={curve === "subway" ? "SUBWAY" : "FLAT"} accent={curve === "subway" ? "#168879" : undefined} onTap={toggleCurve} />
-        <CyclePill label="BOARD" value={deck === "baguette" ? "BAGUETTE" : "PRO"} accent={deck === "baguette" ? "#d98b3d" : undefined} onTap={toggleDeck} />
+        <CyclePill label="BOARD" value={deck === "baguette" ? "BAGUETTE" : deck === "hoverboard" ? "HOVER" : deck === "broom" ? "SAPU" : deck === "silver" ? "SILVER" : "PRO"} accent={deck !== "default" ? "#d98b3d" : undefined} onTap={toggleDeck} />
       </div>
       <div className="flex w-full gap-1.5">
         <CyclePill
           label="CUACA"
-          value={weather === "cloudy" ? "BERAWAN" : "CERAH"}
-          accent={weather === "cloudy" ? "#6b7f93" : undefined}
+          value={weather === "cloudy" ? "BERAWAN" : weather === "snow" ? "SALJU" : "CERAH"}
+          accent={weather === "cloudy" ? "#6b7f93" : weather === "snow" ? "#8fb8d8" : undefined}
           onTap={() => {
             toggleWeather();
             sfx.click();
-            addPopup(weather === "sunny" ? "SIANG BERAWAN ☁️" : "SIANG CERAH ☀️", weather === "sunny" ? "#8fa3b8" : "#ffc46b", weather === "sunny" ? "langit lembut keperakan" : "matahari penuh");
+            if (weather === "cloudy") {
+              addPopup("CUACA BERSALJU ❄️", "#a8cdec", "dunia tertutup salju tipis — indah & adem");
+            } else if (weather === "snow") {
+              addPopup("SIANG CERAH ☀️", "#ffc46b", "matahari penuh");
+            } else {
+              addPopup("SIANG BERAWAN ☁️", "#8fa3b8", "langit lembut keperakan");
+            }
           }}
         />
         <CyclePill
@@ -261,6 +286,8 @@ function MainMenu() {
   const setMenuView = useUI((s) => s.setMenuView);
   const [shakeKey, setShakeKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAch, setShowAch] = useState(false);
+  const unseenAch = useUI((s) => s.unseenAch);
   const skin = getSkin(previewId);
   const isUnlocked = unlocked.includes(skin.id);
   const affordable = wallet >= skin.cost;
@@ -317,7 +344,10 @@ function MainMenu() {
   };
 
   return (
-    <div className="menu-overlay pointer-events-none absolute inset-0 z-20 select-none">
+    <div
+      className="menu-overlay pointer-events-none absolute inset-0 z-20 select-none"
+      style={{ inset: "env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)" }}
+    >
       {/* ── Top Bar: compact, aligned wallet + best cards ── */}
       <div className="absolute left-[4%] top-[3.5%] flex h-11 min-w-[25%] items-center gap-2 px-1">
         <BreadIcon size={25} />
@@ -325,65 +355,21 @@ function MainMenu() {
       </div>
 
       <div className="absolute right-[4%] top-[3.5%] flex h-11 min-w-[28%] items-center justify-center gap-1.5 px-1">
-        <span className="font-display text-[3.9cqw] leading-none text-[#ffe04b] txt-outline-sm">BEST</span>
+        <span className="font-display text-[3.9cqw] leading-none text-[#ffe04b]" style={{ textShadow: "0 2px 7px rgba(15,20,32,0.45)" }}>BEST</span>
         <span className="crossy-ui-number font-display text-[4.4cqw] leading-none text-white">{best}</span>
       </div>
 
-      {/* ── Title: clear two-line lockup with breathing room below it ── */}
-      <div className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center">
-        <div className="crossy-title crossy-title-white font-display text-[10.8cqw] leading-[0.9] tracking-[-0.03em] text-white">
+      {/* ── Title: lockup miring ringan ala logo Crossy Road ── */}
+      <div
+        className="absolute left-0 right-0 top-[9%] z-10 flex flex-col items-center"
+        style={{ transform: "rotate(-4deg)" }}
+      >
+        <div className="crossy-title crossy-title-white font-display text-[11.8cqw] leading-[0.88] tracking-[-0.03em] text-white">
           PIGEON
         </div>
-        <div className="crossy-title crossy-title-yellow font-display text-[14.5cqw] leading-[0.86] tracking-[-0.04em] text-[#ffd23f]">
+        <div className="crossy-title crossy-title-yellow font-display text-[15.5cqw] leading-[0.84] tracking-[-0.04em] text-[#ffd23f]">
           SK8
         </div>
-      </div>
-
-      {/* ── Daily Word Hunt + city entry: one clean stack below the logo ── */}
-      <div className="absolute left-[4%] right-[4%] top-[34%] z-30 flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            unlockAudio();
-            sfx.click();
-            setShowMysteryBox(true);
-          }}
-          className="pointer-events-auto flex min-w-[62%] items-center justify-center gap-2 px-3.5 py-1.5 transition-transform hover:scale-[1.02] active:scale-95"
-        >
-          <span className="text-xl">🎁</span>
-          <div className="flex flex-col items-start leading-none">
-            <span className="txt-outline-sm font-body text-[2.2cqw] font-extrabold tracking-wider text-[#fff4c7]">
-              DAILY WORD HUNT
-            </span>
-            <div className="mt-0.5 flex items-center gap-1 font-display text-[3.2cqw] text-[#1f405b]">
-              {wordHunt.word.split("").map((ch, idx) => (
-                <span
-                  key={idx}
-                  className={wordHunt.collected[idx] ? "text-[#e19a16] font-bold" : "text-[#1f405b]/35"}
-                >
-                  {ch}
-                </span>
-              ))}
-            </div>
-          </div>
-          <span className="rounded-full bg-[#ffd451] px-2 py-0.5 font-display text-[2.4cqw] text-[#1f405b] shadow-[0_2px_0_#d5a92e]">
-            {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            unlockAudio();
-            sfx.click();
-            window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
-          }}
-          className="pointer-events-auto flex max-w-full items-center justify-center gap-1.5 px-3 py-1 font-body text-[2.15cqw] font-black tracking-wide text-white whitespace-nowrap transition-all active:scale-95"
-        >
-          <span>🏙️</span>
-          <span>BUKA MODE KOTA SHIBUYA (VOXEL WORLD)</span>
-          <span className="text-white/90">→</span>
-        </button>
       </div>
 
       {/* ── Invisible swipe zone over the pigeon turntable ── */}
@@ -449,7 +435,28 @@ function MainMenu() {
             <SkateboardIcon />
           </button>
 
-          {/* 3. Settings button (NAVY GELAP dengan ikon gear/pengaturan) */}
+          {/* 3. Achievement button (UNG dengan ikon piala + badge merah kalau ada yang belum dilihat) */}
+          <button
+            type="button"
+            onClick={() => {
+              unlockAudio();
+              sfx.click();
+              engine.faceCamera();
+              setShowAch(true);
+            }}
+            aria-label="Pencapaian"
+            title="Pencapaian (Achievements)"
+            className="pointer-events-auto relative flex aspect-square w-[20cqw] max-w-[74px] items-center justify-center rounded-2xl bg-[#a855f7] text-white shadow-[0_5px_0_#7e22ce] active:translate-y-[2px] active:shadow-none"
+          >
+            <TrophyIcon />
+            {unseenAch > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-[6cqw] max-h-6 min-w-[6cqw] items-center justify-center rounded-full border-2 border-white bg-[#ef4b4b] px-1 font-display text-[2.6cqw] leading-none text-white shadow-md">
+                {unseenAch}
+              </span>
+            )}
+          </button>
+
+          {/* 4. Settings button (NAVY GELAP dengan ikon gear/pengaturan) */}
           <button
             type="button"
             onClick={() => setShowSettings(true)}
@@ -461,6 +468,9 @@ function MainMenu() {
           </button>
         </div>
       </div>
+
+      {/* ── Achievement Panel (badge merah di tombol hilang saat panel ditutup) ── */}
+      {showAch && <AchievementsPanel onClose={() => setShowAch(false)} />}
 
       {/* ── Settings Modal Overlay (Diakses lewat tombol gear agar main menu tetap bersih) ── */}
       {showSettings && (
@@ -485,9 +495,22 @@ function MainMenu() {
                 setShowSettings(false);
                 unlockAudio();
                 sfx.click();
+                setShowMysteryBox(true);
+              }}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#ffd451] to-[#ff9f1c] py-2.5 font-display text-[3.4cqw] text-[#1f405b] shadow-[0_4px_0_#d5a92e] active:translate-y-[2px]"
+            >
+              <span>🎁</span>
+              <span>DAILY WORD HUNT · {wordHunt.collected.filter(Boolean).length}/{wordHunt.word.length}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(false);
+                unlockAudio();
+                sfx.click();
                 window.dispatchEvent(new CustomEvent("switch-game-mode", { detail: "shibuya" }));
               }}
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2ec4b6] to-[#3a86ff] py-2.5 font-display text-[3.4cqw] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px]"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#2ec4b6] to-[#3a86ff] py-2.5 font-display text-[3.4cqw] text-white shadow-[0_4px_0_#1f9a8f] active:translate-y-[2px]"
             >
               <span>🏙️</span>
               <span>PINDAH KE MODE KOTA SHIBUYA</span>
