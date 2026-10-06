@@ -330,8 +330,34 @@ export interface ShibuyaAnimalRig {
   activeClip: string | null;
   /** Adds the Shift push pose to source leg nodes; no replacement body parts are created. */
   setPush: (progress: number, roadY: number) => void;
+  /**
+   * MEMPOSEKAN lengan/sayap SESUAI freestyle di atas papan (bukan melambai).
+   * `left`/`right` = target rotasi pivot bahu {rx,ry,rz}; null = kembali netral.
+   * `k` = smoothing 0..1 per-frame (1 = snap). Geometri sumber tidak disentuh:
+   * pose bekerja pada pivot yang dibungkus di SEKITAR node lengan/sayap sumber.
+   */
+  setArmPose: (left: FriendArmPose | null, right: FriendArmPose | null, k: number) => void;
   dispose: () => void;
 }
+
+export interface FriendArmPose {
+  rx: number;
+  ry: number;
+  rz: number;
+}
+
+/**
+ * Node lengan/sayap tiap Friend playable — track clip Play/Iconic untuk node-node ini
+ * DIBUANG dari rig playable supaya tangan tidak lagi melambai saat naik skateboard;
+ * gerakannya digantikan pose freestyle lewat setArmPose.
+ * (rz: lengan kanan naik = +, lengan kiri naik = -, sesuai clip wave sumber.)
+ */
+const ARM_POSE_NODE_NAMES: Partial<Record<ShibuyaAnimalId, [string, string]>> = {
+  tanuki: ["animal_tanuki_armL", "animal_tanuki_armR"],
+  monkey: ["animal_monkey_armL", "animal_monkey_armR"],
+  neko: ["animal_neko_armL", "animal_neko_armR"],
+  crane: ["animal_crane_wingL", "animal_crane_wingR"],
+};
 
 export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   const data = buildAnimals(id);
@@ -355,6 +381,15 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
         : [],
   );
   const pushPivots = new Map<string, THREE.Group>();
+  // Pivot pose bahu untuk lengan/sayap: pivot duduk TEPAT di sendi bahu sumber,
+  // jadi rotasi pivot = pose lengan memutar sendi, bukan orbit mengelilingi badan.
+  const armPoseNodes = ARM_POSE_NODE_NAMES[id];
+  const armPivotSide = new Map<string, "L" | "R">();
+  if (armPoseNodes) {
+    armPivotSide.set(armPoseNodes[0], "L");
+    armPivotSide.set(armPoseNodes[1], "R");
+  }
+  const armPivots = new Map<"L" | "R", THREE.Group>();
   for (const node of data.nodes ?? []) {
     const group = new THREE.Group();
     group.name = node.name;
@@ -366,7 +401,15 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   for (const node of data.nodes ?? []) {
     const group = nodes.get(node.name)!;
     const parent = node.parent ? nodes.get(node.parent)! : raw;
-    if (pushNodeNames.has(node.name)) {
+    if (armPivotSide.has(node.name)) {
+      const pivot = new THREE.Group();
+      pivot.name = `${node.name}_posePivot`;
+      pivot.position.copy(group.position); // pindahkan sendi bahu ke pivot
+      group.position.set(0, 0, 0); // geometri lengan tetap relatif ke bahu
+      armPivots.set(armPivotSide.get(node.name)!, pivot);
+      parent.add(pivot);
+      pivot.add(group);
+    } else if (pushNodeNames.has(node.name)) {
       // This is only an animation pivot around the original source node. The
       // leg node and every one of its source boxes remain untouched.
       const pivot = new THREE.Group();
@@ -412,8 +455,36 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
   group.add(raw);
   const clips = buildRigAnimations(group, data);
   const mixer = new THREE.AnimationMixer(group);
-  const play = clips.find((clip) => clip.name === "Play") ?? clips.find((clip) => clip.name === "Iconic") ?? clips[0];
+  let play = clips.find((clip) => clip.name === "Play") ?? clips.find((clip) => clip.name === "Iconic") ?? clips[0];
+  if (play && armPivots.size) {
+    // Buang track lambai tangan/sayap (offset 2.35 dst) dari clip dasar: badan,
+    // kepala, dan ekor tetap hidup — lengan sekarang didikte pose freestyle.
+    play = new THREE.AnimationClip(
+      `${play.name}_noWave`,
+      play.duration,
+      play.tracks.filter((track) => !armPivotSide.has(track.name.slice(0, track.name.lastIndexOf(".")))),
+    );
+  }
   if (play) mixer.clipAction(play).play();
+
+  // Pose lengan dihaluskan per-frame; target datang dari Player (trick/grab/belok).
+  const armCur: Record<"L" | "R", [number, number, number]> = { L: [0, 0, 0], R: [0, 0, 0] };
+  const setArmPose = (left: FriendArmPose | null, right: FriendArmPose | null, k: number) => {
+    const kk = Math.max(0, Math.min(1, k));
+    (["L", "R"] as const).forEach((side, i) => {
+      const pivot = armPivots.get(side);
+      if (!pivot) return;
+      const pose = i === 0 ? left : right;
+      const cur = armCur[side];
+      const tx = pose?.rx ?? 0;
+      const ty = pose?.ry ?? 0;
+      const tz = pose?.rz ?? 0;
+      cur[0] += (tx - cur[0]) * kk;
+      cur[1] += (ty - cur[1]) * kk;
+      cur[2] += (tz - cur[2]) * kk;
+      pivot.rotation.set(cur[0], cur[1], cur[2]);
+    });
+  };
 
   const setPush = (progress: number, roadY: number) => {
     // Progress follows the same smooth kick window as the Pigeon. The actual
@@ -446,6 +517,7 @@ export function buildShibuyaAnimalRig(id: ShibuyaAnimalId): ShibuyaAnimalRig {
     clips,
     activeClip: play?.name ?? null,
     setPush,
+    setArmPose,
     dispose: () => {
       mixer.stopAllAction();
       mixer.uncacheRoot(group);

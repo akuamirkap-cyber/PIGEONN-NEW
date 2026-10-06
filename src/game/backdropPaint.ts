@@ -674,254 +674,312 @@ export function paintCityNight(W = 4096, H = 512): HTMLCanvasElement {
 }
 
 /**
- * Panorama kota Tokyo di SIANG HARI (juga pagi & sore):
- * Skyline kota metropolitan modern Tokyo yang artistik dan proporsional di bawah Gunung Fuji.
- * Ketinggian siluet gedung dibatasi rendah (hU 0.6 - 2.8) agar Gunung Fuji berdiri megah
- * tanpa terhalang dinding gedung tebal, dengan fasad menara kaca modern dan atap bertingkat
- * yang bersih dan menyatu indah dengan pemandangan horizon.
+ * Panorama SIANG HARI (juga pagi & sore) TANPA tembok kota: pemandangan perbukitan berlapis —
+ * ridge jauh berkabut, bukit hutan tiga lapis dengan kebun sakura & pagoda, lalu sabuk sawah
+ * dan sungai berkelok di kaki. Gaya ilustratif datar, selaras art-style dengan Gunung Fuji
+ * (billboard Fuji sendiri TIDAK diubah).
  */
-export function paintCityDay(W = 4096, H = 512, tod: "pagi" | "siang" | "sore" = "siang", mistHex = "#dbeeff"): HTMLCanvasElement {
+export function paintScenicDay(W = 4096, H = 512, tod: "pagi" | "siang" | "sore" = "siang", mistHex = "#dbeeff"): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
   const g = c.getContext("2d")!;
-  const R = rng(20270415);
+  const R = rng(93170415);
+  const TAU = Math.PI * 2;
   const pxPerUnit = H / (PANO.topY + PANO.botY);
-  const yU = (u: number) => (PANO.topY - u) * pxPerUnit;
+  const yU = (u: number) => (PANO.topY - u) * pxPerUnit; // world height (units) -> canvas y
   const s = W / 4096;
-  const horizon = yU(0);
 
-  // Palet modern pencakar langit Tokyo (harmonis dengan langit & Gunung Fuji)
-  const TOWER_PAINTS = [
-    { base: "#eaf0f7", shade: "rgba(80,105,135,0.20)", glass: "#82a8cf", spandrel: "#d8e1ec" },
-    { base: "#f4f7fb", shade: "rgba(70,95,125,0.18)", glass: "#749ec7", spandrel: "#e0e8f2" },
-    { base: "#e2e7ef", shade: "rgba(85,110,140,0.22)", glass: "#6892bd", spandrel: "#c8d4e4" },
-    { base: "#ece8de", shade: "rgba(100,95,85,0.16)", glass: "#7a9cb8", spandrel: "#ded7c8" },
-  ];
+  const harm = (x: number, terms: [number, number, number][]) => terms.reduce((acc, [k, a, p]) => acc + a * Math.sin((TAU * k * x) / W + p), 0);
+  const wrap = (x: number, r: number, draw: (xx: number) => void) => {
+    draw(x);
+    if (x - r < 0) draw(x + W);
+    if (x + r > W) draw(x - W);
+  };
+  /** Periode gelombang dalam piksel, tapi jumlah gelombangnya BULAT keliling tabung (anti-jahitan di seam). */
+  const cyc = (pxAt4096: number) => W / Math.max(1, Math.round(4096 / pxAt4096));
 
-  const wrapRect = (x: number, y: number, w: number, h: number, fill: string) => {
-    g.fillStyle = fill;
-    g.fillRect(x, y, w, h);
-    if (x + w > W) g.fillRect(x - W, y, w, h);
-    if (x < 0) g.fillRect(x + W, y, w, h);
+  /** Isi satu lapisan bukit dengan gradasi lembut (atas lebih terang, bawah lebih dalam). */
+  const fillLayer = (crest: (x: number) => number, top: string, bottom: string, rim?: string) => {
+    g.beginPath();
+    g.moveTo(0, H);
+    for (let x = 0; x <= W; x += 4) g.lineTo(x, crest(x));
+    g.lineTo(W, H);
+    g.closePath();
+    const grad = g.createLinearGradient(0, yU(2), 0, H);
+    grad.addColorStop(0, top);
+    grad.addColorStop(1, bottom);
+    g.fillStyle = grad;
+    g.fill();
+    if (rim) {
+      g.beginPath();
+      for (let x = 0; x <= W; x += 4) (x === 0 ? g.moveTo : g.lineTo).call(g, x, crest(x) + 2.5 * s);
+      g.lineWidth = 5 * s;
+      g.strokeStyle = rim;
+      g.stroke();
+    }
   };
 
-  /* =========================================================================
-   * LAPISAN 1: Siluet Menara Sangat Jauh Berkabut (Faint misty skyscraper layer)
-   * Ketinggian sangat rendah (hU 1.2 - 2.5) agar kerucut salju & lereng Fuji terlihat penuh
-   * ========================================================================= */
-  {
-    const clusters = [
-      { cx: 0.18 * W, span: 0.16 * W, maxH: 2.6 },
-      { cx: 0.46 * W, span: 0.14 * W, maxH: 2.4 },
-      { cx: 0.72 * W, span: 0.18 * W, maxH: 2.8 },
-      { cx: 0.91 * W, span: 0.12 * W, maxH: 2.2 },
-    ];
+  const bumpyTop = (crest: (x: number) => number, x: number, dy: number, amp: number, seed: number) =>
+    crest(x) +
+    dy * pxPerUnit +
+    Math.sin((TAU * x) / cyc(9.5) + seed) * amp * pxPerUnit * 0.5 +
+    Math.sin((TAU * x) / cyc(4.3) + seed * 1.9) * amp * pxPerUnit * 0.3 +
+    Math.sin((TAU * x) / cyc(1.7) + seed * 3.1) * amp * pxPerUnit * 0.15 +
+    Math.sin((TAU * x) / cyc(0.86) + seed * 5.3) * amp * pxPerUnit * 0.1;
 
-    for (const cl of clusters) {
-      const startX = cl.cx - cl.span / 2;
-      let x = startX;
-      while (x < startX + cl.span) {
-        const bw = (32 + R() * 55) * s;
-        const distFromCenter = Math.abs(x + bw / 2 - cl.cx) / (cl.span / 2);
-        const curveH = 1 - Math.pow(distFromCenter, 2) * 0.55;
-        const hU = Math.max(0.8, (1.2 + R() * (cl.maxH - 1.2)) * curveH);
-        const topY = yU(hU);
+  const forestBand = (
+    crest: (x: number) => number,
+    o: { dy: number; thick: number; amp: number; seed: number; top: string; bottom: string; rim?: string; x0?: number; x1?: number },
+  ) => {
+    const x0 = o.x0 ?? 0;
+    const x1 = o.x1 ?? W;
+    const botAt = (x: number) => crest(x) + (o.dy + o.thick) * pxPerUnit + Math.sin((TAU * x) / cyc(15) + o.seed * 0.7) * o.amp * pxPerUnit * 0.45;
+    g.beginPath();
+    for (let x = x0; x <= x1; x += 4) {
+      const y = bumpyTop(crest, x, o.dy, o.amp, o.seed);
+      if (x === x0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    for (let x = x1; x >= x0; x -= 4) g.lineTo(x, botAt(x));
+    g.closePath();
+    const grad = g.createLinearGradient(0, bumpyTop(crest, (x0 + x1) / 2, o.dy, o.amp, o.seed) - o.amp * pxPerUnit, 0, botAt((x0 + x1) / 2) + o.thick * pxPerUnit);
+    grad.addColorStop(0, o.top);
+    grad.addColorStop(1, o.bottom);
+    g.fillStyle = grad;
+    g.fill();
+    if (o.rim) {
+      g.beginPath();
+      for (let x = x0; x <= x1; x += 4) (x === 0 ? g.moveTo : g.lineTo).call(g, x, bumpyTop(crest, x, o.dy, o.amp, o.seed) + 1.1 * s);
+      g.lineWidth = 2.6 * s;
+      g.strokeStyle = o.rim;
+      g.stroke();
+    }
+  };
 
-        const grad = g.createLinearGradient(0, topY, 0, horizon);
-        grad.addColorStop(0, "#b4c8dc");
-        grad.addColorStop(1, "#cce0ef");
-        wrapRect(x, topY, bw, H - topY, grad as unknown as string);
-
-        // Garis spandrel tipis
-        wrapRect(x + 2 * s, topY + 4 * s, bw - 4 * s, 1.4 * s, "rgba(255,255,255,0.4)");
-        x += bw - 2 * s;
+  const blob = (x: number, y: number, rU: number, pal: Palette, seed: number, trunk = false) => {
+    const r = rU * pxPerUnit;
+    wrap(x, r * 1.8, (xx) => {
+      if (trunk && rU > 1.2) {
+        g.fillStyle = "#5c4127";
+        g.fillRect(xx - r * 0.07, y + r * 0.5, r * 0.14, r * 0.6);
       }
-    }
-  }
-
-  /* =========================================================================
-   * LAPISAN 2: Menara Pencakar Langit Modern Tokyo (Kaca pita & atap bertingkat)
-   * Ketinggian ideal (hU 1.0 - 2.8, antena puncak max 3.4)
-   * ========================================================================= */
-  {
-    const clusters = [
-      { cx: 0.18 * W, span: 0.14 * W, maxH: 2.7 },
-      { cx: 0.46 * W, span: 0.13 * W, maxH: 2.5 },
-      { cx: 0.72 * W, span: 0.16 * W, maxH: 2.9 },
-      { cx: 0.91 * W, span: 0.11 * W, maxH: 2.3 },
-    ];
-
-    for (const cl of clusters) {
-      const startX = cl.cx - cl.span / 2;
-      let x = startX + (R() * 12 - 6) * s;
-      while (x < startX + cl.span) {
-        const bw = (38 + R() * 62) * s;
-        const distFromCenter = Math.abs(x + bw / 2 - cl.cx) / (cl.span / 2);
-        const curveH = 1 - Math.pow(distFromCenter, 2) * 0.5;
-        const hU = Math.max(0.9, (1.3 + R() * (cl.maxH - 1.3)) * curveH);
-        const topY = yU(hU);
-        const pal = TOWER_PAINTS[Math.floor(R() * TOWER_PAINTS.length)];
-
-        // Bodi menara
-        wrapRect(x, topY, bw, H - topY, pal.base);
-
-        // Bayangan 3D di sisi kanan
-        const shadeW = bw * 0.28;
-        wrapRect(x + bw - shadeW, topY, shadeW, H - topY, pal.shade);
-
-        // Parapet atap
-        wrapRect(x, topY, bw, 2 * s, "rgba(255,255,255,0.65)");
-
-        // Kaca pita horizontal (ribbon glass) elegan, bersih tanpa bintik murahan
-        const floorStep = 7 * s;
-        const glassH = floorStep * 0.48;
-        for (let y = topY + 4 * s; y < horizon + 12 * s; y += floorStep) {
-          wrapRect(x + 2.5 * s, y, bw - shadeW - 3.5 * s, glassH, pal.glass);
-          wrapRect(x + 2.5 * s, y + glassH, bw - shadeW - 3.5 * s, floorStep - glassH, pal.spandrel);
-        }
-
-        // Mahkota bertingkat (setback crown) di puncak
-        if (hU > 2.0 && R() < 0.6) {
-          const tierW = bw * 0.62;
-          const tierH = (5 + R() * 8) * s;
-          const tierX = x + (bw - tierW) / 2;
-          wrapRect(tierX, topY - tierH, tierW, tierH, pal.base);
-          wrapRect(tierX, topY - tierH, tierW, 1.8 * s, "rgba(255,255,255,0.7)");
-          wrapRect(tierX + tierW * 0.7, topY - tierH, tierW * 0.3, tierH, pal.shade);
-
-          // Jarum antena langsing dengan suar merah di puncak
-          if (hU > 2.4 && R() < 0.7) {
-            const mastH = (10 + R() * 12) * s;
-            wrapRect(x + bw / 2 - 1 * s, topY - tierH - mastH, 2 * s, mastH, "#5d6775");
-            wrapRect(x + bw / 2 - 2 * s, topY - tierH - mastH - 2.5 * s, 4 * s, 2.5 * s, "#e63946");
-          }
-        }
-
-        x += bw + (8 + R() * 14) * s; // celah lapang antar gedung
+      const n = 12;
+      g.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * TAU;
+        const lump = 0.76 + 0.3 * (0.5 + 0.5 * Math.sin(a * 3 + seed)) + 0.1 * Math.sin(a * 5 - seed * 1.7);
+        const rr = r * lump;
+        const px = xx + Math.cos(a) * rr;
+        const py = y + Math.sin(a) * rr * 0.8;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
       }
-    }
+      g.closePath();
+      g.fillStyle = pal.shade;
+      g.fill();
+      g.save();
+      g.clip();
+      g.fillStyle = pal.base;
+      g.beginPath();
+      g.arc(xx - r * 0.16, y - r * 0.2, r * 0.94, 0, TAU);
+      g.fill();
+      g.fillStyle = pal.mid;
+      g.beginPath();
+      g.arc(xx - r * 0.34, y - r * 0.42, r * 0.58, 0, TAU);
+      g.fill();
+      g.fillStyle = pal.hi;
+      g.beginPath();
+      g.arc(xx - r * 0.48, y - r * 0.58, r * 0.24, 0, TAU);
+      g.fill();
+      g.restore();
+    });
+  };
 
-    // Tokyo Tower lattice mast di kejauhan (proporsi langsing anggun di horizon)
-    const tx = W * 0.74;
-    const towerBaseY = horizon;
-    const towerTopY = yU(3.4);
-    const th = towerBaseY - towerTopY;
-    for (let i = 0; i < 14; i++) {
-      const t = i / 14;
-      const y = towerTopY + t * th;
-      const hw = (1.8 + t * 14) * s;
-      const isRed = i % 3 !== 1;
-      wrapRect(tx - hw, y, hw * 2, th / 15, isRed ? "#e63946" : "#ffffff");
+  const pickPal = (arr: Palette[]) => arr[Math.floor(R() * arr.length)];
+
+  const grove = (
+    x0: number,
+    x1: number,
+    crest: (x: number) => number,
+    rows: { dy: number; thick: number; amp: number; seed: number }[],
+  ) => {
+    for (const row of rows) forestBand(crest, { ...row, top: PINKS[1].mid, bottom: PINKS[0].base, x0, x1 });
+    const n = Math.max(3, Math.round((x1 - x0) / (9 * s)));
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (i / Math.max(1, n - 1)) * (x1 - x0) + (R() - 0.5) * 8 * s;
+      if (x < 4 || x > W - 4) continue;
+      const last = rows[rows.length - 1];
+      const r = 1.4 + R() * 1.6;
+      const pal = R() < 0.88 ? pickPal(PINKS) : pickPal(GREENS);
+      blob(x, bumpyTop(crest, x, last.dy, last.amp, last.seed) + (R() - 0.3) * 0.8 * pxPerUnit, r, pal, R() * 6);
     }
-    wrapRect(tx - 9 * s, towerTopY + th * 0.4, 18 * s, 4 * s, "#ffffff");
-    wrapRect(tx - 1 * s, towerTopY - 10 * s, 2 * s, 10 * s, "#ffffff");
-    wrapRect(tx - 2 * s, towerTopY - 13 * s, 4 * s, 3 * s, "#e63946");
+  };
+
+  /* --- ridge jauh: biru pucat berkabut, gelombang landai (terbaca seperti deretan gunung halus) --- */
+  const farCrest = (x: number) => yU(0.6) + harm(x, [[2, -26 * s, 0.2], [4, 16 * s, 1.1], [7, 9 * s, 2.4], [13, 5 * s, 0.4], [29, 2.2 * s, 3.2]]);
+  fillLayer(farCrest, "#b3d3d9", "#c8e0e4", "#d5e9ec");
+  g.fillStyle = "rgba(219,238,255,0.32)";
+  g.fillRect(0, yU(0.6) - 40 * s, W, H);
+
+  /* --- bukit tengah: hijau muda dengan tiga lapis rimba + kebun sakura + pagoda --- */
+  const midCrest = (x: number) => yU(-3.0) + harm(x, [[3, -22 * s, 2], [5, 13 * s, 0.6], [9, 8 * s, 1.7], [17, 4 * s, 2.9], [33, 2.5 * s, 0.2]]);
+  fillLayer(midCrest, "#a8dcb0", "#8fcb9c", "#c2e9c7");
+  forestBand(midCrest, { dy: 0.4, thick: 3.2, amp: 1.1, seed: 1.3, top: "#528f65", bottom: "#3f7a51" });
+  forestBand(midCrest, { dy: 3.0, thick: 3.6, amp: 1.3, seed: 2.7, top: "#5fae72", bottom: "#4a9660" });
+  forestBand(midCrest, { dy: 6.4, thick: 4.4, amp: 1.6, seed: 4.1, top: "#74c485", bottom: "#5cae70", rim: "#a3dea9" });
+  for (const [gx, gw] of [
+    [0.04, 0.075],
+    [0.27, 0.085],
+    [0.47, 0.06],
+    [0.63, 0.085],
+    [0.83, 0.075],
+  ] as [number, number][]) {
+    grove(W * gx, W * (gx + gw), midCrest, [
+      { dy: 1.8, thick: 3.4, amp: 1.1, seed: 6.2 },
+      { dy: 5.0, thick: 4.2, amp: 1.4, seed: 7.4 },
+    ]);
   }
-
-  /* =========================================================================
-   * LAPISAN 3: Pemukiman Kota Rendah Tokyo (Shitamachi / Urban Low-rise)
-   * Mengisi bagian bawah horizon (hU 0.4 - 1.2) dengan atap genteng miring & flat
-   * ========================================================================= */
-  {
-    const LOW_WALLS = ["#f2efe8", "#e8e5de", "#ded9cf", "#e3ded4"];
-    const ROOF_TILES = ["#3e4856", "#4a5565", "#353e4c", "#475262"];
-    let x = 0;
-    while (x < W) {
-      const bw = (22 + R() * 34) * s;
-      const hU = 0.5 + R() * 1.0;
-      const topY = yU(hU);
-      const wallColor = LOW_WALLS[Math.floor(R() * LOW_WALLS.length)];
-      const hasTileRoof = R() < 0.45;
-
-      // Dinding rumah / ruko
-      wrapRect(x, topY, bw, H - topY, wallColor);
-      wrapRect(x + bw * 0.75, topY, bw * 0.25, H - topY, "rgba(80,85,95,0.12)");
-
-      if (hasTileRoof) {
-        // Atap genteng miring Jepang
-        const roofColor = ROOF_TILES[Math.floor(R() * ROOF_TILES.length)];
-        const roofH = (3.5 + R() * 2.5) * s;
-        g.fillStyle = roofColor;
+  // pagoda + rimbun di kakinya (aksen pemandangan, sama gayanya dengan panorama non-shibuya)
+  const pagoda = (x: number, baseY: number, k: number) => {
+    wrap(x, 40 * k, (xx) => {
+      const tiers = 5;
+      let y = baseY;
+      g.fillStyle = "#7d8792";
+      g.fillRect(xx - 22 * k, y - 5 * k, 44 * k, 5 * k);
+      for (let i = 0; i < tiers; i++) {
+        const w = (26 - i * 3.6) * k;
+        const bh = 7.5 * k;
+        y -= bh;
+        g.fillStyle = i % 2 ? "#efe6d0" : "#b3271b";
+        g.fillRect(xx - w / 2, y, w, bh);
+        const rw = w + 9 * k;
+        g.fillStyle = "#44505c";
         g.beginPath();
-        g.moveTo(x - 2 * s, topY);
-        g.lineTo(x + bw * 0.2, topY - roofH);
-        g.lineTo(x + bw * 0.8, topY - roofH);
-        g.lineTo(x + bw + 2 * s, topY);
+        g.moveTo(xx - rw / 2 - 2 * k, y + 1 * k);
+        g.lineTo(xx - rw / 2 + 3 * k, y - 4 * k);
+        g.lineTo(xx + rw / 2 - 3 * k, y - 4 * k);
+        g.lineTo(xx + rw / 2 + 2 * k, y + 1 * k);
         g.closePath();
         g.fill();
-        if (x + bw + 2 * s > W) {
-          g.beginPath();
-          g.moveTo(x - 2 * s - W, topY);
-          g.lineTo(x + bw * 0.2 - W, topY - roofH);
-          g.lineTo(x + bw * 0.8 - W, topY - roofH);
-          g.lineTo(x + bw + 2 * s - W, topY);
-          g.closePath();
-          g.fill();
-        }
-      } else {
-        wrapRect(x, topY, bw, 1.8 * s, "#8c96a3");
+        y -= 4 * k;
       }
-
-      x += bw;
-    }
-  }
-
-  /* =========================================================================
-   * LAPISAN 4: Rimbun Pepohonan Kota (Zelkova / Pohon Alami)
-   * ========================================================================= */
+      g.fillStyle = "#44505c";
+      g.fillRect(xx - 1 * k, y - 12 * k, 2 * k, 12 * k);
+      g.fillStyle = "#ffd21f";
+      g.fillRect(xx - 3 * k, y - 8 * k, 6 * k, 1.5 * k);
+    });
+  };
   {
-    const TREE_PALS = [
-      { dark: "#2f5c35", mid: "#48824f", light: "#6ba872" },
-      { dark: "#2a523a", mid: "#3e7552", light: "#5ea374" },
-    ];
-    const n = Math.floor(W / (120 * s));
-    for (let i = 0; i < n; i++) {
-      const cx = (i / n) * W + (R() * 40 - 20) * s;
-      const cy = yU(0.2 + R() * 0.5);
-      const pal = TREE_PALS[Math.floor(R() * TREE_PALS.length)];
-      const trW = (16 + R() * 20) * s;
-      const trH = (10 + R() * 14) * s;
+    const px = W * 0.53;
+    for (let i = 0; i < 18; i++) {
+      const x = px - 190 * s + i * 22 * s + (R() - 0.5) * 12 * s;
+      const r = 2.2 + R() * 2.2;
+      blob(x, midCrest(x) + (4.4 + R() * 2.2) * pxPerUnit, r, i % 4 === 1 ? pickPal(PINKS) : pickPal(GREENS), R() * 6);
+    }
+    pagoda(px, midCrest(px) + 7.6 * pxPerUnit, 1.35 * s);
+  }
 
-      for (const [ox, oy, rw, rh, col] of [
-        [0, 0, trW * 0.5, trH * 0.5, pal.dark],
-        [-trW * 0.16, -trH * 0.15, trW * 0.38, trH * 0.4, pal.mid],
-        [trW * 0.14, -trH * 0.12, trW * 0.36, trH * 0.38, pal.mid],
-        [-trW * 0.06, -trH * 0.28, trW * 0.28, trH * 0.3, pal.light],
-      ] as [number, number, number, number, string][]) {
-        g.fillStyle = col;
-        g.beginPath();
-        g.ellipse(cx + ox, cy + oy, rw, rh, 0, 0, Math.PI * 2);
-        g.fill();
-        if (cx + ox + rw > W) {
-          g.beginPath();
-          g.ellipse(cx + ox - W, cy + oy, rw, rh, 0, 0, Math.PI * 2);
-          g.fill();
-        }
+  /* --- bukit dekat: rimba lebih besar & gelap di kaki --- */
+  const nearCrest = (x: number) => yU(-10.0) + harm(x, [[4, -13 * s, 0.9], [7, 9 * s, 2.2], [12, 5 * s, 0.3], [23, 3 * s, 1.4]]);
+  fillLayer(nearCrest, "#7cc387", "#6cb679", "#9ad9a2");
+  forestBand(nearCrest, { dy: 0.6, thick: 4.0, amp: 1.3, seed: 2.1, top: "#4b8f5c", bottom: "#3d7b4d" });
+  forestBand(nearCrest, { dy: 3.8, thick: 4.6, amp: 1.6, seed: 3.8, top: "#5dac6f", bottom: "#48945c" });
+  forestBand(nearCrest, { dy: 7.8, thick: 5.4, amp: 1.9, seed: 5.5, top: "#72c283", bottom: "#59aa6c", rim: "#9ddba7" });
+  for (const [gx, gw] of [
+    [0.08, 0.08],
+    [0.34, 0.07],
+    [0.56, 0.09],
+    [0.74, 0.07],
+    [0.9, 0.06],
+  ] as [number, number][]) {
+    grove(W * gx, W * (gx + gw), nearCrest, [
+      { dy: 2.6, thick: 4.6, amp: 1.5, seed: 8.1 },
+      { dy: 6.6, thick: 5.6, amp: 1.8, seed: 9.3 },
+    ]);
+  }
+  for (let i = 0; i < 9; i++) {
+    const x = (i / 9) * W + R() * 260 * s;
+    const r = 3.4 + R() * 2.6;
+    const pal = R() < 0.18 ? pickPal(PINKS) : pickPal(GREENS);
+    blob(x, nearCrest(x) + (13 + R() * 3.5) * pxPerUnit, r, pal, R() * 6, true);
+  }
+
+  /* --- sawah / ladang: pita warna bergradasi dengan garis alur + SUNGAI berkelok --- */
+  const fieldTop = yU(-15.8);
+  const riverX = (y: number) => W * 0.5 + Math.sin(((y - fieldTop) / (H - fieldTop)) * TAU * 1.5 + 0.8) * W * 0.13;
+  {
+    let y = fieldTop;
+    let i = 0;
+    while (y < H) {
+      const bandH = (8 + i * i * 1.3) * s;
+      g.fillStyle = i % 2 ? "#87cc8d" : "#78c07f";
+      g.beginPath();
+      g.moveTo(0, y + bandH);
+      for (let x = 0; x <= W; x += 8) g.lineTo(x, y + Math.sin((TAU * 23 * x) / W + i * 1.7) * 1.2 * s + Math.sin((TAU * 41 * x) / W + i) * 0.8 * s);
+      g.lineTo(W, y + bandH);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = i % 2 ? "rgba(88,150,96,0.5)" : "rgba(70,132,80,0.5)";
+      g.lineWidth = 1.4 * s;
+      g.beginPath();
+      for (let x = 0; x <= W; x += 8) {
+        const yy = y + bandH * 0.55 + Math.sin((TAU * 31 * x) / W + i * 2.3) * 1.4 * s;
+        (x === 0 ? g.moveTo : g.lineTo).call(g, x, yy);
       }
+      g.stroke();
+      y += bandH;
+      i++;
+    }
+  }
+  // sungai kebiruan memotong ladang (makin lebar ke bawah/dekat), di atasnya beberapa pohon peneduh
+  {
+    g.beginPath();
+    for (let y = fieldTop; y <= H; y += 6) {
+      const rx = riverX(y);
+      if (y === fieldTop) g.moveTo(rx, y);
+      else g.lineTo(rx, y);
+    }
+    for (let y = H; y >= fieldTop; y -= 6) {
+      const wdt = ((y - fieldTop) / (H - fieldTop)) * 26 * s + 4 * s;
+      g.lineTo(riverX(y) + wdt, y);
+    }
+    g.closePath();
+    const rg = g.createLinearGradient(0, fieldTop, 0, H);
+    rg.addColorStop(0, "#9fd4e4");
+    rg.addColorStop(1, "#bfe4f2");
+    g.fillStyle = rg;
+    g.fill();
+    g.strokeStyle = "rgba(70,132,120,0.45)";
+    g.lineWidth = 1.6 * s;
+    g.stroke();
+    let x = R() * 60 * s;
+    while (x < W) {
+      const rU = 1.2 + R() * 1.5;
+      const pal = R() < 0.12 ? pickPal(PINKS) : pickPal(GREENS);
+      blob(x, fieldTop + (2.6 + R() * 2.4) * pxPerUnit, rU, pal, R() * 6, true);
+      x += rU * pxPerUnit * (2.2 + R() * 3.4);
     }
   }
 
-  /* =========================================================================
-   * LAPISAN 5: Grading Waktu & Kabut Horizon Halus
-   * ========================================================================= */
+  /* --- grading waktu: pagi emas lembut / sore jingga senja --- */
   if (tod !== "siang") {
     g.globalCompositeOperation = "source-atop";
     const grad = g.createLinearGradient(0, H, 0, 0);
     if (tod === "pagi") {
-      grad.addColorStop(0, "rgba(255,215,160,0.28)");
-      grad.addColorStop(1, "rgba(255,240,215,0.06)");
+      grad.addColorStop(0, "rgba(255,215,160,0.30)");
+      grad.addColorStop(1, "rgba(255,240,215,0.08)");
     } else {
-      grad.addColorStop(0, "rgba(255,145,85,0.36)");
-      grad.addColorStop(0.6, "rgba(255,175,115,0.16)");
-      grad.addColorStop(1, "rgba(115,110,155,0.14)");
+      grad.addColorStop(0, "rgba(255,145,85,0.38)");
+      grad.addColorStop(0.6, "rgba(255,175,115,0.18)");
+      grad.addColorStop(1, "rgba(115,110,155,0.16)");
     }
     g.fillStyle = grad;
     g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = "source-over";
   }
 
-  // Peleburan kabut horizon (mist) yang mulus di kaki panorama
+  /* --- kabut: kaki panorama melebur mulus ke warna haze dunia --- */
   const m0 = yU(-2);
   const m1 = yU(-24);
   const mist = g.createLinearGradient(0, m0, 0, m1);

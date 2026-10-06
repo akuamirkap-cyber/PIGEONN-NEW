@@ -51,26 +51,33 @@ body,
     0 2px 0 #1f2430;
 }
 
-/* Crossy Road-style title: chunky outlined letters with a clean offset extrusion,
-   without putting the logo inside a dark panel. */
+/* Crossy Road-style title lockup (miring + outline tebal), tanpa panel gelap di belakang logo. */
+/* Crossy Road-style title: outline LEBIH TEBAL -> lihat request, plus lockupnya miring ala logo Crossy Road. */
+/* Judul menu ala logo Crossy Road: outline hitam SANGAT tebal +
+   extrusion 3D hitam pekat turun diagonal ke kanan-bawah (tangga blok). */
 .crossy-title {
   paint-order: stroke fill;
-  -webkit-text-stroke: 0.032em #1f2430;
-  text-shadow: 0 0.065em 0 #1f2430;
+  -webkit-text-stroke: 0.09em #11151f;
+  text-shadow:
+    0.022em 0.022em 0 #11151f,
+    0.044em 0.044em 0 #11151f,
+    0.066em 0.066em 0 #11151f,
+    0.088em 0.088em 0 #11151f,
+    0.11em 0.11em 0 #11151f,
+    0.132em 0.132em 0 #11151f,
+    0.15em 0.17em 0 rgba(10, 12, 18, 0.28);
 }
 .crossy-title-white {
   color: #fffdf2;
 }
 .crossy-title-yellow {
   color: #ffd23f;
-  -webkit-text-stroke-color: #1f2430;
+  -webkit-text-stroke-color: #11151f;
 }
+/* Angka pill atas (koin kiri / best kanan): TANPA outline hitam —
+   hanya bayangan lembut biar tetap kebaca di atas langit terang. */
 .crossy-ui-number {
-  text-shadow:
-    2px 3px 0 #1f2430,
-    -1px -1px 0 #1f2430,
-    1px -1px 0 #1f2430,
-    -1px 1px 0 #1f2430;
+  text-shadow: 0 2px 7px rgba(15, 20, 32, 0.45);
 }
 
 .popup {
@@ -141,7 +148,13 @@ body,
   .pulse,
   .popup,
   .card-in,
-  .shake {
+  .shake,
+  .go-wobble,
+  .go-numpop,
+  .go-badge,
+  .go-fade,
+  .go-twinkle,
+  .go-confetti-piece {
     animation: none;
   }
 }
@@ -153,6 +166,147 @@ body,
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+
+/* ---------- GAME OVER hypercasual juice ---------- */
+/* Badge NEW BEST model STARBURST gigi bintang (tanpa glow) */
+.go-starburst {
+  position: absolute;
+  background: #ffd60a;
+  border-radius: 6px;
+  box-shadow: 0 2.5px 0 rgba(90, 50, 0, 0.45);
+}
+.go-starburst::before,
+.go-starburst::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffd60a;
+  border-radius: 6px;
+}
+.go-starburst::before {
+  transform: rotate(45deg);
+}
+.go-starburst::after {
+  transform: rotate(22.5deg);
+}
+
+/* Percikan ✦ kecil berkedip di sekitar angka skor sesudah perhitungan */
+.go-twinkle {
+  position: absolute;
+  pointer-events: none;
+  color: rgba(255, 224, 120, 0.9);
+  text-shadow: 0 0 6px rgba(255, 214, 10, 0.5);
+  animation: go-twinkle 1.6s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+.go-twinkle::before {
+  content: "✦";
+}
+@keyframes go-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(22deg);
+  }
+}
+
+/* Judul GAME OVER bergoyang hidup */
+.go-wobble {
+  display: inline-block;
+  transform-origin: 50% 62%;
+  animation: go-wobble 2.4s ease-in-out infinite;
+}
+@keyframes go-wobble {
+  0%,
+  100% {
+    transform: rotate(-1.4deg) scale(1);
+  }
+  50% {
+    transform: rotate(1.4deg) scale(1.045);
+  }
+}
+
+/* Angka skor "TENG!" — membesar lalu menetap */
+.go-numpop {
+  animation: go-numpop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes go-numpop {
+  0% {
+    transform: scale(0.82);
+  }
+  55% {
+    transform: scale(1.24);
+  }
+  78% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Badge NEW BEST/ACH masuk memantul (mendukung delay & tilt via CSS var) */
+.go-badge {
+  animation: go-badge 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation-delay: var(--d, 0s);
+}
+@keyframes go-badge {
+  0% {
+    transform: scale(0) rotate(var(--tilt, 0deg));
+    opacity: 0;
+  }
+  62% {
+    transform: scale(1.22) rotate(var(--tilt, 0deg));
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(var(--tilt, 0deg));
+    opacity: 1;
+  }
+}
+
+/* Elemen sekunder fade-up masuk berurutan (delay via --d) */
+.go-fade {
+  animation: go-fade 0.34s ease-out both;
+  animation-delay: var(--d, 0s);
+}
+@keyframes go-fade {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Confetti NEW BEST: meletik keluar dari panel skor lalu buyar */
+.go-confetti-piece {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  animation: go-confetti 1.15s cubic-bezier(0.15, 0.6, 0.4, 1) both;
+  animation-delay: var(--cd, 0s);
+}
+@keyframes go-confetti {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, -80px))) rotate(var(--r, 300deg)) scale(0.85);
+    opacity: 0;
   }
 }
 

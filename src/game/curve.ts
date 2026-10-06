@@ -16,6 +16,7 @@ export const curveUniforms = {
   uCurveStart: { value: 6.0 }, // distance ahead before bending kicks in
   uHazeColor: { value: new THREE.Color("#dbeeff") },
   uHazeRange: { value: new THREE.Vector2(1e6, 2e6) }, // (start, end) view distance; defaults = no haze
+  uSnowAmount: { value: 0.0 }, // 0..1 — salju menutup permukaan (lerp halus saat cuaca berubah)
 };
 
 const vertexPars = /* glsl */ `
@@ -25,6 +26,8 @@ uniform float uCurveDown;
 uniform float uCurveSide;
 uniform float uCurveStart;
 varying float vPigeonDist;
+varying vec3 vSnowWorld;
+varying vec3 vSnowNormal;
 vec3 pigeonCurve(vec3 wp) {
   float ahead = dot(wp - uCurveOrigin, uCurveDir) - uCurveStart;
   float a = max(ahead, 0.0);
@@ -47,12 +50,39 @@ pcWorld.xyz = pigeonCurve( pcWorld.xyz );
 vec4 mvPosition = viewMatrix * pcWorld;
 gl_Position = projectionMatrix * mvPosition;
 vPigeonDist = length( mvPosition.xyz );
+// Salju memakai koordinat OBJEK (tanpa modelMatrix) supaya tambalan salju menempel
+// pada benda yang bergerak (mobil/motor/pemain) — bukan "mengalir" di atasnya.
+#ifdef SNOW_NORMALS
+  vec3 snowBase = transformed;
+  #ifdef USE_INSTANCING
+    snowBase = ( instanceMatrix * vec4( snowBase, 1.0 ) ).xyz;
+    vSnowNormal = normalize( mat3( instanceMatrix ) * objectNormal );
+  #else
+    vSnowNormal = normalize( objectNormal );
+  #endif
+  vSnowWorld = snowBase;
+#else
+  vSnowNormal = vec3( 0.0, 0.0, 0.0 );
+  vSnowWorld = vec3( 0.0 );
+#endif
 `;
 
 const fragmentPars = /* glsl */ `
 uniform vec3 uHazeColor;
 uniform vec2 uHazeRange;
+uniform float uSnowAmount;
 varying float vPigeonDist;
+varying vec3 vSnowWorld;
+varying vec3 vSnowNormal;
+float pigeonHash2(vec2 p){ p = fract( p * vec2( 234.34, 435.345 ) ); p += dot( p, p + 34.23 ); return fract( p.x * p.y ); }
+float pigeonSnowNoise(vec2 p){
+  vec2 i = floor( p ); vec2 f = fract( p ); vec2 u = f * f * ( 3.0 - 2.0 * f );
+  float a = pigeonHash2( i );
+  float b = pigeonHash2( i + vec2( 1.0, 0.0 ) );
+  float c = pigeonHash2( i + vec2( 0.0, 1.0 ) );
+  float d = pigeonHash2( i + vec2( 1.0, 1.0 ) );
+  return mix( mix( a, b, u.x ), mix( c, d, u.x ), u.y );
+}
 `;
 
 const fragmentHaze = /* glsl */ `
@@ -61,6 +91,45 @@ const fragmentHaze = /* glsl */ `
   float hz = clamp( ( vPigeonDist - uHazeRange.x ) / max( uHazeRange.y - uHazeRange.x, 0.001 ), 0.0, 1.0 );
   hz = hz * hz * ( 3.0 - 2.0 * hz );
   gl_FragColor.rgb = mix( gl_FragColor.rgb, uHazeColor, hz * 0.92 );
+
+  // ---- SALJU: TUMPUKAN tebal di bangunan & sekitarnya — JALAN UTAMA tetap bersih ----
+  #ifdef SNOW_NORMALS
+  {
+    // dekor tiap ketinggian supaya pola tidak identik antar lantai bertumpuk
+    vec2 snowP = vSnowWorld.xz + vec2( vSnowWorld.y * 13.73, vSnowWorld.y * 7.31 );
+    float upness = clamp( vSnowNormal.y, 0.0, 1.0 );
+    float atop = smoothstep( 0.38, 0.72, upness );
+    // Aspal jalan utama (permukaan terendah di tiap mesh: y < ~0.16) disapu bersih —
+    // salju mulai menumpuk di trotoar/kanal (y ~0.3+) dan tebal di atap/atap mobil/pohon.
+    float roadGate = smoothstep( 0.10, 0.55, vSnowWorld.y );
+    if ( atop > 0.001 && uSnowAmount > 0.001 ) {
+      // pemilih area: sebagian permukaan tertutup tebal (~65%), sebagian tipis (~20%)
+      float region = pigeonSnowNoise( snowP * 0.33 + 7.3 );
+      float cover = mix( 0.62, 0.30, roadGate ) + 0.24 * region; // rendah = aspal; tebal = tumpukan
+      float n = pigeonSnowNoise( snowP * 1.15 ) * 0.62 + pigeonSnowNoise( snowP * 5.5 ) * 0.38;
+      float k = atop * smoothstep( cover - 0.14, cover + 0.14, n );
+      k *= 0.80 + 0.20 * pigeonSnowNoise( snowP * 23.0 ); // tekstur butiran salju
+      float sparkle = step( 0.970, pigeonSnowNoise( snowP * 41.0 ) ) * 0.12;
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.93, 0.955, 1.0 ) + sparkle, k * uSnowAmount );
+      // cahaya dingin tipis merata di semua top-face supaya "herek" bersalju terasa
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.88, 0.91, 0.97 ), atop * uSnowAmount * 0.16 );
+      // film slush sangat tipis di aspal (jalan tetap gelap & jelas dibaca, cuma terasa beku)
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.80, 0.84, 0.92 ), atop * ( 1.0 - roadGate ) * uSnowAmount * 0.14 );
+    }
+    // debu salju tipis di dinding vertikal (menempel di garis horizontalnya)
+    float wally = ( 1.0 - upness ) * uSnowAmount;
+    if ( wally > 0.001 ) {
+      float stick = pigeonSnowNoise( snowP * 2.4 + vec2( 0.0, vSnowWorld.y * 4.1 ) );
+      float dust = smoothstep( 0.60, 0.93, stick ) * 0.22 + pigeonSnowNoise( snowP * 14.0 ) * 0.07;
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.90, 0.93, 0.99 ), dust * wally );
+      // TUMPUKAN KHAS: pita salju "mendersak" di kaki dinding/pagar/trotoar (bendungan salju berserok)
+      float drift = smoothstep( 1.35, 0.14, vSnowWorld.y );
+      drift *= 0.45 + 0.55 * pigeonSnowNoise( snowP * 6.0 + 3.3 );
+      drift *= smoothstep( 0.55, 0.90, pigeonSnowNoise( snowP * 0.9 + 11.7 ) ) * 0.5 + 0.5; // bertitik-titik per lokasi
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.92, 0.945, 1.0 ), drift * wally * 0.42 );
+    }
+  }
+  #endif
 }
 `;
 
@@ -80,6 +149,12 @@ export function applyCurve<T extends THREE.Material>(mat: T): T {
   mat.onBeforeCompile = (shader, renderer) => {
     entry.prevCompile?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, curveUniforms);
+    // Salju butuh normal permukaan — hanya material yang punya objectNormal (mat lit).
+    // Depth/Basic (glow) material tidak punya → jangan sentuh kode saljunya (tetap ter-curve).
+    const lit = (mat as { isMeshLambertMaterial?: boolean; isMeshPhongMaterial?: boolean; isMeshStandardMaterial?: boolean })
+      .isMeshLambertMaterial || (mat as { isMeshPhongMaterial?: boolean }).isMeshPhongMaterial || (mat as { isMeshStandardMaterial?: boolean }).isMeshStandardMaterial;
+    if (lit && !shader.defines) shader.defines = {};
+    if (lit) (shader.defines as Record<string, number>).SNOW_NORMALS = 1;
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n${vertexPars}`)
       .replace("#include <project_vertex>", vertexBody)

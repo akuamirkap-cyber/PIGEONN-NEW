@@ -18,7 +18,7 @@ import {
   type CharPalette,
 } from "./chars";
 
-export type HatKind = "cap" | "crown" | "mohawk" | "headband" | "beanie" | "visor" | "tophat" | "mailcap" | "harajuku" | "beret";
+export type HatKind = "cap" | "crown" | "mohawk" | "headband" | "beanie" | "visor" | "tophat" | "mailcap" | "harajuku" | "beret" | "apehood";
 export type AccessoryKind = "none" | "mailbag" | "hoodie";
 export type DeckKind = "standard" | "baguette";
 /** Spesies karakter yang bisa dimainkan. `undefined` di Skin berarti merpati. */
@@ -193,6 +193,14 @@ export const SKINS: Skin[] = [
     body: "#22252d", belly: "#2f333d", head: "#1c1f26", neck1: "#2a2e38", neck2: "#22252d",
     wing: "#1a1d24", wingTip: "#0d0f13", tail: "#1a1d24", tailTip: "#0d0f13", beak: "#ffd166", cere: "#3a3f4a", feet: ORANGE,
     deck: "#111111", wheels: "#e63946", hat: "headband", hatColor: "#e63946",
+  },
+  {
+    // BATHING APE BARU (sistem skin merpati): loreng camo hijau + kupluk wajah kera ikonik.
+    // Versi lama (Little Japan Friend "Monkey") TETAP ADA di daftar skin seperti biasa.
+    id: "bape", name: "Bathing Ape Camo", tagline: "Kupluk kera loreng ala BAPE (Pigeon-mode)", cost: 250, kind: "pigeon",
+    body: "#52733f", belly: "#e8dfc8", head: "#4a6839", neck1: "#8a6b3d", neck2: "#5f7a46",
+    wing: "#46603a", wingTip: "#2b3d22", tail: "#46603a", tailTip: "#2b3d22", beak: "#2d2f33", cere: "#e8dfc8", feet: ORANGE,
+    deck: "#1f2719", wheels: "#e8dfc8", hat: "apehood", hatColor: "#52733f", hatColor2: "#8a6b3d", accessory: "hoodie",
   },
   {
     // KUCING OREN BERDIRI — karakter non-merpati pertama (lihat chars.ts)
@@ -398,6 +406,29 @@ function hatParts(k: Skin): Part[] {
         { x: 0, y: 0.18, z: 0, w: 0.49, h: 0.04, d: 0.47, color: c2 },
         { x: 0.27, y: 0.16, z: 0, w: 0.22, h: 0.04, d: 0.42, color: "#111111" },
         { x: 0.24, y: 0.25, z: 0, w: 0.04, h: 0.09, d: 0.12, color: c2 },
+      ];
+    case "apehood":
+      // KUPLUK KERA ala BATHING APE: hood loreng hijau menyatu, MONYET krem di jidat,
+      // telinga kera mungil, motif camo tan/olive, resleting penuh khas shark hoodie
+      return [
+        // Tengkuk & mahkota hood loreng menutupi kepala
+        { x: -0.02, y: 0.2, z: 0, w: 0.5, h: 0.26, d: 0.48, color: c },
+        { x: -0.05, y: 0.05, z: 0, w: 0.46, h: 0.14, d: 0.5, color: c }, // sisi hood
+        // patch camo tone lain (loreng blok kotak khas BAPE camo)
+        { x: -0.1, y: 0.24, z: 0.18, w: 0.22, h: 0.14, d: 0.1, color: c2 },
+        { x: 0.08, y: 0.3, z: -0.14, w: 0.18, h: 0.1, d: 0.14, color: c2 },
+        { x: -0.14, y: 0.14, z: -0.2, w: 0.16, h: 0.1, d: 0.08, color: c2 },
+        // WAJAH APE ikonik di jidat: panel muka krem + dua mata gelap
+        { x: 0.1, y: 0.22, z: 0, w: 0.3, h: 0.2, d: 0.34, color: "#e8d7b0" },
+        { x: 0.18, y: 0.24, z: 0.09, w: 0.08, h: 0.07, d: 0.07, color: "#231a12" },
+        { x: 0.18, y: 0.24, z: -0.09, w: 0.08, h: 0.07, d: 0.07, color: "#231a12" },
+        // TELINGA KERA mencuat kiri-kanan
+        { x: -0.05, y: 0.1, z: 0.27, w: 0.14, h: 0.14, d: 0.08, color: c },
+        { x: -0.04, y: 0.1, z: 0.285, w: 0.07, h: 0.07, d: 0.04, color: "#e8d7b0" },
+        { x: -0.05, y: 0.1, z: -0.27, w: 0.14, h: 0.14, d: 0.08, color: c },
+        { x: -0.04, y: 0.1, z: -0.285, w: 0.07, h: 0.07, d: 0.04, color: "#e8d7b0" },
+        // Track resleting emas di tengah (zip hood)
+        { x: 0.16, y: 0.12, z: 0, w: 0.12, h: 0.16, d: 0.035, color: "#d9b23c" },
       ];
     case "harajuku":
       // Beanie streetwear dengan tag neon + kacamata hitam slick (shades) dengan kilau putih
