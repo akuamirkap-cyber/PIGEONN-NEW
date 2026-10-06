@@ -2005,23 +2005,20 @@ export function intersectionRoadParts(W: number = INTERSECTION_W): Part[] {
   parts.push({ x: halfW * 0.43, y: 0.018, z: 0, w: 1.4, h: 0.025, d: 7.8, color: asphaltDark });
 
   // 2. Lateral Cross-Streets (Left: z = -4.0 to -30, Right: z = +4.0 to +30)
-  // Raised to y = 0.145 (surface top at y = 0.175) so it cleanly overlays ground sidewalk (0.12) & curbs (0.14)
+  // The cross street must sit flush with the main asphalt. The old raised deck
+  // made a floating grey platform visible from the player's right side.
   for (const sz of [-CROSS_STREET_MID, CROSS_STREET_MID]) {
-    // Roadbed asphalt (38m long each side, 8.4m wide)
-    parts.push({ x: 0, y: 0.145, z: sz, w: W, h: 0.06, d: CROSS_STREET_LEN, color: asphalt });
-    // Dinding fondasi di bawahnya — warna beton kurb netral (bukan hitam pekat)
-    // supaya tepi platform terbaca sebagai kerb rapi, bukan meja hitam melayang
-    parts.push({ x: 0, y: -0.05, z: sz, w: W + 0.1, h: 0.35, d: CROSS_STREET_LEN, color: "#79847c" });
-    // Garis noda jalan di dinding fondasi (bayangan teralis supaya tidak flat)
-    parts.push({ x: 0, y: 0.1, z: sz - Math.sign(sz) * (CROSS_STREET_LEN / 2 - 0.05), w: W + 0.12, h: 0.12, d: 0.06, color: "#6b7972" });
+    // Roadbed asphalt: top at roughly y = 0.03, matching the main road.
+    parts.push({ x: 0, y: 0.015, z: sz, w: W, h: 0.03, d: CROSS_STREET_LEN, color: asphalt });
+    // Hidden sub-base: below the ground plane, so no concrete wall is visible
+    // along the near/far edge of the crossing.
+    parts.push({ x: 0, y: -0.16, z: sz, w: W + 0.1, h: 0.28, d: CROSS_STREET_LEN, color: "#79847c" });
   }
 
-  // Ramp akses dua-tingkat yang halus dari main street (y = 0) ke dek cross street.
-  // Seluruh ramp selesai TEPAT di tepi dek (|z| = 4.0) — tidak menyusup ke bawah plat
-  // (selaras physics crossCarH: tanjakan 3.6 → 4.0 selesai di tepi dek).
+  // Flat join to the main street. No raised two-step ramp: the cross street
+  // now meets the road cleanly without a visible wedge or broken-looking slab.
   for (const dir of [-1, 1]) {
-    parts.push({ x: 0, y: 0.03, z: dir * 3.5, w: W, h: 0.06, d: 0.4, color: asphalt });
-    parts.push({ x: 0, y: 0.085, z: dir * 3.85, w: W, h: 0.1, d: 0.3, color: asphalt });
+    parts.push({ x: 0, y: 0.018, z: dir * 3.9, w: W, h: 0.03, d: 0.3, color: asphalt });
   }
 
   // 3. Sidewalks along both sides of the Cross-Street (x = -halfW - 0.7 and x = +halfW + 0.7)

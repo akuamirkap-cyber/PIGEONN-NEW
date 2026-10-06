@@ -20,12 +20,12 @@ import {
 
 export type HatKind = "cap" | "crown" | "mohawk" | "headband" | "beanie" | "visor" | "tophat" | "mailcap" | "harajuku" | "beret" | "apehood";
 export type AccessoryKind = "none" | "mailbag" | "hoodie";
-export type DeckKind = "standard" | "baguette";
+export type DeckKind = "standard" | "baguette" | "hoverboard" | "broom" | "silver";
 /** Spesies karakter yang bisa dimainkan. `undefined` di Skin berarti merpati. */
-export type CharKind = "pigeon" | "cat" | "flamingo" | "crow" | "littleJapanFriend";
+export type CharKind = "pigeon" | "cat" | "flamingo" | "crow" | "duck" | "panda" | "dino" | "frog" | "shiba" | "littleJapanFriend";
 
 export interface DeckOption {
-  id: "default" | "baguette";
+  id: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo";
   name: string;
   tagline: string;
   badge: string;
@@ -47,7 +47,39 @@ export const DECKS: DeckOption[] = [
     name: "Skateboard Roti Baguette",
     tagline: "Papan roti baguette Prancis gurih renyah + roda mentega",
     badge: "FREE / GRATIS",
-    emoji: "",
+    emoji: "🥖",
+    cost: 0,
+  },
+  {
+    id: "hoverboard",
+    name: "Hoverboard Neon",
+    tagline: "Papan melayang futuristik tanpa roda, dengan efek anti-gravitasi",
+    badge: "FREE / GRATIS",
+    emoji: "⚡",
+    cost: 0,
+  },
+  {
+    id: "broom",
+    name: "Sapu Terbang",
+    tagline: "Sapu terbang ajaib ala penyihir, tanpa roda",
+    badge: "FREE / GRATIS",
+    emoji: "🧹",
+    cost: 0,
+  },
+  {
+    id: "silver",
+    name: "Silver Surfer",
+    tagline: "Papan perak kosmik licin tanpa roda",
+    badge: "FREE / GRATIS",
+    emoji: "✨",
+    cost: 0,
+  },
+  {
+    id: "ufo",
+    name: "UFO Skate",
+    tagline: "Piring terbang futuristik dengan lampu alien",
+    badge: "FREE / GRATIS",
+    emoji: "🛸",
     cost: 0,
   },
 ];
@@ -117,7 +149,6 @@ const littleJapanFriendSkin = (friend: ShibuyaAnimalId, name: string, tagline: s
 const LITTLE_JAPAN_FRIEND_SKINS: Skin[] = [
   littleJapanFriendSkin("tanuki", "Tanuki", "Little Japan Friend · source Shibuya Blocks", "#8e714e", "#6b5f43"),
   littleJapanFriendSkin("monkey", "Monkey", "Little Japan Friend · source Shibuya Blocks", "#ac9b89", "#d69989"),
-  littleJapanFriendSkin("crane", "Crane", "Little Japan Friend · source Shibuya Blocks", "#edeedc", "#41493c"),
   littleJapanFriendSkin("neko", "Neko", "Little Japan Friend · source Shibuya Blocks", "#edead6", "#b95640"),
 ];
 
@@ -135,22 +166,10 @@ export const SKINS: Skin[] = [
     deck: "#1c2d42", wheels: "#ffd60a", hat: "mailcap", hatColor: "#1c2d42", hatColor2: "#ffd60a", accessory: "mailbag",
   },
   {
-    id: "harajuku", name: "Merpati Harajuku Streetwear", tagline: "Hoodie oversized + kacamata hitam (Free Skin)", cost: 0,
-    body: "#2d2638", belly: "#3d344d", head: "#251f30", neck1: "#c084fc", neck2: "#2dd4bf",
-    wing: "#251f30", wingTip: "#131019", tail: "#251f30", tailTip: "#131019", beak: "#ffd60a", cere: "#c084fc", feet: ORANGE,
-    deck: "#18181b", wheels: "#a855f7", hat: "harajuku", hatColor: "#8b5cf6", hatColor2: "#111111", accessory: "hoodie",
-  },
-  {
     id: "baguette", name: "Chef Baguette", tagline: "Papan skateboard roti baguette renyah & baret (Free Skin)", cost: 0,
     body: "#ded0bd", belly: "#f5ece0", head: "#d4c5a6", neck1: "#d99343", neck2: "#b87028",
     wing: "#c4b598", wingTip: "#7e6d4c", tail: "#b8a786", tailTip: "#756342", beak: "#f59e0b", cere: "#ffffff", feet: "#f59e0b",
     deck: "#c68038", wheels: "#ffe066", hat: "beret", hatColor: "#1f2430", deckType: "baguette",
-  },
-  {
-    id: "dove", name: "Snow Dove", tagline: "Peace, love & kickflips", cost: 30,
-    body: "#f4f6f8", belly: "#ffffff", head: "#eef1f4", neck1: "#ffd6e0", neck2: "#ffb8cc",
-    wing: "#e3e7ec", wingTip: "#c8ced6", tail: "#d5dae0", tailTip: "#b8bfc8", beak: "#f28cb1", cere: "#ffffff", feet: "#f4a261",
-    deck: "#ff9ecf", wheels: "#ffffff",
   },
   {
     id: "punk", name: "Punk Coo", tagline: "Too fast to live", cost: 50,
@@ -183,31 +202,10 @@ export const SKINS: Skin[] = [
     deck: "#7b2cbf", wheels: "#ffd60a", hat: "crown", hatColor: "#ffd60a", hatColor2: "#e63946",
   },
   {
-    id: "robo", name: "Robo Pigeon", tagline: "Beep boop, ollie", cost: 200,
-    body: "#b8c4d6", belly: "#dfe7f2", head: "#9fb0c8", neck1: "#00e5ff", neck2: "#0077ff",
-    wing: "#8fa2ba", wingTip: "#46536a", tail: "#8fa2ba", tailTip: "#46536a", beak: "#333333", cere: "#556070", feet: "#556070",
-    deck: "#0b0f14", wheels: "#00e5ff", hat: "visor", hatColor: "#ff2d55",
-  },
-  {
     id: "ninja", name: "Ninja Coo", tagline: "Silent. Deadly. Fluffy.", cost: 300,
     body: "#22252d", belly: "#2f333d", head: "#1c1f26", neck1: "#2a2e38", neck2: "#22252d",
     wing: "#1a1d24", wingTip: "#0d0f13", tail: "#1a1d24", tailTip: "#0d0f13", beak: "#ffd166", cere: "#3a3f4a", feet: ORANGE,
     deck: "#111111", wheels: "#e63946", hat: "headband", hatColor: "#e63946",
-  },
-  {
-    // BATHING APE BARU (sistem skin merpati): loreng camo hijau + kupluk wajah kera ikonik.
-    // Versi lama (Little Japan Friend "Monkey") TETAP ADA di daftar skin seperti biasa.
-    id: "bape", name: "Bathing Ape Camo", tagline: "Kupluk kera loreng ala BAPE (Pigeon-mode)", cost: 250, kind: "pigeon",
-    body: "#52733f", belly: "#e8dfc8", head: "#4a6839", neck1: "#8a6b3d", neck2: "#5f7a46",
-    wing: "#46603a", wingTip: "#2b3d22", tail: "#46603a", tailTip: "#2b3d22", beak: "#2d2f33", cere: "#e8dfc8", feet: ORANGE,
-    deck: "#1f2719", wheels: "#e8dfc8", hat: "apehood", hatColor: "#52733f", hatColor2: "#8a6b3d", accessory: "hoodie",
-  },
-  {
-    // KUCING OREN BERDIRI — karakter non-merpati pertama (lihat chars.ts)
-    id: "cat", name: "Kucing Oren", tagline: "Kucing oranye berdiri, ekor melengkung (Free)", cost: 0, kind: "cat",
-    body: "#ff8c42", belly: "#ffe3c2", head: "#ff8c42", neck1: "#d96a22", neck2: "#ffb877",
-    wing: "#ff9147", wingTip: "#d96a22", tail: "#ff8c42", tailTip: "#f7f3ea", beak: "#ff6b9a", cere: "#ffc2d4", feet: "#ffd0a0",
-    deck: "#ffb703", wheels: "#1c1e22",
   },
   {
     // FLAMINGO — badan kecil + leher panjang, paruh melengkung dengan ujung hitam
@@ -235,6 +233,58 @@ export function getSkin(id: string): Skin {
 /** Semua karakter bisa berbagi palet warna yang sama; modelnya beda per spesies. */
 const pal = (k: Skin): CharPalette => k;
 
+function cuteAnimalBody(k: Skin): Part[] {
+  // Compact upright animal body: one clear torso, rounded belly, and a short neck.
+  // Avoids the stacked-box look of the first pass.
+  return [
+    { x: -0.02, y: 0.38, z: 0, w: 0.76, h: 0.42, d: 0.62, color: k.body },
+    { x: 0.28, y: 0.43, z: 0, w: 0.20, h: 0.30, d: 0.48, color: k.belly },
+    { x: 0.22, y: 0.72, z: 0, w: 0.25, h: 0.20, d: 0.32, color: k.neck1 },
+  ];
+}
+function cuteAnimalHead(k: Skin): Part[] {
+  const isPanda = k.kind === "panda";
+  const isDino = k.kind === "dino";
+  const isFrog = k.kind === "frog";
+  const eye = isPanda ? "#111318" : "#20242c";
+  return [
+    { x: 0, y: 0, z: 0, w: 0.58, h: 0.48, d: 0.58, color: k.head },
+    { x: 0.28, y: -0.10, z: 0, w: isDino ? 0.4 : 0.26, h: 0.18, d: 0.32, color: k.belly },
+    { x: 0.4, y: -0.06, z: 0, w: 0.1, h: 0.07, d: 0.18, color: k.beak },
+    { x: 0.16, y: 0.12, z: 0.2, w: 0.1, h: isFrog ? 0.19 : 0.13, d: 0.12, color: "#ffffff" },
+    { x: 0.16, y: 0.12, z: -0.2, w: 0.1, h: isFrog ? 0.19 : 0.13, d: 0.12, color: "#ffffff" },
+    { x: 0.2, y: 0.12, z: 0.205, w: 0.055, h: 0.08, d: 0.06, color: eye },
+    { x: 0.2, y: 0.12, z: -0.205, w: 0.055, h: 0.08, d: 0.06, color: eye },
+    ...(isPanda ? [
+      { x: -0.18, y: 0.24, z: 0.20, w: 0.16, h: 0.16, d: 0.14, color: "#20242c" },
+      { x: -0.18, y: 0.24, z: -0.20, w: 0.16, h: 0.16, d: 0.14, color: "#20242c" },
+      { x: 0.18, y: 0.12, z: 0.18, w: 0.14, h: 0.18, d: 0.025, color: "#20242c" },
+      { x: 0.18, y: 0.12, z: -0.18, w: 0.14, h: 0.18, d: 0.025, color: "#20242c" },
+    ] : []),
+    ...(isDino ? [
+      { x: -0.16, y: 0.28, z: 0, w: 0.12, h: 0.16, d: 0.14, color: k.wingTip },
+      { x: -0.02, y: 0.31, z: 0, w: 0.12, h: 0.19, d: 0.14, color: k.wingTip },
+      { x: 0.12, y: 0.28, z: 0, w: 0.12, h: 0.16, d: 0.14, color: k.wingTip },
+    ] : []),
+    ...(k.kind === "shiba" ? [
+      { x: -0.16, y: 0.29, z: 0.2, w: 0.2, h: 0.2, d: 0.18, color: k.head },
+      { x: -0.16, y: 0.29, z: -0.2, w: 0.2, h: 0.2, d: 0.18, color: k.head },
+    ] : []),
+  ];
+}
+function cuteAnimalWing(k: Skin, side: 1 | -1): Part[] {
+  return [
+    { x: -0.05, y: -0.16, z: 0.34 * side, w: 0.34, h: 0.34, d: 0.18, color: k.wing },
+    { x: 0.12, y: -0.35, z: 0.34 * side, w: 0.22, h: 0.18, d: 0.2, color: k.wingTip },
+  ];
+}
+function cuteAnimalTail(k: Skin): Part[] {
+  return [
+    { x: -0.4, y: 0.48, z: 0, w: 0.38, h: 0.28, d: 0.28, color: k.tail },
+    { x: -0.56, y: 0.68, z: 0, w: 0.25, h: 0.25, d: 0.22, rz: -0.5, color: k.tailTip },
+  ];
+}
+
 /** Part badan (termasuk leher). Untuk kucing/… dipakai model khusus dari chars.ts. */
 export function charBodyParts(k: Skin): Part[] {
   switch (k.kind) {
@@ -244,6 +294,12 @@ export function charBodyParts(k: Skin): Part[] {
       return flamingoBodyParts(pal(k));
     case "crow":
       return crowBodyParts(pal(k));
+    case "duck":
+    case "panda":
+    case "dino":
+    case "frog":
+    case "shiba":
+      return cuteAnimalBody(k);
     default:
       return pigeonBodyParts(k);
   }
@@ -258,6 +314,8 @@ export function charHeadParts(k: Skin): Part[] {
       return flamingoHeadParts(pal(k));
     case "crow":
       return crowHeadParts(pal(k));
+    case "duck": case "panda": case "dino": case "frog": case "shiba":
+      return cuteAnimalHead(k);
     default:
       return pigeonHeadParts(k);
   }
@@ -272,6 +330,8 @@ export function charWingParts(k: Skin, side: 1 | -1): Part[] {
       return flamingoWingParts(pal(k), side);
     case "crow":
       return crowWingParts(pal(k), side);
+    case "duck": case "panda": case "dino": case "frog": case "shiba":
+      return cuteAnimalWing(k, side);
     default:
       return wingParts(k, side);
   }
@@ -286,6 +346,12 @@ export function charTailParts(k: Skin): Part[] {
       return flamingoTailParts(pal(k));
     case "crow":
       return crowTailParts(pal(k));
+    case "duck":
+    case "panda":
+    case "dino":
+    case "frog":
+    case "shiba":
+      return cuteAnimalTail(k);
     default:
       return pigeonTailParts(k);
   }
@@ -330,19 +396,20 @@ export function charLegParts(k: Skin, seg: "thigh" | "shin" | "foot", thighLen: 
 
 /* ---------- Voxel model builders ---------- */
 
-/** Hip pivot (pigeon-local, above the deck top) where the legs attach — inside the lower body. */
+/** Hip pivot (pigeon-local, above the deck top) where the legs attach — inside the lower bower body. */
 export const HIP_Y = 0.3;
 export const LEG_Z = 0.16;
 
 export function pigeonBodyParts(k: Skin): Part[] {
   const parts: Part[] = [
     // body
-    { x: 0, y: 0.36, z: 0, w: 0.84, h: 0.32, d: 0.54, color: k.body },
-    { x: -0.06, y: 0.62, z: 0, w: 0.72, h: 0.28, d: 0.6, color: k.body },
-    { x: 0.4, y: 0.48, z: 0, w: 0.3, h: 0.4, d: 0.46, color: k.belly },
-    // neck
-    { x: 0.32, y: 0.85, z: 0, w: 0.18, h: 0.24, d: 0.34, color: k.neck1 },
-    { x: 0.16, y: 0.85, z: 0, w: 0.16, h: 0.24, d: 0.34, color: k.neck2 },
+    // Chunky Crossy-Roads silhouette: one broad square body, big head, short collar.
+    { x: 0, y: 0.38, z: 0, w: 1.10, h: 0.56, d: 0.76, color: k.body },
+    { x: 0.42, y: 0.46, z: 0, w: 0.34, h: 0.46, d: 0.58, color: k.belly },
+    { x: -0.02, y: 0.14, z: 0, w: 1.12, h: 0.18, d: 0.78, color: k.tail },
+    // broad colored collar joins directly into the large head
+    { x: 0.28, y: 0.80, z: 0, w: 0.46, h: 0.24, d: 0.60, color: k.neck1 },
+    { x: 0.08, y: 0.80, z: 0, w: 0.26, h: 0.24, d: 0.60, color: k.neck2 },
   ];
 
   if (k.accessory === "mailbag") {
@@ -383,9 +450,11 @@ export function pigeonBodyParts(k: Skin): Part[] {
 /** Tail feathers. Origin at the tail root (pigeon-local TAIL_ROOT); extends toward -x. */
 export const TAIL_ROOT: [number, number, number] = [-0.4, 0.55, 0];
 export function pigeonTailParts(k: Skin): Part[] {
+  // Source-SKIN style stepped tail: broad rear block plus two darker feather tiers.
   return [
-    { x: -0.12, y: -0.01, z: 0, w: 0.34, h: 0.1, d: 0.38, color: k.tail },
-    { x: -0.34, y: 0.05, z: 0, w: 0.16, h: 0.1, d: 0.38, color: k.tailTip },
+    { x: -0.42, y: 0.40, z: 0, w: 0.62, h: 0.30, d: 0.48, color: k.tail },
+    { x: -0.66, y: 0.35, z: 0, w: 0.42, h: 0.24, d: 0.42, color: k.tailTip },
+    { x: -0.82, y: 0.48, z: 0, w: 0.28, h: 0.18, d: 0.34, color: k.wingTip },
   ];
 }
 
@@ -498,23 +567,27 @@ function hatParts(k: Skin): Part[] {
 
 export function pigeonHeadParts(k: Skin): Part[] {
   return [
-    { x: 0, y: 0, z: 0, w: 0.42, h: 0.38, d: 0.4, color: k.head },
-    { x: 0.12, y: 0.06, z: 0.2, w: 0.13, h: 0.16, d: 0.06, color: "#ffffff" },
-    { x: 0.12, y: 0.06, z: -0.2, w: 0.13, h: 0.16, d: 0.06, color: "#ffffff" },
-    { x: 0.15, y: 0.05, z: 0.225, w: 0.07, h: 0.1, d: 0.03, color: "#111111" },
-    { x: 0.15, y: 0.05, z: -0.225, w: 0.07, h: 0.1, d: 0.03, color: "#111111" },
-    { x: 0.29, y: -0.04, z: 0, w: 0.2, h: 0.09, d: 0.12, color: k.beak },
-    { x: 0.23, y: 0.03, z: 0, w: 0.1, h: 0.07, d: 0.14, color: k.cere },
+    // Oversized square head and readable face, matching the supplied voxel reference.
+    { x: 0, y: 0, z: 0, w: 0.72, h: 0.68, d: 0.66, color: k.head },
+    { x: 0.22, y: 0.10, z: 0.32, w: 0.16, h: 0.20, d: 0.07, color: "#ffffff" },
+    { x: 0.22, y: 0.10, z: -0.32, w: 0.16, h: 0.20, d: 0.07, color: "#ffffff" },
+    { x: 0.27, y: 0.09, z: 0.355, w: 0.085, h: 0.13, d: 0.04, color: "#111111" },
+    { x: 0.27, y: 0.09, z: -0.355, w: 0.085, h: 0.13, d: 0.04, color: "#111111" },
+    { x: 0.48, y: -0.08, z: 0, w: 0.40, h: 0.18, d: 0.24, color: k.beak },
+    { x: 0.36, y: 0.04, z: 0, w: 0.14, h: 0.09, d: 0.20, color: k.cere },
     ...hatParts(k),
   ];
 }
 
 export function wingParts(k: Skin, side: 1 | -1): Part[] {
-  const z = 0.05 * side;
+  // Wide square side-wings based on the SKIN repository Pigeon: layered hands,
+  // a colored middle patch, and a dark stepped trailing edge.
+  const z = 0.38 * side;
   return [
-    { x: 0, y: -0.15, z, w: 0.66, h: 0.32, d: 0.1, color: k.wing },
-    { x: 0, y: -0.24, z, w: 0.66, h: 0.06, d: 0.11, color: k.wingTip },
-    { x: -0.38, y: -0.1, z, w: 0.22, h: 0.14, d: 0.1, color: k.wingTip },
+    { x: -0.08, y: 0.43, z, w: 0.72, h: 0.56, d: 0.24, color: k.wing },
+    { x: -0.10, y: 0.48, z: z + side * 0.13, w: 0.52, h: 0.30, d: 0.08, color: k.neck1 },
+    { x: -0.12, y: 0.29, z, w: 0.72, h: 0.16, d: 0.26, color: k.wingTip },
+    { x: -0.38, y: 0.34, z: z + side * 0.03, w: 0.25, h: 0.22, d: 0.28, color: k.tailTip },
   ];
 }
 
@@ -565,9 +638,73 @@ export function baguetteDeckParts(): Part[] {
   return parts;
 }
 
-export function deckParts(k: Skin, deckOverride: "default" | "baguette" = "default"): Part[] {
+export function specialDeckParts(kind: "hoverboard" | "broom" | "silver" | "ufo"): Part[] {
+  if (kind === "ufo") {
+    // Flying-saucer silhouette: wide disc, raised cockpit dome, underside ring,
+    // and alternating alien running lights. All layers remain one stable deck.
+    return [
+      { x: 0, y: 0.00, z: 0, w: 1.82, h: 0.12, d: 0.96, color: "#53677f" },
+      { x: 0, y: 0.075, z: 0, w: 1.58, h: 0.07, d: 0.78, color: "#a7c4d5" },
+      { x: 0, y: 0.13, z: 0, w: 1.05, h: 0.20, d: 0.58, color: "#cceaf2" },
+      { x: 0, y: 0.255, z: 0, w: 0.58, h: 0.12, d: 0.36, color: "#e8fcff" },
+      { x: 0, y: -0.085, z: 0, w: 1.42, h: 0.06, d: 0.72, color: "#263b61" },
+      { x: 0, y: -0.125, z: 0, w: 0.98, h: 0.035, d: 0.52, color: "#182846" },
+      { x: 0.62, y: 0.075, z: 0, w: 0.20, h: 0.045, d: 0.58, color: "#53e5eb" },
+      { x: -0.62, y: 0.075, z: 0, w: 0.20, h: 0.045, d: 0.58, color: "#9b7cff" },
+      { x: 0, y: 0.08, z: 0.39, w: 0.28, h: 0.05, d: 0.07, color: "#53e5eb" },
+      { x: 0, y: 0.08, z: -0.39, w: 0.28, h: 0.05, d: 0.07, color: "#ffdb67" },
+    ];
+  }
+  if (kind === "broom") {
+    // Layered wooden shaft, leather grip and a proper fan of golden bristles.
+    return [
+      // Narrow wooden handle points forward; the brush head is clearly wider and layered.
+      { x: 0.20, y: 0.02, z: 0, w: 1.55, h: 0.075, d: 0.10, color: "#9a5527" },
+      { x: 0.72, y: 0.025, z: 0, w: 0.40, h: 0.115, d: 0.14, color: "#c57a36" },
+      { x: 0.82, y: 0.078, z: 0, w: 0.22, h: 0.035, d: 0.17, color: "#f0bd5a" },
+      { x: -0.64, y: 0.02, z: 0, w: 0.30, h: 0.23, d: 0.26, color: "#5c2d1b" },
+      { x: -0.78, y: -0.045, z: 0.00, w: 0.28, h: 0.12, d: 0.50, color: "#d9a33e" },
+      { x: -0.97, y: -0.075, z: 0.00, w: 0.20, h: 0.08, d: 0.42, color: "#f0c45d" },
+      { x: -1.13, y: -0.095, z: 0.00, w: 0.13, h: 0.055, d: 0.30, color: "#b87527" },
+      // visible bristle stripes give the brush its fan shape instead of a blocky plank
+      { x: -0.82, y: 0.035, z: -0.19, w: 0.26, h: 0.07, d: 0.16, color: "#b87927" },
+      { x: -0.82, y: 0.035, z: 0.19, w: 0.26, h: 0.07, d: 0.16, color: "#b87927" },
+      { x: -0.61, y: 0.115, z: 0, w: 0.12, h: 0.035, d: 0.28, color: "#e7b84b" },
+      // small leather foot rests: the rider visibly stands on the broom, not inside it
+      { x: 0.18, y: 0.095, z: 0.16, w: 0.25, h: 0.035, d: 0.16, color: "#5c2d1b" },
+      { x: -0.22, y: 0.095, z: -0.16, w: 0.25, h: 0.035, d: 0.16, color: "#5c2d1b" },
+    ];
+  }
+  if (kind === "silver") {
+    // A stepped, pointed surf silhouette with a chrome spine and blue reflection.
+    return [
+      { x: 0, y: 0.015, z: 0, w: 1.58, h: 0.075, d: 0.48, color: "#9eafc2" },
+      { x: 0.82, y: 0.02, z: 0, w: 0.32, h: 0.06, d: 0.32, color: "#dce8f2" },
+      { x: -0.82, y: 0.02, z: 0, w: 0.32, h: 0.06, d: 0.32, color: "#8295aa" },
+      { x: 0, y: 0.075, z: 0, w: 1.36, h: 0.035, d: 0.28, color: "#ffffff" },
+      { x: 0, y: 0.112, z: 0, w: 0.92, h: 0.018, d: 0.08, color: "#8fdcff" },
+      { x: 0.42, y: 0.105, z: 0, w: 0.3, h: 0.014, d: 0.045, color: "#ffffff" },
+      { x: -0.42, y: 0.105, z: 0, w: 0.3, h: 0.014, d: 0.045, color: "#c5f0ff" },
+    ];
+  }
+  // Hoverboard: layered anti-gravity deck, cyan rails, purple underside engines.
+  return [
+    { x: 0, y: 0.015, z: 0, w: 1.58, h: 0.10, d: 0.56, color: "#182641" },
+    { x: 0.82, y: 0.025, z: 0, w: 0.22, h: 0.075, d: 0.40, color: "#2b4269" },
+    { x: -0.82, y: 0.025, z: 0, w: 0.22, h: 0.075, d: 0.40, color: "#2b4269" },
+    { x: 0, y: 0.082, z: 0, w: 1.35, h: 0.03, d: 0.42, color: "#63f3ff" },
+    { x: 0, y: -0.075, z: 0, w: 1.12, h: 0.05, d: 0.26, color: "#243b6b" },
+    { x: 0.56, y: -0.12, z: 0, w: 0.25, h: 0.045, d: 0.34, color: "#b56cff" },
+    { x: -0.56, y: -0.12, z: 0, w: 0.25, h: 0.045, d: 0.34, color: "#47e9e0" },
+  ];
+}
+
+export function deckParts(k: Skin, deckOverride: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo" = "default"): Part[] {
   if (deckOverride === "baguette" || k.deckType === "baguette") {
     return baguetteDeckParts();
+  }
+  if (deckOverride === "hoverboard" || deckOverride === "broom" || deckOverride === "silver") {
+    return specialDeckParts(deckOverride);
   }
   return [
     { x: 0, y: 0, z: 0, w: 1.7, h: 0.08, d: 0.56, color: k.deck },
@@ -599,7 +736,11 @@ export const WHEEL_HEX: Record<string, string> = {
 };
 
 /** Wheel + bearing; axis along z. `wheelOverride` = pilihan warna ban pemain (default: hitam). */
-export function wheelParts(k: Skin, deckOverride: "default" | "baguette" = "default", wheelOverride: string = "auto"): Part[] {
+export function wheelParts(k: Skin, deckOverride: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo" = "default", wheelOverride: string = "auto"): Part[] {
+  const isWheelless = deckOverride === "hoverboard" || deckOverride === "broom" || deckOverride === "silver";
+  // Keep a valid placeholder geometry for the shared Three.js builder; the
+  // player hides the complete truck assembly for wheelless boards.
+  if (isWheelless) return [{ x: 0, y: -10, z: 0, w: 0.01, h: 0.01, d: 0.01, color: "#000000" }];
   const isBaguette = deckOverride === "baguette" || k.deckType === "baguette";
   const wheelColor =
     wheelOverride !== "auto" && WHEEL_HEX[wheelOverride]

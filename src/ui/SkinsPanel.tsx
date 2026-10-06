@@ -143,17 +143,20 @@ function SkinCard({ skin }: { skin: Skin }) {
   );
 }
 
-function DeckPreview3D({ baguette }: { baguette: boolean }) {
+function DeckPreview3D({ deckId }: { deckId: DeckOption["id"] }) {
+  const noWheels = deckId === "hoverboard" || deckId === "broom" || deckId === "silver" || deckId === "ufo";
   return (
-    <div className={`deck-preview-3d ${baguette ? "deck-preview-baguette" : "deck-preview-classic"}`} aria-hidden="true">
+    <div className={`deck-preview-3d ${deckId === "baguette" ? "deck-preview-baguette" : deckId === "broom" ? "deck-preview-broom" : deckId === "silver" ? "deck-preview-silver" : deckId === "hoverboard" ? "deck-preview-hoverboard" : "deck-preview-classic"}`} aria-hidden="true">
       <div className="deck-preview-board">
         <div className="deck-preview-grip" />
-        <div className="deck-preview-truck deck-preview-truck-front" />
-        <div className="deck-preview-truck deck-preview-truck-back" />
-        <div className="deck-preview-wheel deck-preview-wheel-a" />
-        <div className="deck-preview-wheel deck-preview-wheel-b" />
-        <div className="deck-preview-wheel deck-preview-wheel-c" />
-        <div className="deck-preview-wheel deck-preview-wheel-d" />
+        {!noWheels && <>
+          <div className="deck-preview-truck deck-preview-truck-front" />
+          <div className="deck-preview-truck deck-preview-truck-back" />
+          <div className="deck-preview-wheel deck-preview-wheel-a" />
+          <div className="deck-preview-wheel deck-preview-wheel-b" />
+          <div className="deck-preview-wheel deck-preview-wheel-c" />
+          <div className="deck-preview-wheel deck-preview-wheel-d" />
+        </>}
       </div>
     </div>
   );
@@ -182,7 +185,7 @@ function DeckCard({ deck, active, onSelect }: { deck: DeckOption; active: boolea
 
       {/* Visual illustration of deck */}
       <div className="my-2 flex h-[26cqw] w-full items-center justify-center rounded-xl bg-gradient-to-b from-[#f0f4f8] to-[#e1e9f0] p-2">
-        <DeckPreview3D baguette={isBaguette} />
+        <DeckPreview3D deckId={deck.id} />
       </div>
 
       <div>
@@ -268,15 +271,16 @@ export function SkinsPanel() {
     addPopup(c === "auto" ? "BAN IKUT SKIN" : `BAN ${label}`, "#2ec4b6", "Warna roda skateboard");
   };
 
-  const selectDeck = (d: "default" | "baguette") => {
+  const selectDeck = (d: DeckOption["id"]) => {
     setDeckOverride(d);
     engine.skinPop();
     if (d === "baguette") {
       sfx.unlock();
       addPopup("PAPAN ROTI BAGUETTE!", "#ff9f1c", "Free Baguette Skateboard");
     } else {
-      sfx.click();
-      addPopup("PAPAN STANDAR! 🛹", "#2ec4b6", "Classic Pro Deck");
+      sfx.unlock();
+      const labels: Record<DeckOption["id"], string> = { default: "PAPAN STANDAR", baguette: "PAPAN BAGUETTE", hoverboard: "HOVERBOARD NEON", broom: "SAPU TERBANG", silver: "SILVER SURFER", ufo: "UFO SKATE" };
+      addPopup(`${labels[d]}!`, d === "silver" ? "#8fd3ff" : "#2ec4b6", "Free skateboard skin");
     }
   };
 

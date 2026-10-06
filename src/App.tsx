@@ -77,7 +77,7 @@ export default function App() {
       const saved = localStorage.getItem("preferred_game_mode");
       if (saved === "pigeon" || saved === "shibuya") return saved;
     }
-    return "pigeon"; // Default ke Shibuya Pigeon Game sesuai permintaan pengguna
+    return "pigeon"; // Default ke Pigeon Game
   });
 
   const switchGameMode = (mode: "pigeon" | "shibuya") => {

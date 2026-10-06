@@ -162,15 +162,17 @@ function SettingsRow() {
   const [tips, setTips] = useState(false);
 
   const toggleDeck = () => {
-    const next = deck === "baguette" ? "default" : "baguette";
+    const order = ["default", "baguette", "hoverboard", "broom", "silver", "ufo"] as const;
+    const next = order[(order.indexOf(deck) + 1) % order.length];
     setDeck(next);
     engine.skinPop();
     if (next === "baguette") {
       sfx.unlock();
       addPopup("PAPAN ROTI BAGUETTE!", "#ff9f1c", "Free Baguette Skateboard");
     } else {
-      sfx.click();
-      addPopup("PAPAN STANDAR", "#2ec4b6", "Classic Pro Deck");
+      sfx.unlock();
+      const labels = { default: "PAPAN STANDAR", hoverboard: "HOVERBOARD NEON", broom: "SAPU TERBANG", silver: "SILVER SURFER", ufo: "UFO SKATE" } as const;
+      addPopup(labels[next as keyof typeof labels] ?? "PAPAN", next === "silver" ? "#8fd3ff" : "#2ec4b6", "Free skateboard skin");
     }
   };
 
@@ -209,7 +211,7 @@ function SettingsRow() {
       <div className="flex w-full gap-1.5">
         <CyclePill label="SPEED" value={`${speed}×`} accent={speed > 1 ? "#d98b3d" : undefined} onTap={cycleSpeed} />
         <CyclePill label="CURVE" value={curve === "subway" ? "SUBWAY" : "FLAT"} accent={curve === "subway" ? "#168879" : undefined} onTap={toggleCurve} />
-        <CyclePill label="BOARD" value={deck === "baguette" ? "BAGUETTE" : "PRO"} accent={deck === "baguette" ? "#d98b3d" : undefined} onTap={toggleDeck} />
+        <CyclePill label="BOARD" value={deck === "baguette" ? "BAGUETTE" : deck === "hoverboard" ? "HOVER" : deck === "broom" ? "SAPU" : deck === "silver" ? "SILVER" : "PRO"} accent={deck !== "default" ? "#d98b3d" : undefined} onTap={toggleDeck} />
       </div>
       <div className="flex w-full gap-1.5">
         <CyclePill
