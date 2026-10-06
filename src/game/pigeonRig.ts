@@ -116,7 +116,7 @@ export class LegRig {
 /** Plain three.js assembly of a skin (static riding pose). */
 export function buildPigeonGroup(
   skin: Skin,
-  deckOverride: "default" | "baguette" = "default",
+  deckOverride: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo" = "default",
   wheelColor: string = "auto",
 ): { group: THREE.Group; dispose: () => void } {
   const geos = [

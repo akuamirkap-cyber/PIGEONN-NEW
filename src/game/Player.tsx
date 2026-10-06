@@ -54,6 +54,8 @@ export function Player() {
   // in the menu the carousel preview is shown; during a run the equipped skin
   const skinId = useUI((s) => (s.phase === "menu" ? s.preview : s.skin));
   const deckOverride = useUI((s) => s.deckOverride);
+  const wheellessDeck = deckOverride === "hoverboard" || deckOverride === "broom" || deckOverride === "silver" || deckOverride === "ufo";
+  const broomDeck = deckOverride === "broom";
   const skin = getSkin(skinId);
 
   const root = useRef<THREE.Group>(null);
@@ -142,6 +144,10 @@ export function Player() {
     const [legPush, legPlant] = legs;
 
     const crashed = engine.phase === "crashed" || engine.phase === "gameover";
+    // Keep the chunky pigeon silhouette compact while preserving full-size legs.
+    // The torso group contains the body, collar, head, wings and tail; the IK legs
+    // are siblings, so scaling here does not shrink or bury the feet.
+    if (!friendRig) ts.scale.setScalar(0.7);
     if (crashed) friendRig?.setPush(-1, ROAD_Y);
     const flapping = p.wing > 0.05;
 
@@ -238,7 +244,10 @@ export function Player() {
       const g = p.grab; // +1 method (board pulled up behind), -1 indy (board tucked under)
       const grabLift = g > 0 ? g * 0.25 : 0;
       const grabTuck = g < 0 ? -g * 0.18 : 0;
-      bd.position.set(g > 0 ? -g * 0.2 : 0, RIG.boardY + grabLift + grabTuck, 0);
+      // Floating boards ride 10% higher for a clear, magical hover silhouette.
+      // Magical boards float 40% higher than the original hover height.
+      const floatLift = deckOverride === "hoverboard" ? 0.14 + Math.sin(t * 5.5) * 0.034 : deckOverride === "broom" ? 0.168 + Math.sin(t * 4.2) * 0.025 : deckOverride === "silver" ? 0.126 + Math.sin(t * 4.8) * 0.030 : deckOverride === "ufo" ? 0.155 + Math.sin(t * 3.8) * 0.018 : 0;
+      bd.position.set(g > 0 ? -g * 0.2 : 0, RIG.boardY + grabLift + grabTuck + floatLift, 0);
       // board yaws into the carve (nose points where the pigeon is going) on top of any trick rotation
       // NEW: in the air the feet steer the board, so it tilts a little MORE than the body (lean * 0.2)
       const airTilt = nm ? lv * 0.2 * p.airBlend : 0;
@@ -270,7 +279,8 @@ export function Player() {
       // grabs: crouch toward the board
       const crouch = g > 0 ? g * 0.12 : g < 0 ? -g * 0.1 : 0;
       const s = p.squash;
-      pg.position.set(0, RIG.pigeonY + hop - crouch - dip + grabLift + grabTuck, -0.03 * out);
+      // Move rider together with the board so feet stay planted instead of clipping through it.
+      pg.position.set(0, RIG.pigeonY + hop - crouch - dip + grabLift + grabTuck + floatLift, -0.03 * out);
       pg.rotation.set(0, 0, p.pitch * 0.5 + (g > 0 ? g * 0.35 : 0) + (g < 0 ? g * 0.25 : 0));
       pg.scale.set(PS * (1 + 0.18 * s), PS * (1 - 0.32 * s + idle), PS * (1 + 0.18 * s));
 
@@ -342,12 +352,12 @@ export function Player() {
       // hips in deck space (the pigeon group moved by hop/dip; the board is the reference)
       const hipY = HIP_Y + hop - dip - crouch;
       // planted leg: sole stays on the deck under the body (slightly forward when driving)
-      legPlant.solve(0.02 + 0.03 * drive - 0, -hipY, 0);
+      legPlant.solve((broomDeck ? 0.18 : 0.02) + 0.03 * drive - 0, -hipY, 0);
       if (u >= 0) {
-        legPush.solve(kTmp[0], kTmp[1] - hipY, kTmp[2] - LEG_Z);
+        legPush.solve(kTmp[0], kTmp[1] - hipY, kTmp[2] - (broomDeck ? 0 : LEG_Z));
       } else {
         // riding stance: both feet on the deck; tiny knee flex with the head bob
-        legPush.solve(0.02, -hipY, 0);
+        legPush.solve(broomDeck ? -0.22 : 0.02, -hipY, 0);
       }
       // torso: lean forward & over the planted foot during the drive, dip a touch on the kick.
       // While carving, the upper body leans a little further INTO the turn than the board (weight over the
@@ -398,15 +408,17 @@ export function Player() {
         //  - hips slide toward the inside of the turn (lean * 0.06)
         //  - head counter-rolls (-lean*0.22) to keep the horizon level and looks into the turn (yaw - lean*0.35)
         leanTorso(-0.12 * out - lv * 0.14, -0.2 * drive - 0.04 * out - 0.14 * spr, 0.04 * drive + 0.03 * spr, -0.02 * drive, -0.05 * out + lv * 0.06, 0);
-        hd.position.set(0.32 + bob * 0.05 + (grounded ? 0 : 0.06) + 0.04 * drive, 1.04 + Math.abs(bob) * 0.02 + (grounded ? 0 : 0.04), 0);
+        ts.position.y += 0.20; // angkat torso kecil agar kepala berada jelas di atas collar
+        hd.position.set(0.32 + bob * 0.05 + (grounded ? 0 : 0.06) + 0.04 * drive, 1.30 + Math.abs(bob) * 0.02 + (grounded ? 0 : 0.04), 0);
         hd.rotation.set(hl.pitch - lv * 0.1, hl.yaw, grounded ? -0.06 * drive : -0.12);
       } else {
         // extra torso roll INTO the turn (rotation.x > 0 tips the top toward +z, so it is -carve)
         const torsoCarve = -carve * (airborne ? 0.55 : 0.35);
         const hipShift = Math.sign(p.latVel) * Math.min(1, Math.abs(p.latVel) / 6) * (airborne ? 0.1 : 0.06);
         leanTorso(-0.12 * out + torsoCarve, -0.2 * drive - 0.04 * out - 0.14 * spr + 0.12 * shift, 0.04 * drive + 0.03 * spr, -0.02 * drive - 0.03 * shift, -0.05 * out + hipShift, -p.steer * 0.35);
+        ts.position.y += 0.20; // torso naik 30% secara visual tanpa mengecilkan kaki
         // head bob (pigeons!) + look into the turn
-        hd.position.set(0.32 + bob * 0.05 + (grounded ? 0 : 0.06) + 0.04 * drive, 1.04 + Math.abs(bob) * 0.02 + (grounded ? 0 : 0.04), 0);
+        hd.position.set(0.32 + bob * 0.05 + (grounded ? 0 : 0.06) + 0.04 * drive, 1.30 + Math.abs(bob) * 0.02 + (grounded ? 0 : 0.04), 0);
         hd.rotation.set(hl.pitch - carve * 0.18, hl.yaw, grounded ? -0.06 * drive : -0.12);
       }
     } else {
@@ -690,7 +702,7 @@ export function Player() {
                 </mesh>
               </group>
               {/* trucks: hanger + 2 wheels each, pivoting about the kingpin */}
-              <group ref={truckFront} name="truck-front" position={[RIG.truckX, RIG.truckY, 0]}>
+              <group ref={truckFront} name="truck-front" position={[RIG.truckX, RIG.truckY, 0]} visible={!wheellessDeck}>
                 <mesh geometry={geos.truck} material={voxelMaterial} castShadow />
                 {[RIG.wheelZ, -RIG.wheelZ].map((z, i) => (
                   <mesh
@@ -705,7 +717,7 @@ export function Player() {
                   />
                 ))}
               </group>
-              <group ref={truckRear} name="truck-rear" position={[-RIG.truckX, RIG.truckY, 0]}>
+              <group ref={truckRear} name="truck-rear" position={[-RIG.truckX, RIG.truckY, 0]} visible={!wheellessDeck}>
                 <mesh geometry={geos.truck} material={voxelMaterial} castShadow />
                 {[RIG.wheelZ, -RIG.wheelZ].map((z, i) => (
                   <mesh
@@ -743,8 +755,9 @@ export function Player() {
               {/* Keep the legacy rig mounted (and its refs alive) while hiding it for a full source animal rig. */}
               <group visible={!friendRig}>
                 {/* legs hang from the hips; the pushing leg is on the camera side (+z) */}
-                <primitive object={legs[0].root} position={[0, HIP_Y, LEG_Z]} />
-                <primitive object={legs[1].root} position={[0, HIP_Y, -LEG_Z]} />
+                {/* On the broom the feet straddle the shaft with a visible, stable stance. */}
+                <primitive object={legs[0].root} position={[0, HIP_Y, broomDeck ? 0.16 : LEG_Z]} />
+                <primitive object={legs[1].root} position={[0, HIP_Y, broomDeck ? -0.16 : -LEG_Z]} />
               </group>
               <group ref={torso} name="pigeon-torso" visible={!friendRig}>
                 <mesh geometry={geos.body} material={voxelMaterial} castShadow receiveShadow />

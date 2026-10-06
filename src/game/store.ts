@@ -86,8 +86,8 @@ interface UIState {
   /** waktu hari untuk Shibuya: pagi / siang / sore / malam */
   shibuyaTime: "pagi" | "siang" | "sore" | "malam";
   cycleShibuyaTime: () => void;
-  deckOverride: "default" | "baguette";
-  setDeckOverride: (d: "default" | "baguette") => void;
+  deckOverride: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo";
+  setDeckOverride: (d: "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo") => void;
   wheelColor: WheelColor;
   setWheelColor: (c: WheelColor) => void;
   worldCurve: "subway" | "flat";
@@ -284,7 +284,7 @@ export const useUI = create<UIState>((set, get) => ({
   },
   deckOverride: (() => {
     const d = load<string>("pigeon-sk8-deck", "default");
-    return d === "baguette" ? "baguette" : "default";
+    return (["default", "baguette", "hoverboard", "broom", "silver", "ufo"] as const).includes(d as "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo") ? d as "default" | "baguette" | "hoverboard" | "broom" | "silver" | "ufo" : "default";
   })(),
   setDeckOverride: (deckOverride) => {
     save("pigeon-sk8-deck", deckOverride);

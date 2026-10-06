@@ -51,7 +51,6 @@ export function GameOver() {
   const cause = useUI((s) => s.crashCause);
   const wordHunt = useUI((s) => s.wordHunt);
   const setShowMysteryBox = useUI((s) => s.setShowMysteryBox);
-  const newAch = useUI((s) => s.newAch);
 
   const [disp, setDisp] = useState(0); // skor yang sedang ditampilkan (naik)
   const [dispB, setDispB] = useState(0); // roti yang sedang dihitung
@@ -133,8 +132,8 @@ export function GameOver() {
       <div className="card-in w-[84%] max-w-[400px] overflow-hidden rounded-[26px] bg-white text-center shadow-[0_10px_0_rgba(0,0,0,0.22)]">
         {/* header: judul ber-goyang + guyon dalam satu blok ramping */}
         <div className="bg-gradient-to-b from-[#ff5d5d] to-[#e23e3e] px-5 pb-3.5 pt-3">
-          <div className="go-wobble font-display text-[6.4cqw] leading-none text-white txt-outline-sm">GAME OVER</div>
-          <div className="mt-1 font-body text-[2.6cqw] font-extrabold tracking-[0.14em] text-white/85">{quip}</div>
+          <div className="go-wobble font-display text-[clamp(25px,6.4cqw,42px)] leading-none text-white txt-outline-sm">GAME OVER</div>
+          <div className="mt-1 font-body text-[clamp(11px,2.6cqw,17px)] font-extrabold tracking-[0.14em] text-white/90">{quip}</div>
         </div>
 
         <div className="px-5 pb-5 pt-4">
@@ -167,21 +166,13 @@ export function GameOver() {
             )}
             {isNewBest && (
               <div
-                className={`${done ? "go-badge" : "opacity-0"} go-starburst absolute -right-2.5 -top-4 px-3 py-1.5 font-display text-[3.2cqw] leading-none text-[#5b3a00]`}
-                style={{ ["--tilt" as string]: "8deg" }}
+                className={`${done ? "go-badge" : "opacity-0"} go-starburst absolute right-2 top-2 z-10 max-w-[48%] px-2.5 py-2 text-center font-display text-[clamp(10px,3.2cqw,16px)] leading-[0.95] text-[#5b3a00]`}
+                style={{ ["--tilt" as string]: "6deg" }}
               >
                 <span className="relative z-[1]">NEW BEST!</span>
               </div>
             )}
-            {newAch.length > 0 && (
-              <div
-                className={`${done ? "go-badge" : "opacity-0"} absolute -left-2 -top-2.5 -rotate-6 rounded-full bg-[#a855f7] px-2.5 py-0.5 font-display text-[3cqw] leading-none text-white shadow`}
-                style={{ ["--tilt" as string]: "-6deg", ["--d" as string]: "0.12s" }}
-              >
-                🏆 {newAch.length > 1 ? `${newAch.length} ACH BARU!` : "ACH BARU!"}
-              </div>
-            )}
-            <div className="font-body text-[2.3cqw] font-extrabold tracking-[0.3em] text-white/55">SCORE</div>
+            <div className="pt-1 font-body text-[clamp(10px,2.3cqw,15px)] font-extrabold tracking-[0.3em] text-white/65">SCORE</div>
             {done && score > 0 && (
               <>
                 <span className="go-twinkle left-[14%] top-[22%] text-[11px]" />
@@ -193,9 +184,9 @@ export function GameOver() {
               {disp}
             </div>
             <div className="mt-1 flex items-center justify-center gap-3">
-              <span className="font-body text-[2.7cqw] font-extrabold text-white/60">BEST {best}</span>
+              <span className="font-body text-[clamp(11px,2.7cqw,17px)] font-extrabold text-white/70">BEST {best}</span>
               {bread > 0 && (
-                <span className={`flex items-center gap-1 font-display text-[3.1cqw] leading-none transition-colors ${bDone ? "text-[#ffd60a]" : "text-[#ffb64d]"}`}>
+                <span className={`flex items-center gap-1 font-display text-[clamp(14px,3.1cqw,19px)] leading-none transition-colors ${bDone ? "text-[#ffd60a]" : "text-[#ffb64d]"}`}>
                   <BreadIcon size={15} />+{dispB}
                 </span>
               )}
@@ -204,7 +195,7 @@ export function GameOver() {
 
           {/* kenapa tumbang — pill muncul setelah hitungan beres */}
           <div className={`${done ? "go-fade" : "opacity-0"} mt-2`} style={{ ["--d" as string]: "0.05s" }}>
-            <span className="inline-block rounded-full bg-[#ffe9e9] px-3 py-1 font-body text-[2.6cqw] font-extrabold tracking-[0.1em] text-[#c0564c]">
+            <span className="inline-block rounded-full bg-[#ffe9e9] px-3 py-1 font-body text-[clamp(11px,2.6cqw,16px)] font-extrabold tracking-[0.1em] text-[#c0564c]">
               {CAUSE_LABEL[cause] ?? "TUMBANG!"}
             </span>
           </div>
@@ -220,10 +211,10 @@ export function GameOver() {
             }`}
             style={{ ["--d" as string]: "0.12s" }}
           >
-            <span className={`font-body text-[2.1cqw] font-extrabold tracking-[0.18em] ${canOpen ? "text-[#ffd21f]" : "text-[#9aa4b2]"}`}>
+            <span className={`font-body text-[clamp(10px,2.1cqw,14px)] font-extrabold tracking-[0.12em] ${canOpen ? "text-[#ffd21f]" : "text-[#9aa4b2]"}`}>
               WORD HUNT
             </span>
-            <span className="flex items-center gap-1 font-display text-[3cqw] leading-none">
+            <span className="flex items-center gap-1 font-display text-[clamp(13px,3cqw,18px)] leading-none">
               {wordHunt.word.split("").map((ch, idx) => (
                 <span key={idx} className={wordHunt.collected[idx] ? "text-[#e8b10c]" : canOpen ? "text-white/25" : "text-[#c6cdd6]"}>
                   {ch}
@@ -251,7 +242,7 @@ export function GameOver() {
               <span className="shine pointer-events-none absolute inset-y-0 w-[22%] -rotate-12 bg-white/30 blur-[2px]" />
             </button>
           ) : (
-            <div className="mt-3.5 w-full rounded-2xl border-2 border-dashed border-[#dfe3e8] py-3.5 font-body text-[3.4cqw] font-extrabold tracking-[0.2em] text-[#aab2bd]">
+            <div className="mt-3.5 w-full rounded-2xl border-2 border-dashed border-[#dfe3e8] py-3.5 font-body text-[clamp(13px,3.4cqw,21px)] font-extrabold tracking-[0.12em] text-[#aab2bd]">
               MENGHITUNG SKOR…
             </div>
           )}

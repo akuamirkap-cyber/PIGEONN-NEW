@@ -57,15 +57,15 @@ body,
    extrusion 3D hitam pekat turun diagonal ke kanan-bawah (tangga blok). */
 .crossy-title {
   paint-order: stroke fill;
-  -webkit-text-stroke: 0.09em #11151f;
+  -webkit-text-stroke: 0.14em #11151f;
   text-shadow:
-    0.022em 0.022em 0 #11151f,
-    0.044em 0.044em 0 #11151f,
-    0.066em 0.066em 0 #11151f,
-    0.088em 0.088em 0 #11151f,
-    0.11em 0.11em 0 #11151f,
-    0.132em 0.132em 0 #11151f,
-    0.15em 0.17em 0 rgba(10, 12, 18, 0.28);
+    0.025em 0.025em 0 #11151f,
+    0.05em 0.05em 0 #11151f,
+    0.075em 0.075em 0 #11151f,
+    0.10em 0.10em 0 #11151f,
+    0.125em 0.125em 0 #11151f,
+    0.15em 0.15em 0 #11151f,
+    0.175em 0.175em 0 #11151f;
 }
 .crossy-title-white {
   color: #fffdf2;
@@ -174,22 +174,14 @@ body,
 .go-starburst {
   position: absolute;
   background: #ffd60a;
-  border-radius: 6px;
-  box-shadow: 0 2.5px 0 rgba(90, 50, 0, 0.45);
+  border: 2px solid #c18b00;
+  border-radius: 10px;
+  box-shadow: 0 3px 0 rgba(90, 50, 0, 0.45);
+  /* Badge compact dan rapi, bukan pita atau starburst. */
 }
 .go-starburst::before,
 .go-starburst::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #ffd60a;
-  border-radius: 6px;
-}
-.go-starburst::before {
-  transform: rotate(45deg);
-}
-.go-starburst::after {
-  transform: rotate(22.5deg);
+  display: none;
 }
 
 /* Percikan ✦ kecil berkedip di sekitar angka skor sesudah perhitungan */
@@ -509,6 +501,44 @@ body,
 
 .deck-preview-baguette .deck-preview-wheel {
   --wheel-color: #2ec4b6;
+}
+
+.deck-preview-hoverboard .deck-preview-board {
+  background: linear-gradient(180deg, #65f3ff 0%, #253b68 45%, #111a32 100%);
+  box-shadow: 0 0 1.1rem rgba(71, 224, 255, 0.8), 0 0.18rem 0 #10182b;
+}
+.deck-preview-hoverboard .deck-preview-grip {
+  background: linear-gradient(90deg, rgba(85, 230, 255, .9), rgba(139, 92, 246, .7));
+}
+.deck-preview-broom .deck-preview-board {
+  width: 92%;
+  height: 20%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d99a52, #743b20 55%, #3e2118);
+  box-shadow: 0 0.25rem 0 #24140f;
+}
+.deck-preview-broom .deck-preview-grip {
+  display: none;
+}
+.deck-preview-silver .deck-preview-board {
+  background: linear-gradient(180deg, #ffffff 0%, #cbd8e5 46%, #71859a 100%);
+  box-shadow: 0 0 1rem rgba(200, 235, 255, .75), 0 0.2rem 0 #5e7185;
+}
+.deck-preview-silver .deck-preview-grip {
+  background: linear-gradient(90deg, #ffffff, #9bdcff 55%, #ffffff);
+}
+.deck-preview-ufo .deck-preview-board {
+  width: 82%;
+  height: 45%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 28%, #eaffff 0 18%, #9ed7e8 19% 36%, #627a95 37% 68%, #263b61 69% 100%);
+  box-shadow: 0 0 1rem rgba(83, 229, 235, .8), 0 .3rem 0 #1c2b4b;
+  transform: rotateX(58deg) rotateZ(-5deg) translateZ(.8rem);
+}
+.deck-preview-ufo .deck-preview-grip {
+  inset: 29% 16%;
+  border-color: rgba(83, 229, 235, .9);
+  background: repeating-linear-gradient(90deg, rgba(83,229,235,.8) 0 8%, rgba(155,124,255,.7) 8% 16%);
 }
 
 /* Character picker focal card: a small stage for the selected rider, not a flat inventory tile. */

@@ -368,6 +368,10 @@ const DecorView = memo(function DecorView({ d }: { d: Decor }) {
     d.kind === "tower109";
   // buildings face +z (toward the road); those placed on the camera side (front) are turned around
   const flip = facing && d.frontSide ? Math.PI : 0;
+  // Shibuya Blocks citizens are exclusive to Shibuya mode. If a decoration from
+  // the previous track survives a mode switch, never show its faceless voxel
+  // fallback in Pigeon mode; Pigeon mode must use the face-equipped pedestrians.
+  if (!isShibuya && (d.kind === "ramen_customer" || d.kind === "shopper")) return null;
   if (d.kind === "ramen_customer") {
     const customer = (["salaryman", "student", "yakuza", "sumo", "chef"] as const)[Math.abs(d.variant) % 5];
     return <RamenCustomerView d={d} customer={customer} rotationY={d.rotY + flip} />;
@@ -826,6 +830,7 @@ const MoverView = memo(function MoverView({
 
 function Movers() {
   const { camera } = useThree();
+  const isShibuya = useUI((state) => state.trackMode === "shibuya");
   const refs = useRef(new Map<number, THREE.Group>());
   const signs = useRef(new Map<number, THREE.Group>());
   const seen = useRef(-1);
@@ -968,7 +973,7 @@ function Movers() {
     <>
       {engine.movers.map((m) =>
         m.kind === "pedestrian" ? (
-          m.shibuyaChar ? (
+          m.shibuyaChar && isShibuya ? (
             <ShibuyaPedestrianMover key={m.id} m={m} />
           ) : (
             <PedestrianMover key={m.id} m={m} />
